@@ -1,0 +1,648 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Cobblestone Pub{% endblock %}
+{% block page_title %}Weekly Performance Dashboard{% endblock %}
+
+{% block content %}
+<style>
+html, body{overflow-x:hidden;max-width:100vw}
+.main-content{overflow-x:hidden;max-width:calc(100vw - 240px)}
+.cb-dash{font-family:Georgia,serif;background:#f5f0e8;color:#1a1a1a;font-size:14px;margin:-1.5rem;padding:16px 18px;overflow-x:hidden;max-width:100%;min-width:0}
+.cb-dash *{box-sizing:border-box;min-width:0}
+.cb-dash .hdr{background:#fff;border-bottom:1px solid #ddd;padding:12px 18px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;margin:-16px -18px 20px}
+.cb-dash .hdr-title{font-size:22px;font-weight:500}
+.cb-dash .hdr-sub{font-size:10px;letter-spacing:.15em;color:#888;text-transform:uppercase;margin-top:2px}
+.cb-dash .hdr-meta{text-align:right;font-size:11px;color:#888;line-height:1.8}
+.cb-dash .sec{margin-bottom:24px}
+.cb-dash .sec-lbl{font-size:10px;letter-spacing:.15em;color:#999;text-transform:uppercase;border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:14px}
+.cb-dash .kpi-row{display:flex;gap:10px;flex-wrap:wrap}
+.cb-dash .kpi{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:14px 18px;flex:1;min-width:150px}
+.cb-dash .kpi-lbl{font-size:10px;letter-spacing:.1em;color:#888;text-transform:uppercase;margin-bottom:4px}
+.cb-dash .kpi-val{font-size:26px;font-weight:500;letter-spacing:-.5px}
+.cb-dash .kpi-sub{font-size:11px;color:#888;margin-top:3px}
+.cb-dash .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:100%}
+.cb-dash .stack{display:flex;flex-direction:column;gap:12px;max-width:100%}
+.cb-dash .box{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;min-width:0;max-width:100%;overflow:hidden}
+.cb-dash .box-scroll{overflow-x:auto}
+.cb-dash .ct{font-size:10px;letter-spacing:.1em;color:#888;text-transform:uppercase;margin-bottom:8px}
+.cb-dash canvas{display:block;width:100%}
+.cb-dash table{width:100%;border-collapse:collapse;font-size:12px}
+.cb-dash th{font-size:9px;letter-spacing:.1em;color:#999;text-transform:uppercase;border-bottom:1px solid #e5e5e5;padding:3px 6px 6px;text-align:right}
+.cb-dash th.l{text-align:left}
+.cb-dash td{padding:6px;border-top:1px solid #f0f0f0;text-align:right;font-family:monospace;font-size:12px}
+.cb-dash td.l{text-align:left;font-family:Georgia,serif}
+.cb-dash .badge{display:inline-block;background:#f0ece4;color:#888;font-size:9px;font-weight:500;padding:1px 5px;border-radius:3px;margin-right:5px;font-family:monospace}
+.cb-dash .ttl td{border-top:2px solid #ddd;font-weight:500}
+.cb-dash .lgnd{display:flex;gap:14px;margin-top:8px;font-size:10px;color:#888;flex-wrap:wrap;align-items:center}
+.cb-dash .ldot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:3px;vertical-align:middle}
+.cb-dash .wbtns{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.cb-dash .wbtn{background:#f5f0e8;color:#888;border:1px solid #ddd;border-radius:3px;padding:2px 7px;font-size:9px;font-weight:500;font-family:monospace;cursor:pointer}
+.cb-dash .wbtn.on{background:#b45309;color:#fff;border-color:#b45309}
+.cb-dash .vrow{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:7px}
+.cb-dash .vlbl{font-size:11px;color:#888}
+.cb-dash .vval{font-family:monospace;color:#888;font-size:12px}
+.cb-dash .vbig{font-size:20px;font-weight:500}
+.cb-dash .vdiv{border-top:1px solid #e5e5e5;padding-top:7px;margin-top:2px}
+.cb-dash .prog{height:4px;background:#f0ece4;border-radius:2px;margin-top:10px}
+.cb-dash .prog-fill{height:100%;border-radius:2px}
+.cb-dash .ftr{border-top:1px solid #ddd;padding-top:10px;display:flex;justify-content:space-between;font-size:10px;color:#ccc;flex-wrap:wrap;gap:6px}
+.cb-dash .note{font-size:9px;color:#aaa;margin-top:4px}
+.main-content .top-bar{display:none}
+.main-content .content-area{padding:0 !important}
+</style>
+
+<div class="cb-dash">
+<div class="hdr">
+  <div>
+    <div class="hdr-title">The Cobblestone</div>
+    <div class="hdr-sub">Weekly Performance Dashboard · 2026</div>
+  </div>
+  <div class="hdr-meta">
+    <div style="color:#16a34a;font-size:10px">● Square POS + Payroll live data</div>
+    <div>Main Bar + Back Room + Outside · Weeks Mon-Sun</div>
+    <div style="color:#b45309;font-weight:500">Through {{ current_week_label }} · {{ current_week_end }}</div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Year to date — W02 through {{ current_week_label }} (W01 excluded: pub closed Christmas)</div>
+  <div class="kpi-row" id="kpis"></div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Sales &amp; labour</div>
+  <div class="stack">
+    <div class="box">
+      <div class="ct">Net sales by week — 2025 vs 2026 + trend</div>
+      <canvas id="c-sales" height="160"></canvas>
+      <div class="lgnd">
+        <span><span class="ldot" style="background:#c8bfb0"></span>2025</span>
+        <span><span class="ldot" style="background:#3b82f6"></span>2026</span>
+        <span style="color:#b45309">— Trend</span>
+      </div>
+    </div>
+    <div class="box">
+      <div class="ct">Year-on-year % change vs 2025</div>
+      <canvas id="c-yoy" height="160"></canvas>
+    </div>
+    <div class="box">
+      <div class="ct">Labour cost (M+S) % of net</div>
+      <canvas id="c-lab" height="160"></canvas>
+      <div class="note">M+S payroll ÷ net sales · reference line = 16%</div>
+    </div>
+    <div class="box">
+      <div class="ct">{{ current_week_label }} labour hours per day — {{ current_week_dates }} (Square timecards)</div>
+      <canvas id="c-hrs" height="160"></canvas>
+      <div class="lgnd">
+        <span><span class="ldot" style="background:#6366f1"></span>Hours</span>
+        <span style="color:#b45309">— Net sales</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Daily sales profile by week — net sales Mon-Sun</div>
+  <div class="box">
+    <div class="wbtns" id="wbtns"></div>
+    <div class="note" style="margin-bottom:6px">Click a week to highlight · click again to show all</div>
+    <canvas id="c-daily" height="220"></canvas>
+    <div class="lgnd" id="dlgnd" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Cobblestone T-Shirt sales</div>
+  <div class="grid2">
+    <div class="box">
+      <div class="ct">Units sold per week</div>
+      <canvas id="c-merch1" height="160"></canvas>
+    </div>
+    <div class="box">
+      <div class="ct">Cumulative revenue (gross)</div>
+      <canvas id="c-merch2" height="160"></canvas>
+    </div>
+  </div>
+  <div class="note" style="margin-top:8px">Cobblestone T-Shirt Tee · €{{ tshirt_price }}/unit · {{ tshirt_total_units }} units · €{{ '{:,}'.format(tshirt_total_revenue) }} gross revenue</div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">VAT reporting periods — Scheme 2 · 23%</div>
+  <div class="grid2" id="vat"></div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Back room (backbar) &amp; Outside sales</div>
+  <div class="grid2">
+    <div class="box">
+      <div class="ct">Back room net sales by week</div>
+      <canvas id="c-bb1" height="180"></canvas>
+    </div>
+    <div class="box">
+      <div class="ct">Three-location split — main bar, back room, outside</div>
+      <canvas id="c-bb2" height="180"></canvas>
+      <div class="lgnd">
+        <span><span class="ldot" style="background:#3b82f6"></span>Main bar</span>
+        <span><span class="ldot" style="background:#8b5cf6"></span>Back room</span>
+        <span><span class="ldot" style="background:#15803d"></span>Outside</span>
+      </div>
+    </div>
+  </div>
+  <div class="box box-scroll" style="margin-top:12px"><table id="t-bb"></table></div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Daily net sales by week — Square POS · all locations · ex. VAT</div>
+  <div class="box box-scroll"><table id="t-daily" style="min-width:900px"></table></div>
+</div>
+
+<div class="sec">
+  <div class="sec-lbl">Weekly summary — net sales, payroll &amp; labour % (M+S)</div>
+  <div class="box box-scroll"><table id="t-weekly" style="min-width:700px"></table></div>
+</div>
+
+<div class="ftr">
+  <span>Cobblestone — Smithfield, Dublin 7</span>
+  <span>Weeks Mon-Sun · W01 = Dec 29 · VAT Scheme 2 @ 23%</span>
+  <span>Sales: Square Orders API · Payroll: app database</span>
+</div>
+</div>
+
+<script>
+// ─── DATA FROM BACKEND ───────────────────────────────────────────────────────
+var WKS = {{ wks_json|safe }};
+var DAILY = {{ daily_json|safe }};
+var BB = {{ bb_json|safe }};
+var OUT = {{ out_json|safe }};
+var MERCH = {{ merch_json|safe }};
+var PAYROLL_DATA = {{ payroll_json|safe }};
+var HRS = {{ hrs_json|safe }};
+var VAT_DATA = {{ vat_json|safe }};
+
+var DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+var WK_COL = {
+  W01:"#dbeafe",W02:"#93c5fd",W03:"#60a5fa",W04:"#3b82f6",W05:"#2563eb",
+  W06:"#1d4ed8",W07:"#1e40af",W08:"#1e3a8a",W09:"#164e63",
+  W10:"#0891b2",W11:"#b45309",W12:"#15803d",W13:"#7c3aed",W14:"#dc2626",W15:"#0f766e",
+  W16:"#be185d",W17:"#0e7490",W18:"#4338ca",W19:"#be123c",W20:"#047857"
+};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function fmt(n){if(n==null)return "—";return "\u20ac"+Math.round(n).toLocaleString("en-IE");}
+function laborC(p){if(p==null)return "#94a3b8";if(p>22)return "#ef4444";if(p>19)return "#f59e0b";if(p<17)return "#16a34a";return "#3b82f6";}
+
+// ─── COMPUTED ────────────────────────────────────────────────────────────────
+var ytdNet = WKS.reduce(function(a,w){return a+w.n26;},0);
+var ytd25 = WKS.reduce(function(a,w){return a+(w.n25||0);},0);
+var yoyUpl = ytdNet-ytd25;
+var yoyPct = ytd25>0 ? (yoyUpl/ytd25*100).toFixed(1) : "0.0";
+var ytdPay = WKS.reduce(function(a,w){return a+(w.pay||0);},0);
+var ytdGross = Math.round(ytdNet*1.23);
+var labPct = ytdGross>0 ? (ytdPay/ytdGross*100).toFixed(1) : "0.0";
+
+// Linear trend
+var tn=WKS.length, txm=(tn-1)/2, tym=ytdNet/tn;
+var tsl = WKS.reduce(function(a,w,i){return a+(i-txm)*(w.n26-tym);},0) /
+          Math.max(1, WKS.reduce(function(a,_,i){return a+(i-txm)*(i-txm);},0));
+var tic = tym - tsl*txm;
+var TREND = WKS.map(function(_,i){return Math.round(tic+tsl*i);});
+
+// ─── CANVAS UTILITIES ────────────────────────────────────────────────────────
+function setupCanvas(id, h){
+  var c=document.getElementById(id); if(!c)return null;
+  var dpr=window.devicePixelRatio||1;
+  var w=c.parentElement.offsetWidth||600;
+  c.width=w*dpr; c.height=h*dpr; c.style.width=w+"px"; c.style.height=h+"px";
+  var ctx=c.getContext("2d"); ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
+  return {ctx:ctx, W:w, H:h};
+}
+
+function rrect(ctx, x, y, w, h, r){
+  r=Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+function drawGrid(ctx, pad, W, H, yMax, yFmt){
+  ctx.font="9px Georgia"; ctx.textAlign="right"; ctx.fillStyle="#999";
+  for(var i=0;i<=4;i++){
+    var y=pad.t+(H-pad.t-pad.b)-(i/4)*(H-pad.t-pad.b);
+    ctx.strokeStyle="#f0ece4"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    ctx.fillText(yFmt(i/4*yMax), pad.l-4, y+4);
+  }
+}
+
+function drawXLabels(ctx, labels, pad, W, H){
+  ctx.fillStyle="#888"; ctx.textAlign="center"; ctx.font="10px Georgia";
+  var n=labels.length, CW=W-pad.l-pad.r;
+  for(var i=0;i<n;i++){ctx.fillText(labels[i], pad.l+(i+0.5)*(CW/n), H-6);}
+}
+
+function barChart(id, h, labels, datasets, yMax, yFmt, trendData, refLine, refLabel){
+  var cv=setupCanvas(id,h); if(!cv)return;
+  var ctx=cv.ctx, W=cv.W, H=cv.H;
+  var rp=refLine!=null?52:8;
+  var pad={t:10,r:rp,b:26,l:50};
+  var CW=W-pad.l-pad.r, CH=H-pad.t-pad.b;
+  var n=labels.length;
+  drawGrid(ctx,pad,W,H,yMax,yFmt);
+  drawXLabels(ctx,labels,pad,W,H);
+  if(refLine!=null){
+    var ry=pad.t+CH-(refLine/yMax)*CH;
+    ctx.save();
+    ctx.strokeStyle="#b45309"; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(pad.l,ry); ctx.lineTo(pad.l+CW,ry); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle="#b45309"; ctx.textAlign="left"; ctx.font="9px Georgia";
+    ctx.fillText(refLabel, pad.l+CW+4, ry+4);
+    ctx.restore();
+  }
+  var nd=datasets.length;
+  var bw=Math.min(14,(CW/n)*0.35);
+  for(var di=0;di<nd;di++){
+    var ds=datasets[di];
+    for(var i=0;i<n;i++){
+      var v=ds.data[i]; if(v==null)continue;
+      var bh=Math.max(0,(Math.min(v,yMax)/yMax)*CH);
+      var cx=pad.l+(i+0.5)*(CW/n);
+      var x=cx+(di-(nd-1)/2)*(bw+2)-bw/2;
+      ctx.fillStyle=Array.isArray(ds.color)?ds.color[i]:ds.color;
+      rrect(ctx,x,pad.t+CH-bh,bw,bh,2); ctx.fill();
+    }
+  }
+  if(trendData){
+    ctx.strokeStyle="#b45309"; ctx.lineWidth=2; ctx.beginPath();
+    for(var i=0;i<n;i++){
+      var cx=pad.l+(i+0.5)*(CW/n);
+      var cy=pad.t+CH-(trendData[i]/yMax)*CH;
+      if(i===0)ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+    }
+    ctx.stroke();
+  }
+}
+
+function lineChart(id, h, labels, datasets, yMax, yFmt, activeWk){
+  var cv=setupCanvas(id,h); if(!cv)return;
+  var ctx=cv.ctx, W=cv.W, H=cv.H;
+  var pad={t:10,r:10,b:26,l:50};
+  var CW=W-pad.l-pad.r, CH=H-pad.t-pad.b;
+  var n=labels.length;
+  drawGrid(ctx,pad,W,H,yMax,yFmt);
+  drawXLabels(ctx,labels,pad,W,H);
+  var order=[];
+  for(var i=0;i<datasets.length;i++){if(datasets[i].wk!==activeWk)order.push(datasets[i]);}
+  for(var i=0;i<datasets.length;i++){if(datasets[i].wk===activeWk)order.push(datasets[i]);}
+  for(var di=0;di<order.length;di++){
+    var ds=order[di];
+    var isSelected=(activeWk!==null && ds.wk===activeWk);
+    var showAll=(activeWk===null);
+    var alpha=showAll?0.65:isSelected?1:0.18;
+    var lw=isSelected?3:showAll?1.2:0.8;
+    ctx.save();
+    ctx.globalAlpha=alpha; ctx.strokeStyle=ds.color; ctx.lineWidth=lw;
+    ctx.beginPath();
+    for(var i=0;i<n;i++){
+      var cx=pad.l+(i+0.5)*(CW/n);
+      var cy=pad.t+CH-(Math.min(ds.data[i],yMax)/yMax)*CH;
+      if(i===0)ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+    }
+    ctx.stroke();
+    if(isSelected){
+      ctx.fillStyle=ds.color;
+      for(var i=0;i<n;i++){
+        var cx=pad.l+(i+0.5)*(CW/n);
+        var cy=pad.t+CH-(Math.min(ds.data[i],yMax)/yMax)*CH;
+        ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+}
+
+function dualAxisChart(id, h, labels, bars, barMax, lineData, lineMax, barColorFn){
+  var cv=setupCanvas(id,h); if(!cv)return;
+  var ctx=cv.ctx, W=cv.W, H=cv.H;
+  var pad={t:10,r:50,b:26,l:50};
+  var CW=W-pad.l-pad.r, CH=H-pad.t-pad.b;
+  var n=labels.length;
+  ctx.font="9px Georgia"; ctx.fillStyle="#999";
+  for(var i=0;i<=4;i++){
+    var y=pad.t+CH-(i/4)*CH;
+    ctx.strokeStyle="#f0ece4"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+CW,y); ctx.stroke();
+    ctx.textAlign="right"; ctx.fillText((i/4*barMax).toFixed(0)+"h", pad.l-4, y+4);
+    ctx.textAlign="left"; ctx.fillText("\u20ac"+(i/4*lineMax/1000).toFixed(0)+"k", pad.l+CW+4, y+4);
+  }
+  drawXLabels(ctx,labels,pad,W,H);
+  var bw=Math.min(22,(CW/n)*0.55);
+  for(var i=0;i<n;i++){
+    var bh=Math.max(0,(bars[i]/barMax)*CH);
+    var x=pad.l+(i+0.5)*(CW/n)-bw/2;
+    ctx.fillStyle=barColorFn(labels[i]);
+    rrect(ctx,x,pad.t+CH-bh,bw,bh,2); ctx.fill();
+  }
+  ctx.strokeStyle="#b45309"; ctx.lineWidth=2; ctx.beginPath();
+  for(var i=0;i<n;i++){
+    var cx=pad.l+(i+0.5)*(CW/n);
+    var cy=pad.t+CH-(Math.min(lineData[i],lineMax)/lineMax)*CH;
+    if(i===0)ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+  }
+  ctx.stroke();
+  ctx.fillStyle="#b45309";
+  for(var i=0;i<n;i++){
+    var cx=pad.l+(i+0.5)*(CW/n);
+    var cy=pad.t+CH-(Math.min(lineData[i],lineMax)/lineMax)*CH;
+    ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fill();
+  }
+}
+
+function stackedBarChart(id, h, labels, bottom, middle, top, bColor, mColor, tColor, yMax, yFmt){
+  var cv=setupCanvas(id,h); if(!cv)return;
+  var ctx=cv.ctx, W=cv.W, H=cv.H;
+  var pad={t:10,r:8,b:26,l:50};
+  var CW=W-pad.l-pad.r, CH=H-pad.t-pad.b;
+  var n=labels.length;
+  drawGrid(ctx,pad,W,H,yMax,yFmt);
+  drawXLabels(ctx,labels,pad,W,H);
+  var bw=Math.min(22,(CW/n)*0.55);
+  for(var i=0;i<n;i++){
+    var bh=Math.max(0,(bottom[i]/yMax)*CH);
+    var mh=Math.max(0,((middle[i]||0)/yMax)*CH);
+    var th=Math.max(0,((top[i]||0)/yMax)*CH);
+    var x=pad.l+(i+0.5)*(CW/n)-bw/2;
+    ctx.fillStyle=bColor;
+    rrect(ctx,x,pad.t+CH-bh-mh-th,bw,bh,0); ctx.fill();
+    if(mh>0){ctx.fillStyle=mColor; rrect(ctx,x,pad.t+CH-mh-th,bw,mh,0); ctx.fill();}
+    if(th>0){ctx.fillStyle=tColor; rrect(ctx,x,pad.t+CH-th,bw,th,2); ctx.fill();}
+  }
+}
+
+// ─── DRAW ALL CHARTS ─────────────────────────────────────────────────────────
+var wkLabels = WKS.map(function(w){return w.wk;});
+
+function drawAll(){
+  var salesMax=Math.max.apply(null,WKS.map(function(w){return Math.max(w.n25||0, w.n26);}));
+  var salesYMax=Math.ceil(salesMax/5000)*5000+5000;
+  barChart("c-sales", 200, wkLabels,
+    [{data:WKS.map(function(w){return w.n25||0;}), color:"#c8bfb0"},
+     {data:WKS.map(function(w){return w.n26;}), color:"#3b82f6"}],
+    salesYMax, function(v){return "\u20ac"+(v/1000).toFixed(0)+"k";}, TREND);
+
+  var yoyVals = WKS.map(function(w){return w.n25>0 ? +((w.n26-w.n25)/w.n25*100).toFixed(1) : 0;});
+  var yoyMax=Math.max.apply(null,yoyVals.map(function(v){return Math.abs(v);}));
+  var yoyYMax=Math.ceil(Math.max(yoyMax,10)/5)*5+5;
+  barChart("c-yoy", 200, wkLabels,
+    [{data:yoyVals, color:yoyVals.map(function(v){return v<0?"#ef4444":v<5?"#94a3b8":"#16a34a";})}],
+    yoyYMax, function(v){return v+"%";});
+
+  var labLookup={}; PAYROLL_DATA.forEach(function(p){labLookup[p.wk]=p;});
+  var labWks=WKS.filter(function(w){return labLookup[w.wk];});
+  var labVals=labWks.map(function(w){return +(labLookup[w.wk].ms/w.n26*100).toFixed(1);});
+  barChart("c-lab", 180, labWks.map(function(w){return w.wk;}),
+    [{data:labVals, color:labVals.map(function(v){return laborC(v);})}],
+    30, function(v){return v+"%";}, null, 16, "16%");
+
+  dualAxisChart("c-hrs", 180,
+    HRS.map(function(d){return d.d;}),
+    HRS.map(function(d){return d.h;}), 65,
+    HRS.map(function(d){return d.s;}), 9000,
+    function(d){return d==="Fri"?"#6366f1":d==="Sat"?"#8b5cf6":"#93c5fd";});
+
+  drawDaily();
+
+  var merchYMax = MERCH.length ? Math.ceil(Math.max.apply(null,MERCH)/10)*10+10 : 10;
+  var merchWkLabels = MERCH.map(function(_,i){return "W"+String(i+1).padStart(2,"0");});
+  barChart("c-merch1", 160, merchWkLabels,
+    [{data:MERCH, color:MERCH.map(function(v){return v>=40?"#15803d":v>=25?"#3b82f6":v>=15?"#93c5fd":"#c8bfb0";})}],
+    merchYMax, function(v){return v+"u";});
+
+  drawMerchCumulative();
+  drawBackbar(salesYMax);
+}
+
+var activeWk = WKS.length ? WKS[WKS.length-1].wk : null;
+
+function drawDaily(){
+  var datasets = Object.keys(DAILY).map(function(wk){return {wk:wk, data:DAILY[wk], color:WK_COL[wk]||"#888"};});
+  var dayMax = 10000;
+  Object.keys(DAILY).forEach(function(wk){DAILY[wk].forEach(function(v){if(v>dayMax)dayMax=v;});});
+  dayMax = Math.ceil(dayMax/2000)*2000;
+  lineChart("c-daily", 220, DAYS, datasets, dayMax, function(v){return "\u20ac"+(v/1000).toFixed(0)+"k";}, activeWk);
+}
+
+function buildDailyUI(){
+  var btns="";
+  Object.keys(DAILY).forEach(function(wk){btns+='<button class="wbtn'+(activeWk===wk?" on":"")+'" onclick="selWk(\''+wk+'\')">'+wk+'</button>';});
+  document.getElementById("wbtns").innerHTML=btns;
+  var lgnd="";
+  WKS.forEach(function(w){
+    if(!DAILY[w.wk])return;
+    var tot=DAILY[w.wk].reduce(function(a,v){return a+v;},0);
+    var isA=(activeWk===null||activeWk===w.wk);
+    var op=activeWk===null?0.8:isA?1:0.3;
+    lgnd+='<span style="display:flex;align-items:center;gap:4px;cursor:pointer;opacity:'+op+'" onclick="selWk(\''+w.wk+'\')">'
+      +'<span style="display:inline-block;width:14px;height:'+(isA?3:2)+'px;border-radius:2px;background:'+(WK_COL[w.wk]||"#888")+'"></span>'
+      +'<span style="font-size:10px;font-family:monospace;color:'+(activeWk===w.wk?'#1a1a1a':'#888')+';font-weight:'+(activeWk===w.wk?500:400)+'">'
+      +w.wk+' <span style="color:#bbb">('+fmt(tot)+')</span></span></span>';
+  });
+  document.getElementById("dlgnd").innerHTML=lgnd;
+}
+
+function selWk(wk){activeWk=(activeWk===wk)?null:wk; buildDailyUI(); drawDaily();}
+
+function drawBackbar(salesYMax){
+  var bbD = WKS.filter(function(w){return BB[w.wk]||OUT[w.wk];});
+  if(bbD.length===0) return;
+  var bb1Max=Math.max.apply(null,bbD.map(function(w){return BB[w.wk]||0;}));
+  var bb1YMax=Math.ceil(bb1Max/500)*500+500;
+  barChart("c-bb1",180,bbD.map(function(w){return w.wk;}),
+    [{data:bbD.map(function(w){return BB[w.wk]||0;}), color:"#8b5cf6"}],
+    bb1YMax, function(v){return "\u20ac"+(v/1000).toFixed(1)+"k";});
+
+  stackedBarChart("c-bb2", 180,
+    bbD.map(function(w){return w.wk;}),
+    bbD.map(function(w){return w.n26-(BB[w.wk]||0)-(OUT[w.wk]||0);}),
+    bbD.map(function(w){return BB[w.wk]||0;}),
+    bbD.map(function(w){return OUT[w.wk]||0;}),
+    "#3b82f6","#8b5cf6","#15803d",
+    salesYMax, function(v){return "\u20ac"+(v/1000).toFixed(0)+"k";});
+
+  // Backbar table
+  var bbH = '<tr><th class="l">Week</th><th class="l">Dates</th><th>Total net</th><th>Back room</th><th>Outside</th><th>Main bar</th><th>BR+Out %</th></tr>';
+  WKS.forEach(function(w){
+    var brv=BB[w.wk]||0, outv=OUT[w.wk]||0, comb=brv+outv;
+    var brp=comb>0?(comb/w.n26*100).toFixed(1)+"%":"—";
+    bbH += '<tr><td class="l"><span class="badge">'+w.wk+'</span></td>'
+      +'<td class="l" style="color:#888">'+w.dates+'</td>'
+      +'<td style="color:#1a1a1a;font-weight:500">'+fmt(w.n26)+'</td>'
+      +'<td style="color:#7c3aed">'+(brv>0?fmt(brv):"—")+'</td>'
+      +'<td style="color:#15803d">'+(outv>0?fmt(outv):"—")+'</td>'
+      +'<td style="color:#1d4ed8">'+fmt(w.n26-brv-outv)+'</td>'
+      +'<td style="color:'+(comb>0?"#555":"#ccc")+'">'+brp+'</td></tr>';
+  });
+  var bbTot=Object.keys(BB).reduce(function(a,k){return a+BB[k];},0);
+  var outTot=Object.keys(OUT).reduce(function(a,k){return a+OUT[k];},0);
+  var bbNetTot=bbD.reduce(function(a,w){return a+w.n26;},0);
+  bbH += '<tr class="ttl"><td class="l" colspan="2">Total (weeks with backbar activity)</td><td>'+fmt(bbNetTot)+'</td><td style="color:#7c3aed">'+fmt(bbTot)+'</td><td style="color:#15803d">'+fmt(outTot)+'</td><td colspan="2"></td></tr>';
+  document.getElementById("t-bb").innerHTML = bbH;
+}
+
+function drawMerchCumulative(){
+  var id="c-merch2", h=160;
+  var cv=document.getElementById(id); if(!cv||MERCH.length===0)return;
+  var dpr=window.devicePixelRatio||1;
+  var W=cv.parentElement.offsetWidth||400;
+  cv.width=W*dpr; cv.height=h*dpr; cv.style.width=W+"px"; cv.style.height=h+"px";
+  var ctx=cv.getContext("2d"); ctx.scale(dpr,dpr);
+  var pad={t:10,r:14,b:26,l:48};
+  var CW=W-pad.l-pad.r, CH=h-pad.t-pad.b;
+  var n=MERCH.length;
+  var cum=[], s=0;
+  MERCH.forEach(function(v){s+=v*{{ tshirt_price }}; cum.push(s);});
+  var yMax=Math.ceil(s/1000)*1000 || 1000;
+  ctx.font="9px Georgia"; ctx.textAlign="right"; ctx.fillStyle="#999"; ctx.strokeStyle="#f0ece4"; ctx.lineWidth=1;
+  for(var i=0;i<=4;i++){
+    var y=pad.t+CH-(i/4)*CH;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+CW,y); ctx.stroke();
+    ctx.fillText("\u20ac"+(i/4*yMax/1000).toFixed(1)+"k", pad.l-4, y+4);
+  }
+  ctx.fillStyle="#888"; ctx.textAlign="center"; ctx.font="10px Georgia";
+  var merchWkLabels = MERCH.map(function(_,i){return "W"+String(i+1).padStart(2,"0");});
+  merchWkLabels.forEach(function(wk,i){ctx.fillText(wk,pad.l+(i+0.5)*(CW/n),h-6);});
+  ctx.beginPath();
+  cum.forEach(function(v,i){var cx=pad.l+(i+0.5)*(CW/n); var cy=pad.t+CH-(v/yMax)*CH; i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);});
+  ctx.lineTo(pad.l+(n-0.5)*(CW/n), pad.t+CH);
+  ctx.lineTo(pad.l+0.5*(CW/n), pad.t+CH);
+  ctx.closePath();
+  ctx.fillStyle="rgba(21,128,61,0.12)"; ctx.fill();
+  ctx.beginPath(); ctx.strokeStyle="#15803d"; ctx.lineWidth=2;
+  cum.forEach(function(v,i){var cx=pad.l+(i+0.5)*(CW/n); var cy=pad.t+CH-(v/yMax)*CH; i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);});
+  ctx.stroke();
+  cum.forEach(function(v,i){var cx=pad.l+(i+0.5)*(CW/n); var cy=pad.t+CH-(v/yMax)*CH; ctx.beginPath(); ctx.arc(cx,cy,3,0,2*Math.PI); ctx.fillStyle="#15803d"; ctx.fill();});
+  var lastCx=pad.l+(n-0.5)*(CW/n);
+  var lastCy=pad.t+CH-(s/yMax)*CH;
+  ctx.fillStyle="#15803d"; ctx.textAlign="right"; ctx.font="bold 10px Georgia";
+  ctx.fillText("\u20ac"+(s/1000).toFixed(1)+"k", lastCx-4, lastCy-6);
+}
+
+// ─── KPIs ────────────────────────────────────────────────────────────────────
+var msPct = (PAYROLL_DATA.length && ytdNet>0) ?
+  +(PAYROLL_DATA.filter(function(p){return p.wk!=="W01";}).reduce(function(a,p){return a+p.ms;},0)/ytdNet*100).toFixed(1) : 0;
+
+document.getElementById("kpis").innerHTML =
+  '<div class="kpi"><div class="kpi-lbl">Net sales 2026 YTD</div>'
+  +'<div class="kpi-val">'+fmt(ytdNet)+'</div>'
+  +'<div class="kpi-sub">'+WKS.length+' weeks · W02 onwards</div></div>'
+  +(ytd25>0 ? '<div class="kpi"><div class="kpi-lbl">YOY uplift vs 2025</div>'
+  +'<div class="kpi-val" style="color:'+(yoyUpl>=0?"#16a34a":"#ef4444")+';font-size:34px">'+(yoyUpl>=0?"+":"")+yoyPct+'%</div>'
+  +'<div class="kpi-sub" style="color:'+(yoyUpl>=0?"#16a34a":"#ef4444")+'">'+(yoyUpl>=0?"+":"")+fmt(yoyUpl)+' · 2025 = '+fmt(ytd25)+'</div></div>' : '')
+  +'<div class="kpi"><div class="kpi-lbl">Labour cost M+S YTD</div>'
+  +'<div class="kpi-val" style="color:'+laborC(msPct)+'">'+msPct+'%</div>'
+  +'<div class="kpi-sub">M+S payroll ÷ net sales</div></div>'
+  +'<div class="kpi"><div class="kpi-lbl">Total payroll YTD</div>'
+  +'<div class="kpi-val">'+fmt(PAYROLL_DATA.reduce(function(a,p){return a+p.total;},0))+'</div>'
+  +'<div class="kpi-sub">'+PAYROLL_DATA.length+' weeks paid</div></div>';
+
+// ─── VAT SECTION ─────────────────────────────────────────────────────────────
+function renderVAT(){
+  var html = "";
+  VAT_DATA.forEach(function(v){
+    var badge = v.status==="due" ?
+      '<div style="background:#ef4444;color:#fff;font-size:9px;font-weight:500;padding:2px 9px;border-radius:3px">DUE '+v.due+'</div>' :
+      '<div style="border:1px solid #ddd;color:#888;font-size:9px;font-weight:500;padding:2px 9px;border-radius:3px">DUE '+v.due+'</div>';
+    html += '<div class="box">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
+      +'<div><div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.05em">'+v.title+'</div>'
+      +'<div style="font-size:10px;color:#888;margin-top:2px">'+v.period+'</div></div>'
+      +badge+'</div>'
+      +'<div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#bbb;margin-bottom:6px">Output VAT (collected on sales)</div>';
+    v.output.forEach(function(o){
+      html += '<div class="vrow"><span class="vlbl">'+o.label+'</span><span class="vval">'+fmt(o.amount)+'</span></div>';
+    });
+    html += '<div class="vrow" style="border-top:1px solid #f0f0f0;padding-top:6px;margin-top:4px"><span class="vlbl" style="font-weight:500;color:#555">Total output VAT</span><span class="vval" style="color:#555;font-weight:500">'+fmt(v.total_output)+'</span></div>';
+    html += '<div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#bbb;margin-bottom:6px;margin-top:10px">Input VAT (paid on purchases)</div>';
+    v.input.forEach(function(i){
+      html += '<div class="vrow"><span class="vlbl">'+i.label+(i.confirmed?' <span style="font-size:9px;background:#dcfce7;color:#166534;padding:1px 4px;border-radius:2px;margin-left:4px">confirmed</span>':'')+'</span>'
+        +'<span class="vval" style="color:'+(i.amount?"#16a34a":"#aaa")+'">'+(i.amount?"\u2212"+fmt(i.amount):"pending")+'</span></div>';
+    });
+    html += '<div class="vrow vdiv" style="margin-top:8px">'
+      +'<span style="font-size:13px;font-weight:500;color:'+(v.status==="due"?"#b45309":"#1d4ed8")+'">'+v.net_label+'</span>'
+      +'<span class="vbig" style="color:'+(v.status==="due"?"#b45309":"#1d4ed8")+'">'+fmt(v.net_due)+'</span></div>';
+    if(v.note) html += '<div class="note">'+v.note+'</div>';
+    html += '</div>';
+  });
+  document.getElementById("vat").innerHTML = html;
+}
+renderVAT();
+
+// ─── DAILY TABLE ─────────────────────────────────────────────────────────────
+function renderDailyTable(){
+  var gMax=0;
+  Object.keys(DAILY).forEach(function(wk){DAILY[wk].forEach(function(v){if(v>gMax)gMax=v;});});
+  function heatSt(v){if(!v)return "background:transparent;color:#ddd";var r=v/gMax;if(r>.85)return "background:#166534;color:#bbf7d0;font-weight:500";if(r>.65)return "background:#15803d;color:#dcfce7;font-weight:500";if(r>.45)return "background:#16a34a;color:#f0fdf4";if(r>.30)return "background:#dcfce7;color:#166534";return "background:#f0fdf4;color:#16a34a";}
+  var dH = '<tr><th class="l">Week</th>'+DAYS.map(function(d){return '<th>'+d+'</th>';}).join('')+'<th>Total</th></tr>';
+  var dT={}; DAYS.forEach(function(d){dT[d]=0;});
+  var dA={}; DAYS.forEach(function(d){dA[d]=[];});
+  WKS.forEach(function(w){
+    var vals=DAILY[w.wk]; if(!vals)return;
+    var tot=vals.reduce(function(a,v){return a+v;},0);
+    dH+='<tr><td class="l"><span class="badge">'+w.wk+'</span><span style="font-size:11px;color:#888">'+w.dates+'</span></td>';
+    vals.forEach(function(v,i){dH+='<td style="'+heatSt(v)+'">'+fmt(v)+'</td>'; dT[DAYS[i]]+=v; dA[DAYS[i]].push(v);});
+    dH+='<td style="color:#1a1a1a;font-weight:500">'+fmt(tot)+'</td></tr>';
+  });
+  var grand = DAYS.reduce(function(a,d){return a+dT[d];},0);
+  dH+='<tr class="ttl"><td class="l" style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.1em">Day total</td>'
+    +DAYS.map(function(d){return '<td style="color:#555">'+fmt(dT[d])+'</td>';}).join('')
+    +'<td style="color:#16a34a">'+fmt(grand)+'</td></tr>';
+  dH+='<tr><td class="l" style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.1em">Avg/week</td>'
+    +DAYS.map(function(d){var a=dA[d]; return '<td style="color:#aaa">'+(a.length?fmt(Math.round(a.reduce(function(s,v){return s+v;},0)/a.length)):"—")+'</td>';}).join('')
+    +'<td></td></tr>';
+  document.getElementById("t-daily").innerHTML = dH;
+}
+renderDailyTable();
+
+// ─── WEEKLY SUMMARY TABLE ────────────────────────────────────────────────────
+function renderWeeklyTable(){
+  var pdLookup={}; PAYROLL_DATA.forEach(function(p){pdLookup[p.wk]=p;});
+  var wH = '<tr><th class="l">Week</th><th>2025 net</th><th>2026 net</th><th>YOY \u0394</th><th>Payroll total</th><th>Payroll M+S</th><th>Labour % (M+S)</th></tr>';
+  WKS.forEach(function(w){
+    var yoy = w.n25>0 ? +((w.n26-w.n25)/w.n25*100).toFixed(1) : 0;
+    var yoyC = yoy<0?"#ef4444":yoy<5?"#94a3b8":"#16a34a";
+    var pd = pdLookup[w.wk];
+    var ptot = pd?pd.total:null, pms=pd?pd.ms:null;
+    var lp = pms!=null?+(pms/w.n26*100).toFixed(1):null;
+    wH += '<tr>'
+      +'<td class="l"><span class="badge">'+w.wk+'</span>'+w.dates+'</td>'
+      +'<td style="color:#888">'+(w.n25>0?fmt(w.n25):"—")+'</td>'
+      +'<td style="color:#1a1a1a;font-weight:500">'+fmt(w.n26)+'</td>'
+      +'<td style="color:'+yoyC+';font-weight:500">'+(w.n25>0?(yoy>0?"+":"")+yoy.toFixed(1)+"%":"—")+'</td>'
+      +'<td style="color:#555">'+(ptot!=null?fmt(ptot):'<span style="color:#ccc">—</span>')+'</td>'
+      +'<td style="color:#3b82f6">'+(pms!=null?fmt(pms):'<span style="color:#ccc">—</span>')+'</td>'
+      +'<td style="color:'+laborC(lp)+';font-weight:500">'
+      +(lp!=null?lp.toFixed(1)+"% "+(lp>22?"▲":lp<17?"▼":""):'<span style="color:#ccc">—</span>')
+      +'</td></tr>';
+  });
+  var ytdPayTotal = PAYROLL_DATA.reduce(function(a,p){return a+p.total;},0);
+  var ytdPayMS = PAYROLL_DATA.reduce(function(a,p){return a+p.ms;},0);
+  var ytdLabMS = ytdNet>0 ? +(ytdPayMS/ytdNet*100).toFixed(1) : 0;
+  wH += '<tr class="ttl"><td class="l">YTD total</td>'
+    +'<td style="color:#888">'+fmt(ytd25)+'</td>'
+    +'<td>'+fmt(ytdNet)+'</td>'
+    +'<td style="color:'+(yoyUpl>=0?"#16a34a":"#ef4444")+'">'+(yoyUpl>=0?"+":"")+yoyPct+'%</td>'
+    +'<td style="color:#555">'+fmt(Math.round(ytdPayTotal))+'</td>'
+    +'<td style="color:#3b82f6;font-weight:500">'+fmt(Math.round(ytdPayMS))+'</td>'
+    +'<td style="color:'+laborC(ytdLabMS)+'">'+ytdLabMS+'%</td></tr>';
+  document.getElementById("t-weekly").innerHTML = wH;
+}
+renderWeeklyTable();
+
+buildDailyUI();
+drawAll();
+
+window.addEventListener("resize", drawAll);
+</script>
+{% endblock %}

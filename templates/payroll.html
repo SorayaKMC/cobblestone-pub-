@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Payroll - Cobblestone Pub{% endblock %}
+{% block page_title %}Payroll{% endblock %}
+
+{% block content %}
+<!-- Week selector -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="week-selector">
+        <a href="/payroll?week={{ prev_week }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <span class="current-week">{{ week_label }} ({{ start_date }} to {{ end_date }})</span>
+        <a href="/payroll?week={{ next_week }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+    <div>
+        <a href="/payroll/download/peter?week={{ iso_week }}" class="btn btn-primary btn-sm me-2">
+            <i class="bi bi-file-earmark-excel me-1"></i>Download for Peter
+        </a>
+        <a href="/payroll/download/raw?week={{ iso_week }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Raw Timecards
+        </a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>Could not load payroll data.</strong> {{ error }}
+    <hr>
+    <small>Check that your Square access token is set in the <code>.env</code> file.</small>
+</div>
+{% else %}
+
+<!-- Payroll table -->
+<form method="POST" action="/payroll/tips">
+<input type="hidden" name="iso_week" value="{{ iso_week }}">
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-cobblestone mb-0">
+            <thead>
+                <tr>
+                    <th>First</th>
+                    <th>Last</th>
+                    <th class="text-end">Rate</th>
+                    <th class="text-end">Hours</th>
+                    <th class="text-end">Gross</th>
+                    <th class="text-end" style="width:110px">Tips <small class="text-info">(edit)</small></th>
+                    <th class="text-end">Cleaning</th>
+                    <th class="text-end">Total</th>
+                    <th>Category</th>
+                    <th class="text-end">Labor Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in payroll %}
+                <tr>
+                    <td>{{ emp.given_name }}</td>
+                    <td>{{ emp.family_name }}</td>
+                    <td class="text-end">&euro;{{ "%.2f"|format(emp.wage_rate|float) }}</td>
+                    <td class="text-end">{{ "%.2f"|format(emp.hours|float) }}</td>
+                    <td class="text-end">&euro;{{ "%.2f"|format(emp.gross|float) }}</td>
+                    <td class="text-end">
+                        <div class="input-group input-group-sm" style="min-width:100px">
+                            <span class="input-group-text px-1">&euro;</span>
+                            <input type="number" step="0.01" min="0"
+                                   name="tip_{{ emp.team_member_id }}"
+                                   value="{{ '%.2f'|format(emp.tips|float) }}"
+                                   class="form-control form-control-sm text-end">
+                        </div>
+                    </td>
+                    <td class="text-end">&euro;{{ "%.2f"|format(emp.cleaning|float) }}</td>
+                    <td class="text-end"><strong>&euro;{{ "%.2f"|format(emp.total|float) }}</strong></td>
+                    <td>
+                        {% if emp.category == 'Upper Management' %}
+                            <span class="badge cat-upper-management">UM</span>
+                        {% elif emp.category == 'Management' %}
+                            <span class="badge cat-management">M</span>
+                        {% else %}
+                            <span class="badge cat-staff">S</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">&euro;{{ "%.2f"|format(emp.total_for_labor|float) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="2"><strong>TOTALS</strong></td>
+                    <td></td>
+                    <td class="text-end"><strong>{{ "%.2f"|format(total_hours|float) }}</strong></td>
+                    <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_gross|float) }}</strong></td>
+                    <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_tips|float) }}</strong></td>
+                    <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_cleaning|float) }}</strong></td>
+                    <td class="text-end"><strong>&euro;{{ "%.2f"|format(grand_total|float) }}</strong></td>
+                    <td></td>
+                    <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_labor|float) }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+<div class="mt-3 d-flex justify-content-between align-items-center">
+    <small class="text-muted">
+        <i class="bi bi-info-circle me-1"></i>Tips are entered manually (not from Square). Enter amounts above and click Save.
+    </small>
+    <button type="submit" class="btn btn-success btn-sm">
+        <i class="bi bi-save me-1"></i>Save Tips for {{ week_label }}
+    </button>
+</div>
+</form>
+
+<!-- Category breakdown -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card kpi-card">
+            <div class="card-body text-center">
+                <div class="kpi-label">Upper Management</div>
+                <div class="kpi-value" style="color: #6f42c1">&euro;{{ "%.2f"|format(um_total|float) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-card">
+            <div class="card-body text-center">
+                <div class="kpi-label">Management</div>
+                <div class="kpi-value" style="color: #0d6efd">&euro;{{ "%.2f"|format(mgmt_total|float) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-card">
+            <div class="card-body text-center">
+                <div class="kpi-label">Staff</div>
+                <div class="kpi-value" style="color: #198754">&euro;{{ "%.2f"|format(staff_total|float) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

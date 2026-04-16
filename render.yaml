@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: cobblestone-pub
+    runtime: python
+    plan: starter  # $7/mo — needed for persistent disk + always-on
+    region: frankfurt  # closest to Dublin
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /healthz
+    envVars:
+      - key: SQUARE_ACCESS_TOKEN
+        sync: false  # set manually in Render dashboard
+      - key: AUTH_USERNAME
+        sync: false
+      - key: AUTH_PASSWORD
+        sync: false
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_PATH
+        value: /var/data/cobblestone.db
+      - key: PYTHON_VERSION
+        value: 3.11.9
+    disk:
+      name: cobblestone-data
+      mountPath: /var/data
+      sizeGB: 1

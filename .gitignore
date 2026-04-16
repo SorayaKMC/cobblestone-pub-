@@ -1,0 +1,24 @@
+# Secrets - NEVER commit
+.env
+.env.*
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# macOS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Generated exports
+exports/*.xlsx
