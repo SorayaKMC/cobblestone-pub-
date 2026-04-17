@@ -456,9 +456,58 @@ def _compute_vat(year):
     return vat_periods
 
 
+def _cache_coverage(current_year, current_week):
+    """Return how many weeks of the current year have sales data cached."""
+    cached = 0
+    for week in range(2, current_week + 1):
+        key = f"week_sales_v3_{current_year}_W{week:02d}"
+        data, _ = db.get_cache(key)
+        if data:
+            cached += 1
+    return cached
+
+
 @bp.route("/dashboard")
 def dashboard_page():
     current_year, current_week = square_client.current_week()
+
+    # If cache is mostly cold, show a loading page rather than timing out.
+    # Warmup runs in background at app startup - just needs a few minutes.
+    expected_weeks = current_week - 1  # W02..current_week
+    cached = _cache_coverage(current_year, current_week)
+    if expected_weeks > 0 and cached < max(1, expected_weeks - 2):
+        # Less than ~90% cached - show loading page
+        from flask import render_template_string
+        pct = int(cached / expected_weeks * 100) if expected_weeks > 0 else 0
+        return render_template_string("""
+            {% extends "base.html" %}
+            {% block title %}Loading Dashboard...{% endblock %}
+            {% block page_title %}Dashboard{% endblock %}
+            {% block content %}
+            <meta http-equiv="refresh" content="15">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <h4>Preparing your dashboard...</h4>
+                    <p class="text-muted">
+                        First-time data load from Square. This takes 2-3 minutes.
+                        <br>Page auto-refreshes every 15 seconds.
+                    </p>
+                    <div class="progress mt-4" style="height:8px;max-width:400px;margin:0 auto">
+                        <div class="progress-bar bg-primary" style="width:{{ pct }}%"></div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">{{ cached }} of {{ total }} weeks cached ({{ pct }}%)</small>
+                    <hr>
+                    <p class="text-muted small mb-0">
+                        While you wait, other pages work fine:
+                        <a href="/payroll">Payroll</a> ·
+                        <a href="/pto">PTO</a> ·
+                        <a href="/settings">Settings</a>
+                    </p>
+                </div>
+            </div>
+            {% endblock %}
+        """, cached=cached, total=expected_weeks, pct=pct)
 
     wks = []
     daily = {}

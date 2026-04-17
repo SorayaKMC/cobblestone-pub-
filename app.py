@@ -5,8 +5,39 @@ from flask import Flask, redirect, url_for, request, Response
 from datetime import date
 import os
 import secrets
+import threading
 import db
 import config
+
+
+def _warmup_cache():
+    """Pre-populate dashboard cache in a background thread at startup.
+
+    Fetches 2 years of weekly data from Square so the /dashboard route
+    doesn't time out on first request (Render edge times out at 100s,
+    but initial cold fetch takes ~3 min).
+    """
+    try:
+        import time
+        time.sleep(5)  # let app finish booting
+        from routes.dashboard import _get_week_sales_with_daily, _get_week_payroll
+        import square_client
+
+        current_year, current_week = square_client.current_week()
+        print(f"[warmup] Starting cache warmup for {current_year} W02-W{current_week}")
+
+        for week in range(2, current_week + 1):
+            try:
+                _get_week_sales_with_daily(current_year, week)
+                _get_week_sales_with_daily(current_year - 1, week)
+                _get_week_payroll(current_year, week)
+                print(f"[warmup] W{week:02d} cached")
+            except Exception as e:
+                print(f"[warmup] W{week:02d} failed: {e}")
+
+        print("[warmup] Complete")
+    except Exception as e:
+        print(f"[warmup] Thread failed: {e}")
 
 
 def check_auth(username, password):
@@ -47,6 +78,10 @@ def create_app():
     # Initialize database
     with app.app_context():
         db.init_db()
+
+    # Background warmup - populates dashboard cache so it doesn't time out
+    if os.getenv("ENABLE_WARMUP", "1") == "1":
+        threading.Thread(target=_warmup_cache, daemon=True).start()
 
     # Apply HTTP Basic Auth globally (if enabled via env vars)
     if config.AUTH_ENABLED:
