@@ -337,20 +337,52 @@ def _get_week_timecard_hours_by_day(year, week):
         return []
 
 
-def _compute_vat(year):
-    """Auto-calculate VAT periods from live Square sales.
+def _monthly_net_from_cache(year):
+    """Sum net sales per calendar month using the existing weekly sales cache.
 
-    Cached for 1 hour. Uses weekly sales cache to compute monthly totals.
+    Uses the daily breakdown already stored in each week's cache entry so days
+    that fall in different months (split weeks) are allocated correctly.
+    No Square API calls — reads SQLite only.
+    """
+    month_net = {}  # month int -> Decimal
+    for week in range(2, 54):
+        wk_key = f"week_sales_v3_{year}_W{week:02d}"
+        data, _ = db.get_cache(wk_key)
+        if not data:
+            continue
+        try:
+            start_date, _ = square_client.week_dates(year, week)
+            monday = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except Exception:
+            continue
+        for day_idx, net_sales in enumerate(data.get("daily", [0] * 7)):
+            if not net_sales:
+                continue
+            day_date = monday + timedelta(days=day_idx)
+            if day_date.year == year:
+                m = day_date.month
+                month_net[m] = month_net.get(m, Decimal("0")) + Decimal(str(net_sales))
+    return month_net
+
+
+def _compute_vat(year):
+    """Calculate VAT periods from the weekly sales cache — no live Square calls.
+
+    Derives output VAT by summing net sales per month from the daily breakdown
+    already stored in each week's cache entry. Cached for 24 hours.
     """
     cache_key = f"vat_periods_{year}"
     cached, synced_at = db.get_cache(cache_key)
     if cached and synced_at:
         try:
             synced_dt = datetime.fromisoformat(synced_at)
-            if (datetime.now() - synced_dt).total_seconds() < 3600:
+            if (datetime.now() - synced_dt).total_seconds() < 86400:  # 24h
                 return cached
         except Exception:
             pass
+
+    month_net = _monthly_net_from_cache(year)
+
     period_months = [
         (1, 2, "MAR 15"),
         (3, 4, "MAY 15"),
@@ -366,96 +398,50 @@ def _compute_vat(year):
     current_month = today.month if today.year == year else 12
 
     vat_periods = []
-
-    # Merge live bookkeeping totals with fallback hardcoded values
     confirmed_input_vat = _get_confirmed_input_vat(year)
 
     for m1, m2, due in period_months:
-        # Only show the first two relevant periods
         if len(vat_periods) >= 2:
             break
-
         if m1 > current_month:
-            break  # Future period
+            break
 
-        # Pull sales for each month
         output_list = []
         total_output = Decimal("0")
 
         for m in (m1, m2):
             if m > current_month:
-                output_list.append({
-                    "label": f"{month_names[m]} VAT on sales",
-                    "amount": 0,
-                })
+                output_list.append({"label": f"{month_names[m]} VAT on sales", "amount": 0})
                 continue
-
-            # Get net sales for the month
-            first_day = date(year, m, 1)
-            if m == 12:
-                last_day = date(year, 12, 31)
-            else:
-                last_day = date(year, m + 1, 1) - timedelta(days=1)
-
-            try:
-                raw = _fetch_orders(first_day.strftime("%Y-%m-%d"), last_day.strftime("%Y-%m-%d"))
-                month_net = Decimal("0")
-                for order in raw:
-                    net_amounts = order.get("net_amounts", {})
-                    gross = square_client._money_to_decimal(net_amounts.get("total_money"))
-                    tenders = order.get("tenders", [])
-                    is_no_sale = any(t.get("type") == "NO_SALE" for t in tenders)
-                    if is_no_sale or gross == Decimal("0"):
-                        continue
-                    month_net += gross / VAT_RATE
-                month_output = (month_net * VAT_PCT).quantize(Decimal("1"))
-            except Exception as e:
-                print(f"Error computing VAT for month {m}: {e}")
-                month_output = Decimal("0")
-
-            output_list.append({
-                "label": f"{month_names[m]} VAT on sales",
-                "amount": int(month_output),
-            })
+            net = month_net.get(m, Decimal("0"))
+            month_output = (net * VAT_PCT).quantize(Decimal("1"))
+            output_list.append({"label": f"{month_names[m]} VAT on sales", "amount": int(month_output)})
             total_output += month_output
 
-        # Input VAT (from confirmed data)
         input_list = []
         total_input = Decimal("0")
         for m in (m1, m2):
             confirmed = confirmed_input_vat.get(m)
             if confirmed is not None:
-                input_list.append({
-                    "label": f"{month_names[m]} input VAT",
-                    "amount": confirmed,
-                    "confirmed": True,
-                })
+                input_list.append({"label": f"{month_names[m]} input VAT", "amount": confirmed, "confirmed": True})
                 total_input += Decimal(str(confirmed))
             else:
-                input_list.append({
-                    "label": f"{month_names[m]} input VAT",
-                    "amount": 0,
-                    "confirmed": False,
-                })
+                input_list.append({"label": f"{month_names[m]} input VAT", "amount": 0, "confirmed": False})
 
-        # Period status
         is_complete = m2 <= current_month and all(confirmed_input_vat.get(m) is not None for m in (m1, m2))
         status = "due" if is_complete else "pending"
-
         net_due = int(total_output - total_input)
-
         title_months = f"{month_names[m1]} + {month_names[m2]}"
         period_label = f"{month_names[m1]} 1 – {month_names[m2]} {(date(year, m2+1, 1) - timedelta(days=1)).day if m2 < 12 else 31}, {year}"
 
-        note = None
         if not is_complete:
             if m2 > current_month:
-                note = f"Output VAT live from Square. {month_names[m2]} input pending from accountant."
+                note = f"Output VAT from weekly sales data. {month_names[m2]} input pending from accountant."
             else:
-                pending_months = [month_names[m] for m in (m1, m2) if confirmed_input_vat.get(m) is None]
-                note = f"Output VAT live from Square. Pending input VAT: {', '.join(pending_months)}."
+                pending = [month_names[m] for m in (m1, m2) if confirmed_input_vat.get(m) is None]
+                note = f"Output VAT from weekly sales data. Pending input VAT: {', '.join(pending)}."
         else:
-            note = "Output VAT live from Square. Input VAT confirmed by accountant."
+            note = "Output VAT from weekly sales data. Input VAT confirmed by accountant."
 
         vat_periods.append({
             "title": f"Period {(m1+1)//2} — {title_months}",
