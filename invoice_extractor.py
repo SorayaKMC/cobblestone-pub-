@@ -72,6 +72,20 @@ def _normalize_whitespace(text):
     return text.strip()
 
 
+def _is_garbled(text):
+    """Return True if text is mostly Unicode Private Use Area glyphs.
+
+    PDFs with custom embedded fonts (e.g. some Irish supplier invoice software)
+    produce U+F000-U+F8FF characters instead of readable text when pdfplumber
+    can't map the font encoding. These need the vision fallback.
+    """
+    non_ws = [c for c in text if not c.isspace()]
+    if not non_ws:
+        return True
+    pua_count = sum(1 for c in non_ws if "\uf000" <= c <= "\uf8ff")
+    return pua_count / len(non_ws) > 0.3  # >30% PUA characters = garbage
+
+
 def extract_pdf_text(pdf_path):
     """Extract text from a PDF. Returns (text, used_vision_fallback)."""
     try:
@@ -85,8 +99,9 @@ def extract_pdf_text(pdf_path):
         text = _normalize_whitespace("\n\n".join(text_parts))
         # Measure by non-whitespace content so an invoice with heavy padding
         # still qualifies for text extraction instead of falling back to vision.
+        # Also reject text that is mostly private-use-area glyphs (garbled font encoding).
         meaningful = re.sub(r"\s+", "", text)
-        if len(meaningful) > 50:
+        if len(meaningful) > 50 and not _is_garbled(text):
             return text, False
     except Exception as e:
         print(f"[extract] pdfplumber failed: {e}")
