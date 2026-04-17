@@ -91,6 +91,7 @@ def import_weekly_accruals(data):
                 accrual_type=accrual_type,
                 days_accrued=round(wk["days_accrued_this_week"], 4),
                 running_balance=round(wk["running_days"], 4),
+                source="v4_import",
             )
             count += 1
     return count

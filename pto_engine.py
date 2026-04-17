@@ -151,9 +151,25 @@ def recalculate_pto(team_member_id, from_date, to_date, team_members=None):
     conn.close()
 
     current_dt = start_dt
+    skipped = 0
     while current_dt <= end_dt:
         week_start = current_dt.strftime("%Y-%m-%d")
         week_end = (current_dt + timedelta(days=6)).strftime("%Y-%m-%d")
+
+        # Skip protected weeks (e.g. imported from V4 spreadsheet)
+        if db.is_pto_accrual_protected(team_member_id, week_start):
+            # Still advance the running balance using the existing value
+            conn = db.get_db()
+            existing = conn.execute(
+                "SELECT running_balance FROM pto_accruals WHERE team_member_id=? AND period_start=?",
+                (team_member_id, week_start),
+            ).fetchone()
+            conn.close()
+            if existing:
+                running_balance = Decimal(str(existing["running_balance"]))
+            skipped += 1
+            current_dt += timedelta(weeks=1)
+            continue
 
         accrual = calculate_weekly_accrual(team_member_id, week_start, week_end, team_members)
 
@@ -191,11 +207,13 @@ def recalculate_pto(team_member_id, from_date, to_date, team_members=None):
             accrual_type=accrual["accrual_type"],
             days_accrued=float(accrual["days_accrued"]),
             running_balance=float(running_balance),
+            source="square",
+            respect_protected=True,
         )
 
         current_dt += timedelta(weeks=1)
 
-    return float(running_balance)
+    return {"final_balance": float(running_balance), "skipped_protected": skipped}
 
 
 def get_pto_status(balance):

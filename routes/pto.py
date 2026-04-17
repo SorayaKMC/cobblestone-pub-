@@ -111,13 +111,19 @@ def recalculate():
         team_members = square_client.get_team_members()
         categories = db.get_employee_categories()
         count = 0
+        total_skipped = 0
 
         for cat in categories:
             tm_id = cat["team_member_id"]
-            pto_engine.recalculate_pto(tm_id, from_date, to_date, team_members)
+            result = pto_engine.recalculate_pto(tm_id, from_date, to_date, team_members)
             count += 1
+            if isinstance(result, dict):
+                total_skipped += result.get("skipped_protected", 0)
 
-        flash(f"Recalculated PTO for {count} employees ({from_date} to {to_date}).", "success")
+        msg = f"Recalculated PTO for {count} employees ({from_date} to {to_date})."
+        if total_skipped > 0:
+            msg += f" Protected {total_skipped} imported week(s) from V4 spreadsheet."
+        flash(msg, "success")
     except Exception as e:
         flash(f"Recalculation failed: {str(e)}", "danger")
 

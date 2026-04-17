@@ -94,6 +94,11 @@ def init_db():
     if "pay_type" not in columns:
         cursor.execute("ALTER TABLE employee_categories ADD COLUMN pay_type TEXT NOT NULL DEFAULT 'hourly'")
 
+    # Migration: add source column to pto_accruals (tracks where accrual came from)
+    acc_cols = [row[1] for row in cursor.execute("PRAGMA table_info(pto_accruals)").fetchall()]
+    if "source" not in acc_cols:
+        cursor.execute("ALTER TABLE pto_accruals ADD COLUMN source TEXT NOT NULL DEFAULT 'square'")
+
     # Seed default categories if table is empty
     count = cursor.execute("SELECT COUNT(*) FROM employee_categories").fetchone()[0]
     if count == 0:
@@ -223,22 +228,50 @@ def get_pto_summary():
     return results
 
 
-def add_pto_accrual(team_member_id, period_start, period_end, hours_worked, accrual_type, days_accrued, running_balance):
-    """Record a PTO accrual period."""
+def add_pto_accrual(team_member_id, period_start, period_end, hours_worked, accrual_type, days_accrued, running_balance, source="square", respect_protected=False):
+    """Record a PTO accrual period.
+
+    Args:
+        source: 'v4_import' for historical data, 'square' for live recalc, 'manual' for edits
+        respect_protected: if True, skip if an existing record is marked as v4_import
+    """
     conn = get_db()
+
+    if respect_protected:
+        existing = conn.execute(
+            "SELECT source FROM pto_accruals WHERE team_member_id=? AND period_start=?",
+            (team_member_id, period_start),
+        ).fetchone()
+        if existing and existing["source"] == "v4_import":
+            conn.close()
+            return False  # skipped
+
     conn.execute(
-        """INSERT INTO pto_accruals (team_member_id, period_start, period_end, hours_worked, accrual_type, days_accrued, running_balance)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+        """INSERT INTO pto_accruals (team_member_id, period_start, period_end, hours_worked, accrual_type, days_accrued, running_balance, source)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(team_member_id, period_start) DO UPDATE SET
                period_end=excluded.period_end,
                hours_worked=excluded.hours_worked,
                accrual_type=excluded.accrual_type,
                days_accrued=excluded.days_accrued,
-               running_balance=excluded.running_balance""",
-        (team_member_id, period_start, period_end, hours_worked, accrual_type, days_accrued, running_balance),
+               running_balance=excluded.running_balance,
+               source=excluded.source""",
+        (team_member_id, period_start, period_end, hours_worked, accrual_type, days_accrued, running_balance, source),
     )
     conn.commit()
     conn.close()
+    return True
+
+
+def is_pto_accrual_protected(team_member_id, period_start):
+    """Check if a given week's accrual is protected (e.g. imported from V4 spreadsheet)."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT source FROM pto_accruals WHERE team_member_id=? AND period_start=?",
+        (team_member_id, period_start),
+    ).fetchone()
+    conn.close()
+    return row is not None and row["source"] == "v4_import"
 
 
 def add_pto_taken(team_member_id, date, days_taken, hours_equivalent, reason=""):
