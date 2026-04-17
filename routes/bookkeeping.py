@@ -233,6 +233,37 @@ def _parse_invoice_form(form):
     }
 
 
+# --- Gmail inbox check ---
+
+@bp.route("/bookkeeping/check-inbox", methods=["POST"])
+def check_inbox():
+    """Manually trigger a Gmail inbox scan for invoice PDFs."""
+    try:
+        from gmail_poller import check_inbox as _check
+        results = _check()
+        saved   = sum(1 for r in results if r.get("invoice_id"))
+        skipped = sum(1 for r in results if r.get("skipped"))
+        errors  = [r for r in results if r.get("extract_error") or r.get("drive_error")]
+
+        parts = []
+        if saved:
+            parts.append(f"{saved} new invoice(s) pulled from inbox")
+        if skipped:
+            parts.append(f"{skipped} already imported")
+        if not saved and not skipped and not errors:
+            parts.append("No new invoices in inbox")
+        flash(" · ".join(parts) if parts else "Inbox checked.", "success" if saved else "info")
+        if errors:
+            msgs = "; ".join(
+                r.get("extract_error") or r.get("drive_error", "") for r in errors[:3]
+            )
+            flash(f"Some errors: {msgs}", "warning")
+    except Exception as e:
+        flash(f"Inbox check failed: {e}", "danger")
+
+    return redirect(url_for("bookkeeping.bookkeeping_page", status="pending"))
+
+
 # --- Suppliers management ---
 
 @bp.route("/bookkeeping/suppliers", methods=["GET", "POST"])

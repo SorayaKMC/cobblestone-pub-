@@ -33,6 +33,13 @@ TIMEZONE = "Europe/Dublin"
 # Anthropic Claude API key (for invoice extraction)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
+# Google service account (JSON string) for Gmail + Drive access
+GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+# Google Drive folder ID where incoming invoice PDFs are saved
+GOOGLE_DRIVE_INVOICES_FOLDER_ID = os.getenv("GOOGLE_DRIVE_INVOICES_FOLDER_ID", "")
+# How often (seconds) the background thread checks the inbox (default: 30 min)
+GMAIL_POLL_INTERVAL = int(os.getenv("GMAIL_POLL_INTERVAL", "1800"))
+
 # Where uploaded invoice PDFs are stored (falls back to local if disk unset)
 INVOICES_DIR = os.getenv(
     "INVOICES_DIR",

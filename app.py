@@ -24,6 +24,31 @@ def pdf_basename(path):
     return re.sub(r"^\d{8}_\d{6}_", "", name)
 
 
+def _gmail_poll_loop():
+    """Background thread: poll invoice@cobblestonepub.ie every 30 minutes.
+
+    Disabled silently if GOOGLE_SERVICE_ACCOUNT_JSON is not set, so local
+    development works without any Google credentials.
+    """
+    import time
+    if not config.GOOGLE_SERVICE_ACCOUNT_JSON:
+        print("[gmail] GOOGLE_SERVICE_ACCOUNT_JSON not set — inbox polling disabled")
+        return
+    print(f"[gmail] Inbox polling active (every {config.GMAIL_POLL_INTERVAL}s)")
+    while True:
+        try:
+            from gmail_poller import check_inbox
+            results = check_inbox()
+            saved = sum(1 for r in results if r.get("invoice_id"))
+            if saved:
+                print(f"[gmail] Pulled {saved} new invoice(s) from inbox")
+            elif results:
+                print(f"[gmail] Checked inbox — nothing new")
+        except Exception as e:
+            print(f"[gmail] Poll error: {e}")
+        time.sleep(config.GMAIL_POLL_INTERVAL)
+
+
 def _warmup_cache():
     """Pre-populate dashboard cache in a background thread at startup.
 
@@ -106,6 +131,9 @@ def create_app():
     # Background warmup - populates dashboard cache so it doesn't time out
     if os.getenv("ENABLE_WARMUP", "1") == "1":
         threading.Thread(target=_warmup_cache, daemon=True).start()
+
+    # Background Gmail polling - checks invoice inbox every 30 minutes
+    threading.Thread(target=_gmail_poll_loop, daemon=True).start()
 
     # Apply HTTP Basic Auth globally (if enabled via env vars)
     if config.AUTH_ENABLED:
