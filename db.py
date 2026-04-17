@@ -149,12 +149,14 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
     """)
 
-    # Migration: add weekly_salary and pay_type columns if missing
+    # Migration: add columns to employee_categories if missing
     columns = [row[1] for row in cursor.execute("PRAGMA table_info(employee_categories)").fetchall()]
     if "weekly_salary" not in columns:
         cursor.execute("ALTER TABLE employee_categories ADD COLUMN weekly_salary REAL NOT NULL DEFAULT 0")
     if "pay_type" not in columns:
         cursor.execute("ALTER TABLE employee_categories ADD COLUMN pay_type TEXT NOT NULL DEFAULT 'hourly'")
+    if "is_active" not in columns:
+        cursor.execute("ALTER TABLE employee_categories ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
 
     # Migration: add source column to pto_accruals (tracks where accrual came from)
     acc_cols = [row[1] for row in cursor.execute("PRAGMA table_info(pto_accruals)").fetchall()]
@@ -219,11 +221,11 @@ def get_employee_category(team_member_id):
 
 
 def update_employee_category(team_member_id, given_name, family_name, category, cleaning_amount=0, weekly_salary=0, pay_type="hourly"):
-    """Update or insert an employee category."""
+    """Update or insert an employee category. Does NOT overwrite is_active (preserves former-employee flag)."""
     conn = get_db()
     conn.execute(
-        """INSERT INTO employee_categories (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """INSERT INTO employee_categories (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, is_active, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
            ON CONFLICT(team_member_id) DO UPDATE SET
                given_name=excluded.given_name,
                family_name=excluded.family_name,
@@ -239,12 +241,12 @@ def update_employee_category(team_member_id, given_name, family_name, category, 
 
 
 def bulk_update_categories(updates):
-    """Update multiple employee categories at once."""
+    """Update multiple employee categories at once (including is_active)."""
     conn = get_db()
     for u in updates:
         conn.execute(
-            """INSERT INTO employee_categories (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """INSERT INTO employee_categories (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, is_active, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(team_member_id) DO UPDATE SET
                    given_name=excluded.given_name,
                    family_name=excluded.family_name,
@@ -252,10 +254,11 @@ def bulk_update_categories(updates):
                    cleaning_amount=excluded.cleaning_amount,
                    weekly_salary=excluded.weekly_salary,
                    pay_type=excluded.pay_type,
+                   is_active=excluded.is_active,
                    updated_at=excluded.updated_at""",
             (u["team_member_id"], u["given_name"], u["family_name"], u["category"],
              u.get("cleaning_amount", 0), u.get("weekly_salary", 0), u.get("pay_type", "hourly"),
-             datetime.now().isoformat()),
+             u.get("is_active", 1), datetime.now().isoformat()),
         )
     conn.commit()
     conn.close()
@@ -274,6 +277,7 @@ def get_pto_summary():
             ec.team_member_id,
             ec.given_name,
             ec.family_name,
+            ec.is_active,
             COALESCE(accrued.total_days, 0) as total_accrued,
             COALESCE(taken.total_days, 0) as total_taken,
             COALESCE(adj.total_adj, 0) as total_adjustments
@@ -301,12 +305,21 @@ def get_pto_summary():
             "team_member_id": r["team_member_id"],
             "given_name": r["given_name"],
             "family_name": r["family_name"],
+            "is_active": r["is_active"] if "is_active" in r.keys() else 1,
             "total_accrued": round(r["total_accrued"], 2),
             "total_taken": round(r["total_taken"], 2),
             "total_adjustments": round(r["total_adjustments"], 2),
             "balance": round(max(balance, 0), 2),
         })
     return results
+
+
+def update_supplier_category(supplier_id, category):
+    """Update a supplier's default category based on the last invoice choice."""
+    conn = get_db()
+    conn.execute("UPDATE suppliers SET default_category = ? WHERE id = ?", (category, supplier_id))
+    conn.commit()
+    conn.close()
 
 
 def add_pto_accrual(team_member_id, period_start, period_end, hours_worked, accrual_type, days_accrued, running_balance, source="square", respect_protected=False):

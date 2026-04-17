@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cobblestone Pub — Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a1a;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .home-wrap {
+            width: 100%;
+            max-width: 860px;
+            padding: 2rem 1.5rem;
+        }
+
+        /* Logo / Header */
+        .pub-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .pub-logo-ring {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            border: 2px solid rgba(255,255,255,0.15);
+            margin-bottom: 1rem;
+            font-size: 2.2rem;
+        }
+
+        .pub-name {
+            font-size: 2.4rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+        }
+
+        .pub-sub {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 0.4rem;
+        }
+
+        /* Greeting */
+        .greeting-row {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .greeting-text {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.75);
+        }
+
+        /* This week stat */
+        .week-stat {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .week-stat-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 0.3rem;
+        }
+
+        .week-stat-value {
+            font-size: 2.6rem;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1;
+        }
+
+        .week-stat-sub {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.35);
+            margin-top: 0.3rem;
+        }
+
+        /* Nav cards */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        @media (min-width: 600px) {
+            .nav-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .nav-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.6rem 1rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            text-decoration: none;
+            color: rgba(255,255,255,0.85);
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+            gap: 0.6rem;
+            text-align: center;
+        }
+
+        .nav-card:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.25);
+            color: #ffffff;
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+
+        .nav-card-icon {
+            font-size: 1.8rem;
+            opacity: 0.85;
+        }
+
+        .nav-card-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .nav-card-desc {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.35);
+            line-height: 1.3;
+        }
+
+        .nav-card.disabled {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .soon-badge {
+            font-size: 0.65rem;
+            background: rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.5);
+            border-radius: 20px;
+            padding: 0.1rem 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="home-wrap">
+
+        <!-- Logo / pub name -->
+        <div class="pub-header">
+            <div class="pub-logo-ring">🍺</div>
+            <div class="pub-name">The Cobblestone</div>
+            <div class="pub-sub">Management Portal</div>
+        </div>
+
+        <!-- Greeting -->
+        <div class="greeting-row">
+            <div class="greeting-text">{{ greeting }}, Soraya</div>
+        </div>
+
+        <!-- This week sales -->
+        <div class="week-stat">
+            <div class="week-stat-label">This week's net sales &nbsp;·&nbsp; {{ week_label }}</div>
+            {% if week_net is not none %}
+                <div class="week-stat-value">€{{ "{:,}".format(week_net) }}</div>
+            {% else %}
+                <div class="week-stat-value" style="font-size:1.4rem; opacity:0.4">Loading…</div>
+            {% endif %}
+            <div class="week-stat-sub">{{ week_dates }} &nbsp;·&nbsp; ex-VAT</div>
+        </div>
+
+        <!-- Navigation cards -->
+        <div class="nav-grid">
+            <a href="/dashboard" class="nav-card">
+                <div class="nav-card-icon"><i class="bi bi-speedometer2"></i></div>
+                <div class="nav-card-label">Dashboard</div>
+                <div class="nav-card-desc">Weekly KPIs, sales & labour</div>
+            </a>
+            <a href="/payroll" class="nav-card">
+                <div class="nav-card-icon"><i class="bi bi-cash-stack"></i></div>
+                <div class="nav-card-label">Payroll</div>
+                <div class="nav-card-desc">Timecards & Peter's report</div>
+            </a>
+            <a href="/pto" class="nav-card">
+                <div class="nav-card-icon"><i class="bi bi-calendar-check"></i></div>
+                <div class="nav-card-label">PTO Tracker</div>
+                <div class="nav-card-desc">Annual leave balances</div>
+            </a>
+            <a href="/bookkeeping" class="nav-card">
+                <div class="nav-card-icon"><i class="bi bi-journal-text"></i></div>
+                <div class="nav-card-label">Bookkeeping</div>
+                <div class="nav-card-desc">Invoices & VAT</div>
+            </a>
+        </div>
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

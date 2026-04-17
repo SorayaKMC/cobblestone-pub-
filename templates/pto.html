@@ -38,8 +38,11 @@
             </thead>
             <tbody>
                 {% for emp in summary %}
-                <tr>
-                    <td><strong>{{ emp.given_name }} {{ emp.family_name }}</strong></td>
+                <tr {% if not emp.is_active %}style="opacity:0.45"{% endif %}>
+                    <td>
+                        <strong>{{ emp.given_name }} {{ emp.family_name }}</strong>
+                        {% if not emp.is_active %}<span class="badge bg-secondary ms-1" style="font-size:0.65rem">Former</span>{% endif %}
+                    </td>
                     <td><span class="badge bg-secondary">{{ emp.accrual_type }}</span></td>
                     <td class="text-end">{{ "%.2f"|format(emp.total_accrued) }}</td>
                     <td class="text-end">{{ "%.2f"|format(emp.total_taken) }}</td>
@@ -52,7 +55,11 @@
                     </td>
                     <td class="text-end"><strong>{{ "%.2f"|format(emp.balance) }}</strong></td>
                     <td class="text-center">
-                        <span class="badge {{ emp.status_class }}">{{ emp.status_label }}</span>
+                        {% if not emp.is_active %}
+                            <span class="badge bg-secondary">—</span>
+                        {% else %}
+                            <span class="badge {{ emp.status_class }}">{{ emp.status_label }}</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

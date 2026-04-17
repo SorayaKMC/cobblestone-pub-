@@ -132,7 +132,40 @@ def create_app():
 
     @app.route("/")
     def index():
-        return redirect(url_for("dashboard.dashboard_page"))
+        from datetime import datetime
+        from routes.dashboard import _get_week_sales_with_daily
+        import square_client as sq
+
+        week_net = None
+        week_label = ""
+        week_dates = ""
+        try:
+            current_year, current_week = sq.current_week()
+            sales = _get_week_sales_with_daily(current_year, current_week)
+            if sales:
+                week_net = round(sales["total"])
+            week_label = f"W{current_week:02d}"
+            start, end = sq.week_dates(current_year, current_week)
+            start_dt = datetime.strptime(start, "%Y-%m-%d")
+            end_dt = datetime.strptime(end, "%Y-%m-%d")
+            week_dates = f"{start_dt.strftime('%-d %b')} – {end_dt.strftime('%-d %b')}"
+        except Exception:
+            pass
+
+        hour = datetime.now().hour
+        if hour < 12:
+            greeting = "Good morning"
+        elif hour < 17:
+            greeting = "Good afternoon"
+        else:
+            greeting = "Good evening"
+
+        return render_template("home.html",
+            greeting=greeting,
+            week_net=week_net,
+            week_label=week_label,
+            week_dates=week_dates,
+        )
 
     @app.route("/healthz")
     def healthz():

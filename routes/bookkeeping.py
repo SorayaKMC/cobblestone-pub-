@@ -75,6 +75,8 @@ def new_invoice():
     try:
         data = _parse_invoice_form(request.form)
         invoice_id = db.save_invoice(data)
+        if data.get("supplier_id") and data.get("category"):
+            db.update_supplier_category(data["supplier_id"], data["category"])
         flash(f"Invoice saved (#{invoice_id}).", "success")
     except Exception as e:
         flash(f"Could not save invoice: {e}", "danger")
@@ -101,6 +103,8 @@ def edit_invoice(invoice_id):
     try:
         data = _parse_invoice_form(request.form)
         db.save_invoice(data, invoice_id=invoice_id)
+        if data.get("supplier_id") and data.get("category"):
+            db.update_supplier_category(data["supplier_id"], data["category"])
         flash("Invoice updated.", "success")
     except Exception as e:
         flash(f"Could not update invoice: {e}", "danger")

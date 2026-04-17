@@ -30,13 +30,17 @@ def pto_page():
         emp["accrual_type"] = "Salaried" if member.get("pay_type") == "SALARY" else "Hourly"
 
     categories = db.get_employee_categories()
-    employees = [{"id": r["team_member_id"], "name": f"{r['given_name']} {r['family_name']}"} for r in categories]
+    # Only active employees appear in the Log Leave / Adjust dropdowns
+    active_employees = [
+        {"id": r["team_member_id"], "name": f"{r['given_name']} {r['family_name']}"}
+        for r in categories if r["is_active"]
+    ]
 
     taken_log = db.get_pto_taken_log()
 
     return render_template("pto.html",
         summary=summary,
-        employees=employees,
+        employees=active_employees,
         taken_log=taken_log,
         today=date.today().isoformat(),
     )

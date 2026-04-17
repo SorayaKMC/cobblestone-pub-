@@ -26,11 +26,12 @@
                                 <th style="width: 110px">Pay Type</th>
                                 <th style="width: 130px">Weekly Salary</th>
                                 <th style="width: 130px">Cleaning (EUR/wk)</th>
+                                <th style="width: 80px" class="text-center">Former?</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for emp in employees %}
-                            <tr>
+                            <tr {% if not emp.is_active %}class="text-muted"{% endif %}>
                                 <td>
                                     <input type="text" name="first_{{ emp.team_member_id }}"
                                            value="{{ emp.given_name }}" class="form-control form-control-sm" readonly>
@@ -62,6 +63,11 @@
                                     <input type="number" name="cleaning_{{ emp.team_member_id }}"
                                            value="{{ emp.cleaning_amount }}" step="0.01" min="0"
                                            class="form-control form-control-sm">
+                                </td>
+                                <td class="text-center">
+                                    <input type="checkbox" name="former_{{ emp.team_member_id }}"
+                                           class="form-check-input"
+                                           {% if not emp.is_active %}checked{% endif %}>
                                 </td>
                             </tr>
                             {% endfor %}
