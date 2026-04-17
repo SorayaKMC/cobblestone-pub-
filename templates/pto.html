@@ -3,14 +3,22 @@
 {% block page_title %}PTO / Annual Leave Tracker{% endblock %}
 
 {% block content %}
-<!-- Recalculate button -->
+<!-- Control buttons -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <small class="text-muted">Accrual: 8.08% of hours (hourly) | 0.4 days/week (salaried) | Max 21 days</small>
     </div>
-    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#recalcModal">
-        <i class="bi bi-calculator me-1"></i>Recalculate from Square
-    </button>
+    <div>
+        <form method="POST" action="/pto/import-historical" class="d-inline"
+              onsubmit="return confirm('Import all historical PTO data from the V4 spreadsheet? Safe to run multiple times.');">
+            <button type="submit" class="btn btn-outline-success btn-sm me-2">
+                <i class="bi bi-cloud-upload me-1"></i>Import Historical Data
+            </button>
+        </form>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#recalcModal">
+            <i class="bi bi-calculator me-1"></i>Recalculate from Square
+        </button>
+    </div>
 </div>
 
 <!-- Summary table -->

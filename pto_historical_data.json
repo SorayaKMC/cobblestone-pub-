@@ -1,0 +1,5754 @@
+{
+  "employees": {
+    "TMq95VZ2LL_CANC4": {
+      "name": "Aaron Nolan",
+      "salaried": false,
+      "starting_balance_hrs": 110.696,
+      "starting_balance_days": 16.16,
+      "avg_shift": 6.85,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.1387,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 118.496,
+          "running_days": 17.2986861313869
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 20.95,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.2471,
+          "running_total_hrs": 120.18876,
+          "running_days": 17.545804379562
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 27.03,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3188,
+          "running_total_hrs": 122.372784,
+          "running_days": 17.86464
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 27.88,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.3289,
+          "running_total_hrs": 131.475488,
+          "running_days": 19.1935018978102
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 16.4,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.1934,
+          "running_total_hrs": 132.800608,
+          "running_days": 19.3869500729927
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 25.53,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3011,
+          "running_total_hrs": 134.863432,
+          "running_days": 19.6880922627737
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 33.57,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.396,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 137.575888,
+          "running_days": 20.0840712408759
+        }
+      ]
+    },
+    "TMIosdi9OKD96Fdv": {
+      "name": "Carlos Soto",
+      "salaried": false,
+      "starting_balance_hrs": 27.2167,
+      "starting_balance_days": 4.13,
+      "avg_shift": 6.59,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.1775,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 34.9767,
+          "running_days": 5.30754172989378
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 34.97,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4288,
+          "running_total_hrs": 37.802276,
+          "running_days": 5.73630895295903
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 27.95,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3427,
+          "running_total_hrs": 40.060636,
+          "running_days": 6.07900394537178
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 35.75,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.4383,
+          "running_total_hrs": 49.539236,
+          "running_days": 7.51733474962064
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 9.95,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.122,
+          "running_total_hrs": 50.343196,
+          "running_days": 7.63933171471927
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 30.63,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3756,
+          "running_total_hrs": 52.8181,
+          "running_days": 8.01488619119879
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 24.79,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.304,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 54.821132,
+          "running_days": 8.31883641881639
+        }
+      ]
+    },
+    "__DAISY_KEOGH__": {
+      "name": "Daisy Keogh",
+      "salaried": false,
+      "starting_balance_hrs": 40.238,
+      "starting_balance_days": 5.9,
+      "avg_shift": 6.82,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.058,
+          "running_days": 6.9
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 18.05,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.2138,
+          "running_total_hrs": 48.51644,
+          "running_days": 7.11384750733138
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 28.4,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3365,
+          "running_total_hrs": 50.81116,
+          "running_days": 7.45031671554252
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 21.6,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.2559,
+          "running_total_hrs": 59.37644,
+          "running_days": 8.70622287390029
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 16.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.1896,
+          "running_total_hrs": 60.66924,
+          "running_days": 8.89578299120235
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 15.95,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.189,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 61.958,
+          "running_days": 9.08475073313783
+        }
+      ]
+    },
+    "TMLkmwoaF0SpT_Ky": {
+      "name": "Eylem Kopar",
+      "salaried": false,
+      "starting_balance_hrs": 24.3569,
+      "starting_balance_days": 3.73,
+      "avg_shift": 6.53,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.0352,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 31.1169,
+          "running_days": 4.76522205206738
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 26.02,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.322,
+          "running_total_hrs": 33.219316,
+          "running_days": 5.08718468606432
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 29.98,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.371,
+          "running_total_hrs": 35.6417,
+          "running_days": 5.45814701378254
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 33.13,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.4099,
+          "running_total_hrs": 44.848604,
+          "running_days": 6.86808637059724
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 25.92,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3207,
+          "running_total_hrs": 46.94294,
+          "running_days": 7.18881163859112
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 25.93,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3208,
+          "running_total_hrs": 49.038084,
+          "running_days": 7.5096606431853
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 28.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3465,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 51.300484,
+          "running_days": 7.85612312404288
+        }
+      ]
+    },
+    "TMy5slIWdUHKRF3e": {
+      "name": "Fiachra Mulligan",
+      "salaried": false,
+      "starting_balance_hrs": 0.0,
+      "starting_balance_days": 0.0,
+      "avg_shift": 5.51,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 0.9855,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.43,
+          "running_days": 0.985480943738657
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 6.05,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0887,
+          "running_total_hrs": 5.91884,
+          "running_days": 1.07419963702359
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 5.91884,
+          "running_days": 1.07419963702359
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 4.5,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.066,
+          "running_total_hrs": 11.79244,
+          "running_days": 2.1401887477314
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 6.58,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0965,
+          "running_total_hrs": 12.324104,
+          "running_days": 2.23667949183303
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 12.324104,
+          "running_days": 2.23667949183303
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 17.07,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.2503,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 13.70336,
+          "running_days": 2.48699818511797
+        }
+      ]
+    },
+    "__MARINO_PORCARI__": {
+      "name": "Marino Porcari",
+      "salaried": false,
+      "starting_balance_hrs": 39.12,
+      "starting_balance_days": 6.52,
+      "avg_shift": 6.0,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.12,
+          "running_days": 6.52
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 2.23,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.03,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 39.300184,
+          "running_days": 6.55003066666667
+        }
+      ]
+    },
+    "TMkRH2KDKOoI8Vac": {
+      "name": "Muhammed Naeem",
+      "salaried": false,
+      "starting_balance_hrs": 21.844,
+      "starting_balance_days": 3.44,
+      "avg_shift": 6.35,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 0.9291,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 27.744,
+          "running_days": 4.36913385826772
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 27.8,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3537,
+          "running_total_hrs": 29.99024,
+          "running_days": 4.72287244094488
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 25.78,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.328,
+          "running_total_hrs": 32.073264,
+          "running_days": 5.05090771653543
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 35.95,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.4574,
+          "running_total_hrs": 41.328024,
+          "running_days": 6.50835023622047
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 30.17,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3839,
+          "running_total_hrs": 43.76576,
+          "running_days": 6.89224566929134
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 27.27,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.347,
+          "running_total_hrs": 45.969176,
+          "running_days": 7.23924031496063
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 23.9,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3041,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 47.900296,
+          "running_days": 7.5433537007874
+        }
+      ]
+    },
+    "TMUabsLvWiJhkG2M": {
+      "name": "Nheaca Smyth",
+      "salaried": true,
+      "starting_balance_hrs": 35.52,
+      "starting_balance_days": 4.44,
+      "avg_shift": 8.0,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.4,
+          "running_total_hrs": 46.72,
+          "running_days": 5.84
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 49.92,
+          "running_days": 6.24
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 53.12,
+          "running_days": 6.64
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 56.32,
+          "running_days": 7.04
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 59.52,
+          "running_days": 7.44
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 62.72,
+          "running_days": 7.84
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 65.92,
+          "running_days": 8.24
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 69.12,
+          "running_days": 8.64
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 72.32,
+          "running_days": 9.04
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 75.52,
+          "running_days": 9.44
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 78.72,
+          "running_days": 9.84
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.4,
+          "running_total_hrs": 89.92,
+          "running_days": 11.24
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 93.12,
+          "running_days": 11.64
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 96.32,
+          "running_days": 12.04
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 99.52,
+          "running_days": 12.44
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 102.72,
+          "running_days": 12.84
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 105.92,
+          "running_days": 13.24
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 109.12,
+          "running_days": 13.64
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 112.32,
+          "running_days": 14.04
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 115.52,
+          "running_days": 14.44
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 118.72,
+          "running_days": 14.84
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 121.92,
+          "running_days": 15.24
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 125.12,
+          "running_days": 15.64
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 128.32,
+          "running_days": 16.04
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 131.52,
+          "running_days": 16.44
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 134.72,
+          "running_days": 16.84
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 137.92,
+          "running_days": 17.24
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 141.12,
+          "running_days": 17.64
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 144.32,
+          "running_days": 18.04
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 147.52,
+          "running_days": 18.44
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 150.72,
+          "running_days": 18.84
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 153.92,
+          "running_days": 19.24
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 157.12,
+          "running_days": 19.64
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 160.32,
+          "running_days": 20.04
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 163.52,
+          "running_days": 20.44
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 166.72,
+          "running_days": 20.84
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 169.92,
+          "running_days": 21.24
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 173.12,
+          "running_days": 21.64
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 176.32,
+          "running_days": 22.04
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 179.52,
+          "running_days": 22.44
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 182.72,
+          "running_days": 22.84
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 185.92,
+          "running_days": 23.24
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 189.12,
+          "running_days": 23.64
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 192.32,
+          "running_days": 24.04
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 195.52,
+          "running_days": 24.44
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 198.72,
+          "running_days": 24.84
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 201.92,
+          "running_days": 25.24
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 205.12,
+          "running_days": 25.64
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 208.32,
+          "running_days": 26.04
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 211.52,
+          "running_days": 26.44
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 214.72,
+          "running_days": 26.84
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 217.92,
+          "running_days": 27.24
+        }
+      ]
+    },
+    "TMicxOzWvOaz6LaH": {
+      "name": "Oonagh Flynn",
+      "salaried": false,
+      "starting_balance_hrs": 101.6652,
+      "starting_balance_days": 14.82,
+      "avg_shift": 6.86,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.0962,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 109.1852,
+          "running_days": 15.9162099125364
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 28.8,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3392,
+          "running_total_hrs": 111.51224,
+          "running_days": 16.2554285714286
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 25.38,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.2989,
+          "running_total_hrs": 113.562944,
+          "running_days": 16.5543650145773
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 21.43,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.2524,
+          "running_total_hrs": 122.154488,
+          "running_days": 17.8067766763848
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 23.23,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.2736,
+          "running_total_hrs": 124.031472,
+          "running_days": 18.0803895043732
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 26.45,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3115,
+          "running_total_hrs": 126.168632,
+          "running_days": 18.3919288629738
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 26.19,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3085,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 128.284784,
+          "running_days": 18.7004058309038
+        }
+      ]
+    },
+    "TMOSr40ZlxLCDBM-": {
+      "name": "Padhraig O'Maolagain",
+      "salaried": false,
+      "starting_balance_hrs": 10.064,
+      "starting_balance_days": 1.48,
+      "avg_shift": 6.8,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.0853,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 17.444,
+          "running_days": 2.56529411764706
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 32.57,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.387,
+          "running_total_hrs": 20.075656,
+          "running_days": 2.95230235294118
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 27.48,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3265,
+          "running_total_hrs": 22.29604,
+          "running_days": 3.27882941176471
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 38.02,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.4518,
+          "running_total_hrs": 32.168056,
+          "running_days": 4.73059647058824
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 24.1,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.2864,
+          "running_total_hrs": 34.115336,
+          "running_days": 5.01696117647059
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 26.93,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.32,
+          "running_total_hrs": 36.29128,
+          "running_days": 5.33695294117647
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 27.45,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.3262,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 38.50924,
+          "running_days": 5.66312352941177
+        }
+      ]
+    },
+    "TMKLeYtg9NdDlRxR": {
+      "name": "Will MacInnes",
+      "salaried": false,
+      "starting_balance_hrs": 19.3068,
+      "starting_balance_days": 3.46,
+      "avg_shift": 5.58,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.0143,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 24.9668,
+          "running_days": 4.47433691756272
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 3.97,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0575,
+          "running_total_hrs": 25.287576,
+          "running_days": 4.53182365591398
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 4.07,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0589,
+          "running_total_hrs": 25.616432,
+          "running_days": 4.59075842293907
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 15.8,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.2288,
+          "running_total_hrs": 32.473072,
+          "running_days": 5.81954695340502
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 10.48,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.1518,
+          "running_total_hrs": 33.319856,
+          "running_days": 5.97130035842294
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 12.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.1738,
+          "running_total_hrs": 34.289456,
+          "running_days": 6.14506379928315
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 17.52,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.2537,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.0,
+          "running_total_hrs": 35.705072,
+          "running_days": 6.39875842293907
+        }
+      ]
+    },
+    "TMiZR5Tjbhghgv2x": {
+      "name": "Camille Masson-Durcudoy",
+      "salaried": true,
+      "starting_balance_hrs": 14.88,
+      "starting_balance_days": 1.86,
+      "avg_shift": 8.0,
+      "weeks": [
+        {
+          "week_num": 1,
+          "week_ending": "2026-01-04",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.4,
+          "running_total_hrs": 26.08,
+          "running_days": 3.26
+        },
+        {
+          "week_num": 2,
+          "week_ending": "2026-01-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 29.28,
+          "running_days": 3.66
+        },
+        {
+          "week_num": 3,
+          "week_ending": "2026-01-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 32.48,
+          "running_days": 4.06
+        },
+        {
+          "week_num": 4,
+          "week_ending": "2026-01-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 35.68,
+          "running_days": 4.46
+        },
+        {
+          "week_num": 5,
+          "week_ending": "2026-02-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 38.88,
+          "running_days": 4.86
+        },
+        {
+          "week_num": 6,
+          "week_ending": "2026-02-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 42.08,
+          "running_days": 5.26
+        },
+        {
+          "week_num": 7,
+          "week_ending": "2026-02-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 45.28,
+          "running_days": 5.66
+        },
+        {
+          "week_num": 8,
+          "week_ending": "2026-02-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 48.48,
+          "running_days": 6.06
+        },
+        {
+          "week_num": 9,
+          "week_ending": "2026-03-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 51.68,
+          "running_days": 6.46
+        },
+        {
+          "week_num": 10,
+          "week_ending": "2026-03-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 54.88,
+          "running_days": 6.86
+        },
+        {
+          "week_num": 11,
+          "week_ending": "2026-03-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 58.08,
+          "running_days": 7.26
+        },
+        {
+          "week_num": 12,
+          "week_ending": "2026-03-22",
+          "hours_worked": 0.0,
+          "bh_days": 1,
+          "days_accrued_this_week": 1.4,
+          "running_total_hrs": 69.28,
+          "running_days": 8.66
+        },
+        {
+          "week_num": 13,
+          "week_ending": "2026-03-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 72.48,
+          "running_days": 9.06
+        },
+        {
+          "week_num": 14,
+          "week_ending": "2026-04-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 75.68,
+          "running_days": 9.46
+        },
+        {
+          "week_num": 15,
+          "week_ending": "2026-04-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 78.88,
+          "running_days": 9.86
+        },
+        {
+          "week_num": 16,
+          "week_ending": "2026-04-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 82.08,
+          "running_days": 10.26
+        },
+        {
+          "week_num": 17,
+          "week_ending": "2026-04-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 85.28,
+          "running_days": 10.66
+        },
+        {
+          "week_num": 18,
+          "week_ending": "2026-05-03",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 88.48,
+          "running_days": 11.06
+        },
+        {
+          "week_num": 19,
+          "week_ending": "2026-05-10",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 91.68,
+          "running_days": 11.46
+        },
+        {
+          "week_num": 20,
+          "week_ending": "2026-05-17",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 94.88,
+          "running_days": 11.86
+        },
+        {
+          "week_num": 21,
+          "week_ending": "2026-05-24",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 98.08,
+          "running_days": 12.26
+        },
+        {
+          "week_num": 22,
+          "week_ending": "2026-05-31",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 101.28,
+          "running_days": 12.66
+        },
+        {
+          "week_num": 23,
+          "week_ending": "2026-06-07",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 104.48,
+          "running_days": 13.06
+        },
+        {
+          "week_num": 24,
+          "week_ending": "2026-06-14",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 107.68,
+          "running_days": 13.46
+        },
+        {
+          "week_num": 25,
+          "week_ending": "2026-06-21",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 110.88,
+          "running_days": 13.86
+        },
+        {
+          "week_num": 26,
+          "week_ending": "2026-06-28",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 114.08,
+          "running_days": 14.26
+        },
+        {
+          "week_num": 27,
+          "week_ending": "2026-07-05",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 117.28,
+          "running_days": 14.66
+        },
+        {
+          "week_num": 28,
+          "week_ending": "2026-07-12",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 120.48,
+          "running_days": 15.06
+        },
+        {
+          "week_num": 29,
+          "week_ending": "2026-07-19",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 123.68,
+          "running_days": 15.46
+        },
+        {
+          "week_num": 30,
+          "week_ending": "2026-07-26",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 126.88,
+          "running_days": 15.86
+        },
+        {
+          "week_num": 31,
+          "week_ending": "2026-08-02",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 130.08,
+          "running_days": 16.26
+        },
+        {
+          "week_num": 32,
+          "week_ending": "2026-08-09",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 133.28,
+          "running_days": 16.66
+        },
+        {
+          "week_num": 33,
+          "week_ending": "2026-08-16",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 136.48,
+          "running_days": 17.06
+        },
+        {
+          "week_num": 34,
+          "week_ending": "2026-08-23",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 139.68,
+          "running_days": 17.46
+        },
+        {
+          "week_num": 35,
+          "week_ending": "2026-08-30",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 142.88,
+          "running_days": 17.86
+        },
+        {
+          "week_num": 36,
+          "week_ending": "2026-09-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 146.08,
+          "running_days": 18.26
+        },
+        {
+          "week_num": 37,
+          "week_ending": "2026-09-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 149.28,
+          "running_days": 18.66
+        },
+        {
+          "week_num": 38,
+          "week_ending": "2026-09-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 152.48,
+          "running_days": 19.06
+        },
+        {
+          "week_num": 39,
+          "week_ending": "2026-09-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 155.68,
+          "running_days": 19.46
+        },
+        {
+          "week_num": 40,
+          "week_ending": "2026-10-04",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 158.88,
+          "running_days": 19.86
+        },
+        {
+          "week_num": 41,
+          "week_ending": "2026-10-11",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 162.08,
+          "running_days": 20.26
+        },
+        {
+          "week_num": 42,
+          "week_ending": "2026-10-18",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 165.28,
+          "running_days": 20.66
+        },
+        {
+          "week_num": 43,
+          "week_ending": "2026-10-25",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 168.48,
+          "running_days": 21.06
+        },
+        {
+          "week_num": 44,
+          "week_ending": "2026-11-01",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 171.68,
+          "running_days": 21.46
+        },
+        {
+          "week_num": 45,
+          "week_ending": "2026-11-08",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 174.88,
+          "running_days": 21.86
+        },
+        {
+          "week_num": 46,
+          "week_ending": "2026-11-15",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 178.08,
+          "running_days": 22.26
+        },
+        {
+          "week_num": 47,
+          "week_ending": "2026-11-22",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 181.28,
+          "running_days": 22.66
+        },
+        {
+          "week_num": 48,
+          "week_ending": "2026-11-29",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 184.48,
+          "running_days": 23.06
+        },
+        {
+          "week_num": 49,
+          "week_ending": "2026-12-06",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 187.68,
+          "running_days": 23.46
+        },
+        {
+          "week_num": 50,
+          "week_ending": "2026-12-13",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 190.88,
+          "running_days": 23.86
+        },
+        {
+          "week_num": 51,
+          "week_ending": "2026-12-20",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 194.08,
+          "running_days": 24.26
+        },
+        {
+          "week_num": 52,
+          "week_ending": "2026-12-27",
+          "hours_worked": 0.0,
+          "bh_days": 0,
+          "days_accrued_this_week": 0.4,
+          "running_total_hrs": 197.28,
+          "running_days": 24.66
+        }
+      ]
+    }
+  },
+  "days_taken": [
+    {
+      "team_member_id": "TMIosdi9OKD96Fdv",
+      "name": "Carlos Soto",
+      "date": "2026-04-12",
+      "days_taken": 3.0,
+      "hours_equivalent": 19.77,
+      "reason": ""
+    },
+    {
+      "team_member_id": "__DAISY_KEOGH__",
+      "name": "Daisy Keogh",
+      "date": "2026-03-12",
+      "days_taken": 9.08,
+      "hours_equivalent": 61.9256,
+      "reason": "pay out from annual accrual"
+    },
+    {
+      "team_member_id": "__MARINO_PORCARI__",
+      "name": "Marino Porcari",
+      "date": "2026-07-03",
+      "days_taken": 6.55003066666667,
+      "hours_equivalent": 39.300184,
+      "reason": "pay out from annual accrual"
+    }
+  ]
+}

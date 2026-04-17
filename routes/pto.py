@@ -4,6 +4,7 @@ from datetime import date, datetime
 import db
 import square_client
 import pto_engine
+import pto_historical_import
 
 bp = Blueprint("pto", __name__)
 
@@ -81,6 +82,23 @@ def adjust_pto():
     name = f"{cat['given_name']} {cat['family_name']}" if cat else tm_id
     sign = "+" if adj_days > 0 else ""
     flash(f"Adjusted PTO for {name}: {sign}{adj_days} days ({reason}).", "success")
+    return redirect(url_for("pto.pto_page"))
+
+
+@bp.route("/pto/import-historical", methods=["POST"])
+def import_historical():
+    """Import historical PTO data from the V4 spreadsheet (one-time setup)."""
+    try:
+        result = pto_historical_import.run_import()
+        flash(
+            f"Imported historical PTO: {result['employees']} employees, "
+            f"{result['starting_balance_adjustments']} starting balances, "
+            f"{result['weekly_accruals']} weekly accruals, "
+            f"{result['days_taken']} days-taken records.",
+            "success",
+        )
+    except Exception as e:
+        flash(f"Import failed: {str(e)}", "danger")
     return redirect(url_for("pto.pto_page"))
 
 
