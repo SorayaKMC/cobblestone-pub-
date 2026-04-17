@@ -28,25 +28,18 @@
             margin-bottom: 2.5rem;
         }
 
-        .pub-logo-ring {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.08);
-            border: 2px solid rgba(255,255,255,0.15);
-            margin-bottom: 1rem;
-            font-size: 2.2rem;
+        .pub-logo-wrap {
+            display: inline-block;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 1rem 2rem;
+            margin-bottom: 1.2rem;
         }
 
-        .pub-name {
-            font-size: 2.4rem;
-            font-weight: 700;
-            color: #ffffff;
-            letter-spacing: -0.5px;
-            line-height: 1.1;
+        .pub-logo-wrap img {
+            height: 90px;
+            width: auto;
+            display: block;
         }
 
         .pub-sub {
@@ -54,7 +47,7 @@
             color: rgba(255,255,255,0.4);
             text-transform: uppercase;
             letter-spacing: 2px;
-            margin-top: 0.4rem;
+            margin-top: 0.2rem;
         }
 
         /* Greeting */
@@ -173,8 +166,9 @@
 
         <!-- Logo / pub name -->
         <div class="pub-header">
-            <div class="pub-logo-ring">🍺</div>
-            <div class="pub-name">The Cobblestone</div>
+            <div class="pub-logo-wrap">
+                <img src="/static/cobblestone-logo.jpg" alt="The Cobblestone">
+            </div>
             <div class="pub-sub">Management Portal</div>
         </div>
 
