@@ -160,7 +160,14 @@
                 {% for inv in invoices %}
                 <tr>
                     <td>{{ inv.invoice_date }}</td>
-                    <td>{{ inv.supplier_name }}</td>
+                    <td>
+                        {{ inv.supplier_name }}
+                        {% if inv.pdf_path %}
+                        <div class="text-muted" style="font-size:0.7rem" title="{{ inv.pdf_path }}">
+                            <i class="bi bi-file-earmark-pdf"></i> {{ inv.pdf_path | pdf_basename }}
+                        </div>
+                        {% endif %}
+                    </td>
                     <td><small class="text-muted">{{ inv.invoice_number or '-' }}</small></td>
                     <td><small>{{ inv.category or '-' }}</small></td>
                     <td class="text-end">&euro;{{ "%.2f"|format(inv.net_amount|float) }}</td>

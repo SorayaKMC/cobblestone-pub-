@@ -61,6 +61,17 @@ def file_hash(filepath):
     return h.hexdigest()
 
 
+def _normalize_whitespace(text):
+    """Collapse layout padding so length checks and token budget reflect real content."""
+    # Runs of spaces/tabs -> single space
+    text = re.sub(r"[ \t]+", " ", text)
+    # Spaces around newlines -> just the newline
+    text = re.sub(r" *\n *", "\n", text)
+    # 3+ blank lines -> 2
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def extract_pdf_text(pdf_path):
     """Extract text from a PDF. Returns (text, used_vision_fallback)."""
     try:
@@ -71,8 +82,11 @@ def extract_pdf_text(pdf_path):
                 t = page.extract_text()
                 if t:
                     text_parts.append(t)
-        text = "\n\n".join(text_parts).strip()
-        if len(text) > 50:
+        text = _normalize_whitespace("\n\n".join(text_parts))
+        # Measure by non-whitespace content so an invoice with heavy padding
+        # still qualifies for text extraction instead of falling back to vision.
+        meaningful = re.sub(r"\s+", "", text)
+        if len(meaningful) > 50:
             return text, False
     except Exception as e:
         print(f"[extract] pdfplumber failed: {e}")
@@ -152,7 +166,8 @@ def extract_invoice(pdf_path):
     Returns dict with keys expected by db.save_invoice(), plus metadata.
     """
     text, needs_vision = extract_pdf_text(pdf_path)
-    if needs_vision or len(text) < 100:
+    meaningful_len = len(re.sub(r"\s+", "", text))
+    if needs_vision or meaningful_len < 100:
         data = extract_with_vision(pdf_path)
     else:
         data = extract_with_text(text)

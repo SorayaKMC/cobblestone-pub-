@@ -4,10 +4,24 @@ from functools import wraps
 from flask import Flask, redirect, url_for, request, Response
 from datetime import date
 import os
+import re
 import secrets
 import threading
 import db
 import config
+
+
+def pdf_basename(path):
+    """Return a human-friendly filename from a stored pdf_path.
+
+    Strips the directory and the `YYYYMMDD_HHMMSS_` upload-timestamp prefix
+    that save_uploaded_pdf() prepends, so the original uploaded name is shown.
+    """
+    if not path:
+        return ""
+    name = os.path.basename(str(path))
+    # Drop leading timestamp if present: 20260417_113245_Original.pdf -> Original.pdf
+    return re.sub(r"^\d{8}_\d{6}_", "", name)
 
 
 def _warmup_cache():
@@ -82,6 +96,8 @@ def create_app():
     @app.context_processor
     def inject_globals():
         return {"today": date.today().strftime("%A, %d %B %Y")}
+
+    app.jinja_env.filters["pdf_basename"] = pdf_basename
 
     # Initialize database
     with app.app_context():
