@@ -135,6 +135,16 @@ def init_db():
                 (tm_id, first, last, cat, cleaning, salary_info[0], salary_info[1]),
             )
 
+    # Migration: ensure DEFAULT_CLEANING values are applied to existing rows that
+    # still have cleaning_amount=0 (catches DBs seeded before defaults were set).
+    for tm_id, default_amount in config.DEFAULT_CLEANING.items():
+        cursor.execute(
+            """UPDATE employee_categories
+               SET cleaning_amount = ?
+               WHERE team_member_id = ? AND cleaning_amount = 0""",
+            (default_amount, tm_id),
+        )
+
     conn.commit()
     conn.close()
 
