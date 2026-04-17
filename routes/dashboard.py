@@ -49,13 +49,29 @@ HISTORICAL_PAYROLL_2026 = {
     14: {"total": 7485.53, "um": 2139.22, "ms": 5346.31},
 }
 
-# Confirmed input VAT per month (from accountant's workings)
-# Month -> confirmed input VAT EUR. Unset = pending.
-CONFIRMED_INPUT_VAT_2026 = {
+# Fallback hardcoded input VAT per month from accountant's workings.
+# The app prefers LIVE totals from the bookkeeping DB - these fallback values
+# only apply to months where no invoices have been entered yet.
+FALLBACK_INPUT_VAT_2026 = {
     1: 9931,
     2: 8513,
     3: 11315,
 }
+
+
+def _get_confirmed_input_vat(year):
+    """Merge live bookkeeping totals with the hardcoded fallbacks."""
+    result = {}
+    if year == 2026:
+        result.update(FALLBACK_INPUT_VAT_2026)
+    try:
+        live = db.monthly_vat_totals(year)
+        for month, data in live.items():
+            if data.get("vat", 0) > 0:
+                result[month] = round(data["vat"])
+    except Exception as e:
+        print(f"Live VAT lookup failed, using fallbacks: {e}")
+    return result
 
 
 def _week_dates_label(year, week):
@@ -104,16 +120,15 @@ def _get_week_sales_with_daily(year, week):
     if is_future:
         return None
 
-    # Completed weeks: cache forever. Current week: cache for 5 minutes.
+    # Completed weeks: cache forever. Current week: 24-hour cache (refresh daily).
     cached, synced_at = db.get_cache(cache_key)
     if cached:
         if not is_current:
             return cached
-        # Current week - check if cache is fresh enough (5 min)
         if synced_at:
             try:
                 synced_dt = datetime.fromisoformat(synced_at)
-                if (datetime.now() - synced_dt).total_seconds() < 300:
+                if (datetime.now() - synced_dt).total_seconds() < 86400:  # 24h
                     return cached
             except Exception:
                 pass
@@ -198,7 +213,7 @@ def _get_week_payroll(year, week):
         if synced_at:
             try:
                 synced_dt = datetime.fromisoformat(synced_at)
-                if (datetime.now() - synced_dt).total_seconds() < 300:
+                if (datetime.now() - synced_dt).total_seconds() < 86400:  # 24h
                     return cached
             except Exception:
                 pass
@@ -287,7 +302,7 @@ def _get_week_timecard_hours_by_day(year, week):
         if synced_at:
             try:
                 synced_dt = datetime.fromisoformat(synced_at)
-                if (datetime.now() - synced_dt).total_seconds() < 300:
+                if (datetime.now() - synced_dt).total_seconds() < 86400:  # 24h
                     return cached
             except Exception:
                 pass
@@ -352,6 +367,9 @@ def _compute_vat(year):
 
     vat_periods = []
 
+    # Merge live bookkeeping totals with fallback hardcoded values
+    confirmed_input_vat = _get_confirmed_input_vat(year)
+
     for m1, m2, due in period_months:
         # Only show the first two relevant periods
         if len(vat_periods) >= 2:
@@ -405,7 +423,7 @@ def _compute_vat(year):
         input_list = []
         total_input = Decimal("0")
         for m in (m1, m2):
-            confirmed = CONFIRMED_INPUT_VAT_2026.get(m)
+            confirmed = confirmed_input_vat.get(m)
             if confirmed is not None:
                 input_list.append({
                     "label": f"{month_names[m]} input VAT",
@@ -421,7 +439,7 @@ def _compute_vat(year):
                 })
 
         # Period status
-        is_complete = m2 <= current_month and all(CONFIRMED_INPUT_VAT_2026.get(m) is not None for m in (m1, m2))
+        is_complete = m2 <= current_month and all(confirmed_input_vat.get(m) is not None for m in (m1, m2))
         status = "due" if is_complete else "pending"
 
         net_due = int(total_output - total_input)
@@ -434,7 +452,7 @@ def _compute_vat(year):
             if m2 > current_month:
                 note = f"Output VAT live from Square. {month_names[m2]} input pending from accountant."
             else:
-                pending_months = [month_names[m] for m in (m1, m2) if CONFIRMED_INPUT_VAT_2026.get(m) is None]
+                pending_months = [month_names[m] for m in (m1, m2) if confirmed_input_vat.get(m) is None]
                 note = f"Output VAT live from Square. Pending input VAT: {', '.join(pending_months)}."
         else:
             note = "Output VAT live from Square. Input VAT confirmed by accountant."
@@ -639,3 +657,29 @@ def dashboard_page():
 @bp.route("/api/dashboard/trend")
 def dashboard_trend():
     return jsonify([])
+
+
+@bp.route("/dashboard/refresh", methods=["POST"])
+def refresh_dashboard():
+    """Force-clear the dashboard cache so next load fetches fresh from Square."""
+    from flask import redirect, url_for, flash
+    current_year, current_week = square_client.current_week()
+    conn = db.get_db()
+    # Only clear CURRENT-week caches + VAT + hours-by-day. Historic stays cached.
+    conn.execute(
+        "DELETE FROM cache_metadata WHERE cache_key LIKE ? OR cache_key LIKE ? OR cache_key LIKE ?",
+        (
+            f"week_sales_v3_{current_year}_W{current_week:02d}",
+            f"week_payroll_{current_year}_W{current_week:02d}",
+            f"vat_periods_{current_year}",
+        ),
+    )
+    # Also clear the timecard hours cache for current week
+    conn.execute(
+        "DELETE FROM cache_metadata WHERE cache_key = ?",
+        (f"timecard_hours_by_day_{current_year}_W{current_week:02d}",),
+    )
+    conn.commit()
+    conn.close()
+    flash("Dashboard refreshed - fetching latest data from Square...", "info")
+    return redirect(url_for("dashboard.dashboard_page"))

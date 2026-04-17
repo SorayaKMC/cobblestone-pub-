@@ -13,13 +13,14 @@ import config
 def _warmup_cache():
     """Pre-populate dashboard cache in a background thread at startup.
 
-    Fetches 2 years of weekly data from Square so the /dashboard route
-    doesn't time out on first request (Render edge times out at 100s,
-    but initial cold fetch takes ~3 min).
+    Designed for low memory: fetches one week at a time, writes to SQLite,
+    then forces garbage collection before moving to the next week.
+    Stays well under 100MB of peak memory.
     """
     try:
         import time
-        time.sleep(5)  # let app finish booting
+        import gc
+        time.sleep(10)  # let app finish booting & handle first requests
         from routes.dashboard import _get_week_sales_with_daily, _get_week_payroll
         import square_client
 
@@ -28,10 +29,17 @@ def _warmup_cache():
 
         for week in range(2, current_week + 1):
             try:
+                # Fetch + cache current year
                 _get_week_sales_with_daily(current_year, week)
+                gc.collect()
+                # Fetch + cache previous year (for YoY)
                 _get_week_sales_with_daily(current_year - 1, week)
+                gc.collect()
+                # Fetch + cache payroll
                 _get_week_payroll(current_year, week)
+                gc.collect()
                 print(f"[warmup] W{week:02d} cached")
+                time.sleep(1)  # be gentle on Square's rate limits
             except Exception as e:
                 print(f"[warmup] W{week:02d} failed: {e}")
 
@@ -99,11 +107,12 @@ def create_app():
                 )
 
     # Register blueprints
-    from routes import settings, payroll, dashboard, pto
+    from routes import settings, payroll, dashboard, pto, bookkeeping
     app.register_blueprint(settings.bp)
     app.register_blueprint(payroll.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(pto.bp)
+    app.register_blueprint(bookkeeping.bp)
 
     @app.route("/")
     def index():

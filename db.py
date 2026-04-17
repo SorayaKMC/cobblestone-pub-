@@ -110,6 +110,43 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(team_member_id, iso_week)
         );
+
+        -- Bookkeeping: suppliers + invoices
+        CREATE TABLE IF NOT EXISTS suppliers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            vat_number TEXT,
+            default_vat_rate REAL NOT NULL DEFAULT 23,
+            default_category TEXT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS invoices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            supplier_id INTEGER,
+            supplier_name TEXT NOT NULL,
+            invoice_date DATE NOT NULL,
+            invoice_number TEXT,
+            net_amount REAL NOT NULL DEFAULT 0,
+            vat_amount REAL NOT NULL DEFAULT 0,
+            total_amount REAL NOT NULL DEFAULT 0,
+            vat_rate REAL NOT NULL DEFAULT 23,
+            category TEXT,
+            source TEXT NOT NULL DEFAULT 'manual',
+            pdf_path TEXT,
+            file_hash TEXT,
+            status TEXT NOT NULL DEFAULT 'approved',
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
+            UNIQUE(file_hash)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(invoice_date);
+        CREATE INDEX IF NOT EXISTS idx_invoices_supplier ON invoices(supplier_id);
+        CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
     """)
 
     # Migration: add weekly_salary and pay_type columns if missing
@@ -144,6 +181,15 @@ def init_db():
                WHERE team_member_id = ? AND cleaning_amount = 0""",
             (default_amount, tm_id),
         )
+
+    # Seed suppliers if the table is empty
+    supplier_count = cursor.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0]
+    if supplier_count == 0:
+        for name, vat_rate, category in config.DEFAULT_SUPPLIERS:
+            cursor.execute(
+                "INSERT OR IGNORE INTO suppliers (name, default_vat_rate, default_category) VALUES (?, ?, ?)",
+                (name, vat_rate, category),
+            )
 
     conn.commit()
     conn.close()
@@ -497,6 +543,166 @@ def get_finalized_weeks():
     ).fetchall()
     conn.close()
     return rows
+
+
+# --- Bookkeeping: Suppliers + Invoices ---
+
+def list_suppliers():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM suppliers ORDER BY name").fetchall()
+    conn.close()
+    return rows
+
+
+def find_supplier_by_name(name):
+    """Case-insensitive match on supplier name (with LIKE fallback)."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM suppliers WHERE LOWER(name) = LOWER(?)", (name,)
+    ).fetchone()
+    if not row:
+        # Fuzzy match - supplier name contains the search term
+        row = conn.execute(
+            "SELECT * FROM suppliers WHERE LOWER(name) LIKE LOWER(?) LIMIT 1",
+            (f"%{name}%",),
+        ).fetchone()
+    conn.close()
+    return row
+
+
+def add_supplier(name, default_vat_rate=23, default_category=None, vat_number=None):
+    conn = get_db()
+    conn.execute(
+        """INSERT OR IGNORE INTO suppliers (name, default_vat_rate, default_category, vat_number)
+           VALUES (?, ?, ?, ?)""",
+        (name, default_vat_rate, default_category, vat_number),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_supplier(supplier_id, name, default_vat_rate, default_category, vat_number=None):
+    conn = get_db()
+    conn.execute(
+        """UPDATE suppliers
+           SET name=?, default_vat_rate=?, default_category=?, vat_number=?
+           WHERE id=?""",
+        (name, default_vat_rate, default_category, vat_number, supplier_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def list_invoices(start_date=None, end_date=None, supplier_id=None, category=None, status=None, limit=500):
+    """Get invoices with optional filters. Returns list of rows."""
+    conn = get_db()
+    sql = """SELECT i.*, s.name AS supplier_name_resolved, s.default_category
+             FROM invoices i
+             LEFT JOIN suppliers s ON i.supplier_id = s.id
+             WHERE 1=1"""
+    params = []
+    if start_date:
+        sql += " AND i.invoice_date >= ?"
+        params.append(start_date)
+    if end_date:
+        sql += " AND i.invoice_date <= ?"
+        params.append(end_date)
+    if supplier_id:
+        sql += " AND i.supplier_id = ?"
+        params.append(supplier_id)
+    if category:
+        sql += " AND i.category = ?"
+        params.append(category)
+    if status:
+        sql += " AND i.status = ?"
+        params.append(status)
+    sql += " ORDER BY i.invoice_date DESC, i.id DESC LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return rows
+
+
+def get_invoice(invoice_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM invoices WHERE id=?", (invoice_id,)).fetchone()
+    conn.close()
+    return row
+
+
+def save_invoice(data, invoice_id=None):
+    """Insert a new invoice or update an existing one. Returns invoice id.
+
+    data: dict with keys: supplier_id, supplier_name, invoice_date, invoice_number,
+          net_amount, vat_amount, total_amount, vat_rate, category,
+          source, pdf_path, file_hash, status, notes
+    """
+    conn = get_db()
+    now = datetime.now().isoformat()
+
+    if invoice_id:
+        conn.execute(
+            """UPDATE invoices SET
+               supplier_id=?, supplier_name=?, invoice_date=?, invoice_number=?,
+               net_amount=?, vat_amount=?, total_amount=?, vat_rate=?, category=?,
+               status=?, notes=?, updated_at=?
+               WHERE id=?""",
+            (data.get("supplier_id"), data.get("supplier_name"),
+             data.get("invoice_date"), data.get("invoice_number"),
+             data.get("net_amount", 0), data.get("vat_amount", 0),
+             data.get("total_amount", 0), data.get("vat_rate", 23),
+             data.get("category"), data.get("status", "approved"),
+             data.get("notes"), now, invoice_id),
+        )
+        new_id = invoice_id
+    else:
+        cursor = conn.execute(
+            """INSERT INTO invoices (supplier_id, supplier_name, invoice_date, invoice_number,
+                net_amount, vat_amount, total_amount, vat_rate, category,
+                source, pdf_path, file_hash, status, notes, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (data.get("supplier_id"), data.get("supplier_name"),
+             data.get("invoice_date"), data.get("invoice_number"),
+             data.get("net_amount", 0), data.get("vat_amount", 0),
+             data.get("total_amount", 0), data.get("vat_rate", 23),
+             data.get("category"), data.get("source", "manual"),
+             data.get("pdf_path"), data.get("file_hash"),
+             data.get("status", "approved"), data.get("notes"), now),
+        )
+        new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return new_id
+
+
+def delete_invoice(invoice_id):
+    conn = get_db()
+    conn.execute("DELETE FROM invoices WHERE id=?", (invoice_id,))
+    conn.commit()
+    conn.close()
+
+
+def monthly_vat_totals(year):
+    """Sum VAT amounts per month for the given year. Only 'approved' invoices.
+
+    Returns dict {month_int: {net, vat, total, count}}.
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT CAST(strftime('%m', invoice_date) AS INTEGER) AS m,
+                  SUM(net_amount) AS net,
+                  SUM(vat_amount) AS vat,
+                  SUM(total_amount) AS total,
+                  COUNT(*) AS cnt
+           FROM invoices
+           WHERE status='approved' AND strftime('%Y', invoice_date) = ?
+           GROUP BY m""",
+        (str(year),),
+    ).fetchall()
+    conn.close()
+    return {r["m"]: {"net": r["net"] or 0, "vat": r["vat"] or 0,
+                     "total": r["total"] or 0, "count": r["cnt"]}
+            for r in rows}
 
 
 # --- Cache ---

@@ -5,7 +5,7 @@ services:
     plan: starter  # $7/mo — needed for persistent disk + always-on
     region: frankfurt  # closest to Dublin
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 --max-requests 500 --max-requests-jitter 50
     healthCheckPath: /healthz
     envVars:
       - key: SQUARE_ACCESS_TOKEN

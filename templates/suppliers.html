@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Suppliers - Cobblestone Pub{% endblock %}
+{% block page_title %}Suppliers{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Supplier directory</h5>
+    <a href="/bookkeeping" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-chevron-left me-1"></i>Back to Invoices
+    </a>
+</div>
+
+<!-- Add / edit form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="card-title">Add new supplier</h6>
+        <form method="POST" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small">Name</label>
+                <input type="text" name="name" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Default VAT Rate</label>
+                <select name="default_vat_rate" class="form-select form-select-sm">
+                    <option value="23">23%</option>
+                    <option value="13.5">13.5%</option>
+                    <option value="9">9%</option>
+                    <option value="0">0%</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Default Category</label>
+                <select name="default_category" class="form-select form-select-sm">
+                    <option value="">-- none --</option>
+                    {% for c in categories %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">VAT Number (optional)</label>
+                <input type="text" name="vat_number" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Suppliers list -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-cobblestone mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Default VAT Rate</th>
+                    <th>Default Category</th>
+                    <th>VAT Number</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in suppliers %}
+                <tr>
+                    <td><strong>{{ s.name }}</strong></td>
+                    <td>{{ "%.1f"|format(s.default_vat_rate) }}%</td>
+                    <td><small>{{ s.default_category or '-' }}</small></td>
+                    <td><small class="text-muted">{{ s.vat_number or '-' }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<p class="text-muted small mt-3">
+    <i class="bi bi-info-circle me-1"></i>{{ suppliers|length }} suppliers. Defaults pre-fill when you add a new invoice.
+</p>
+
+{% endblock %}

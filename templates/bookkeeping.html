@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Bookkeeping - Cobblestone Pub{% endblock %}
+{% block page_title %}Bookkeeping{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h5 class="mb-0">Incoming Invoices</h5>
+    <div class="d-flex gap-2">
+        <a href="/bookkeeping/suppliers" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-truck me-1"></i>Suppliers
+        </a>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <i class="bi bi-cloud-upload me-1"></i>Upload PDFs (AI)
+        </button>
+        <a href="/bookkeeping/new" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Add Invoice
+        </a>
+    </div>
+</div>
+
+<!-- Upload PDFs modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/bookkeeping/upload" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-magic me-1"></i>Upload Invoice PDFs</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">
+                        Drop up to 20 PDFs. Claude AI extracts supplier, date, amounts + VAT automatically.
+                        Each invoice lands in <strong>Pending Review</strong> so you can verify before approving.
+                    </p>
+                    <input type="file" name="pdfs" multiple accept=".pdf,application/pdf" class="form-control">
+                    <div class="mt-3 p-2 bg-light rounded small">
+                        <strong>Cost per invoice:</strong> ~€0.003 (text) or ~€0.015 (scanned).
+                        A pile of 50 invoices costs under €1.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-magic me-1"></i>Extract &amp; Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly VAT summary -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="card-title mb-3">{{ current_year }} — Monthly Input VAT from Invoices</h6>
+        <div class="row g-2">
+            {% for m in range(1, 13) %}
+            {% set md = monthly.get(m, {'net': 0, 'vat': 0, 'total': 0, 'count': 0}) %}
+            <div class="col-md-2 col-sm-4 col-6">
+                <div class="border rounded p-2 {% if md.count > 0 %}bg-light{% endif %}">
+                    <div class="text-muted" style="font-size:0.75rem">
+                        {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
+                    </div>
+                    <div style="font-weight:600">&euro;{{ "%.2f"|format(md.vat) }}</div>
+                    <div class="text-muted" style="font-size:0.7rem">{{ md.count }} invoices</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small">From</label>
+                <input type="date" name="start_date" value="{{ filter_start }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">To</label>
+                <input type="date" name="end_date" value="{{ filter_end }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Supplier</label>
+                <select name="supplier_id" class="form-select form-select-sm">
+                    <option value="">All suppliers</option>
+                    {% for s in suppliers %}
+                    <option value="{{ s.id }}" {% if filter_supplier == s.id|string %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Category</label>
+                <select name="category" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    {% for c in categories %}
+                    <option value="{{ c }}" {% if filter_category == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    <option value="approved" {% if filter_status == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>Pending review</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-funnel"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Totals -->
+<div class="row mb-3 g-2">
+    <div class="col-md-4">
+        <div class="card kpi-card"><div class="card-body text-center py-2">
+            <div class="kpi-label">Net (shown)</div>
+            <div class="kpi-value" style="font-size:1.4rem">&euro;{{ "%.2f"|format(total_net) }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-card"><div class="card-body text-center py-2">
+            <div class="kpi-label">VAT (shown)</div>
+            <div class="kpi-value" style="font-size:1.4rem; color:#b45309">&euro;{{ "%.2f"|format(total_vat) }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-card"><div class="card-body text-center py-2">
+            <div class="kpi-label">Total (shown)</div>
+            <div class="kpi-value" style="font-size:1.4rem">&euro;{{ "%.2f"|format(total_gross) }}</div>
+        </div></div>
+    </div>
+</div>
+
+<!-- Invoices table -->
+<div class="card">
+    <div class="card-body p-0" style="overflow-x:auto">
+        <table class="table table-cobblestone mb-0" style="min-width:900px">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Supplier</th>
+                    <th>Invoice #</th>
+                    <th>Category</th>
+                    <th class="text-end">Net</th>
+                    <th class="text-end">VAT</th>
+                    <th class="text-end">Total</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td>{{ inv.invoice_date }}</td>
+                    <td>{{ inv.supplier_name }}</td>
+                    <td><small class="text-muted">{{ inv.invoice_number or '-' }}</small></td>
+                    <td><small>{{ inv.category or '-' }}</small></td>
+                    <td class="text-end">&euro;{{ "%.2f"|format(inv.net_amount|float) }}</td>
+                    <td class="text-end">&euro;{{ "%.2f"|format(inv.vat_amount|float) }}</td>
+                    <td class="text-end"><strong>&euro;{{ "%.2f"|format(inv.total_amount|float) }}</strong></td>
+                    <td>
+                        {% if inv.status == 'pending' %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% else %}
+                            <span class="badge bg-success">Approved</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="/bookkeeping/{{ inv.id }}/edit" class="btn btn-outline-secondary btn-sm py-0 px-2">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="POST" action="/bookkeeping/{{ inv.id }}/delete" class="d-inline"
+                              onsubmit="return confirm('Delete this invoice?');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not invoices %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        No invoices yet. Click <strong>Add Invoice</strong> to enter your first one.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<p class="text-muted small mt-3">
+    <i class="bi bi-info-circle me-1"></i>Monthly VAT totals above automatically feed the VAT calculator on the Dashboard.
+</p>
+
+{% endblock %}

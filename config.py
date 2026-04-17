@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Override ensures a .env value wins over any stale empty env var in the shell
+load_dotenv(override=True)
 
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "")
 SQUARE_BASE_URL = "https://connect.squareup.com/v2"
@@ -28,6 +29,88 @@ DATABASE_PATH = os.getenv(
     os.path.join(os.path.dirname(__file__), "cobblestone.db"),
 )
 TIMEZONE = "Europe/Dublin"
+
+# Anthropic Claude API key (for invoice extraction)
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# Where uploaded invoice PDFs are stored (falls back to local if disk unset)
+INVOICES_DIR = os.getenv(
+    "INVOICES_DIR",
+    os.path.join(os.path.dirname(os.getenv("DATABASE_PATH", ".")), "invoice_pdfs"),
+)
+
+# Seed suppliers - based on the March 2026 invoices folder.
+# Format: (name, default_vat_rate %, default_category)
+DEFAULT_SUPPLIERS = [
+    # Drinks (23% VAT)
+    ("Diageo", 23, "Drinks - Spirits/Beer"),
+    ("Four Provinces", 23, "Drinks - Beer"),
+    ("9 White Deer Brewery", 23, "Drinks - Beer"),
+    ("JC Kenny", 23, "Drinks"),
+    ("Tindal Wines", 23, "Drinks - Wine"),
+    ("Bulmers", 23, "Drinks - Cider"),
+    ("Fierce Mild", 23, "Drinks - Beer"),
+    ("Noreast", 23, "Drinks"),
+    # Food & grocery (mixed VAT)
+    ("BWG", 13.5, "Food"),
+    ("BWG Foods", 13.5, "Food"),
+    ("Musgrave", 13.5, "Food"),
+    ("Fresh", 13.5, "Food"),
+    ("Lidl", 13.5, "Food"),
+    ("Tesco", 13.5, "Food"),
+    ("Gala", 13.5, "Food"),
+    ("Kitchen Sink", 13.5, "Food"),
+    ("ANTA Food", 13.5, "Food"),
+    ("Newtown Coffee", 13.5, "Food - Coffee"),
+    # Services & supplies (23% VAT)
+    ("JS Cleaning", 23, "Cleaning"),
+    ("Screw Fix", 23, "Supplies - Hardware"),
+    ("Eir", 23, "Utilities - Telecoms"),
+    ("Adobe", 23, "Software/Subscriptions"),
+    ("Eva Carroll", 23, "Professional Services"),
+    ("JJ Mahon", 23, "Professional Services"),
+    ("SKMC", 23, "Professional Services"),
+    ("FADA", 23, "Services"),
+    ("Sureguard", 23, "Services - Security"),
+    ("WristbandsIreland", 23, "Supplies"),
+    ("City Cycle", 23, "Transport"),
+    ("Go Dublin", 23, "Transport"),
+    ("Easons", 23, "Supplies"),
+    ("TK Max", 23, "Supplies"),
+    ("Jameson", 23, "Drinks - Spirits"),
+    ("Ispini", 23, "Merchandise/Supplies"),
+]
+
+# Invoice categories (pre-populated dropdown on bookkeeping page)
+INVOICE_CATEGORIES = [
+    "Drinks - Beer",
+    "Drinks - Wine",
+    "Drinks - Spirits",
+    "Drinks - Spirits/Beer",
+    "Drinks - Cider",
+    "Drinks",
+    "Food",
+    "Food - Coffee",
+    "Cleaning",
+    "Utilities - Electricity",
+    "Utilities - Gas",
+    "Utilities - Telecoms",
+    "Utilities - Water",
+    "Supplies",
+    "Supplies - Hardware",
+    "Repairs & Maintenance",
+    "Professional Services",
+    "Software/Subscriptions",
+    "Marketing",
+    "Transport",
+    "Rent",
+    "Insurance",
+    "Bank Charges",
+    "Merchandise/Supplies",
+    "Services",
+    "Services - Security",
+    "Other",
+]
 
 # Staff category defaults (Square team_member_id -> category)
 # These get seeded into the database on first run

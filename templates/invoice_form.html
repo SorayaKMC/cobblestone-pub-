@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if invoice else 'Add' }} Invoice - Cobblestone Pub{% endblock %}
+{% block page_title %}{{ 'Edit' if invoice else 'Add' }} Invoice{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Supplier</label>
+                    <select name="supplier_id" class="form-select" id="supplier_select">
+                        <option value="">-- select --</option>
+                        {% for s in suppliers %}
+                        <option value="{{ s.id }}"
+                                data-vat-rate="{{ s.default_vat_rate }}"
+                                data-category="{{ s.default_category or '' }}"
+                                data-name="{{ s.name }}"
+                                {% if invoice and invoice.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">or type below for one-off</small>
+                    <input type="text" name="supplier_name" id="supplier_name"
+                           value="{{ invoice.supplier_name if invoice else '' }}"
+                           placeholder="Supplier name"
+                           class="form-control mt-1">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="invoice_date"
+                           value="{{ invoice.invoice_date if invoice else today }}"
+                           class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Invoice #</label>
+                    <input type="text" name="invoice_number"
+                           value="{{ invoice.invoice_number if invoice else '' }}"
+                           class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Category</label>
+                    <select name="category" id="category_select" class="form-select">
+                        <option value="">-- none --</option>
+                        {% for c in categories %}
+                        <option value="{{ c }}" {% if invoice and invoice.category == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">VAT Rate %</label>
+                    <select name="vat_rate" id="vat_rate" class="form-select">
+                        <option value="23" {% if not invoice or invoice.vat_rate == 23 %}selected{% endif %}>23%</option>
+                        <option value="13.5" {% if invoice and invoice.vat_rate == 13.5 %}selected{% endif %}>13.5%</option>
+                        <option value="9" {% if invoice and invoice.vat_rate == 9 %}selected{% endif %}>9%</option>
+                        <option value="0" {% if invoice and invoice.vat_rate == 0 %}selected{% endif %}>0%</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Net Amount (EUR)</label>
+                    <input type="number" step="0.01" name="net_amount" id="net_amount"
+                           value="{{ '%.2f'|format(invoice.net_amount|float) if invoice else '' }}"
+                           class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">VAT Amount (EUR)</label>
+                    <input type="number" step="0.01" name="vat_amount" id="vat_amount"
+                           value="{{ '%.2f'|format(invoice.vat_amount|float) if invoice else '' }}"
+                           class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Total Amount (EUR)</label>
+                    <input type="number" step="0.01" name="total_amount" id="total_amount"
+                           value="{{ '%.2f'|format(invoice.total_amount|float) if invoice else '' }}"
+                           class="form-control">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="calc_btn" title="Auto-calculate">
+                        <i class="bi bi-calculator"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-2 small text-muted">
+                <i class="bi bi-lightbulb me-1"></i>Enter any two of Net/VAT/Total — click calculator to fill the third.
+            </div>
+
+            <hr>
+
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="approved" {% if not invoice or invoice.status == 'approved' %}selected{% endif %}>Approved</option>
+                        <option value="pending" {% if invoice and invoice.status == 'pending' %}selected{% endif %}>Pending review</option>
+                    </select>
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label">Notes</label>
+                    <input type="text" name="notes"
+                           value="{{ invoice.notes if invoice else '' }}"
+                           class="form-control">
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-1"></i>{{ 'Update Invoice' if invoice else 'Save Invoice' }}
+                </button>
+                <a href="/bookkeeping" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// When supplier is chosen, auto-fill VAT rate + category
+const supplierSelect = document.getElementById('supplier_select');
+const nameInput = document.getElementById('supplier_name');
+const vatRate = document.getElementById('vat_rate');
+const categorySelect = document.getElementById('category_select');
+
+supplierSelect.addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt.value) {
+        nameInput.value = opt.dataset.name;
+        vatRate.value = opt.dataset.vatRate;
+        if (opt.dataset.category) {
+            for (let o of categorySelect.options) {
+                if (o.value === opt.dataset.category) { o.selected = true; break; }
+            }
+        }
+    }
+});
+
+// Auto-calculate the missing field
+document.getElementById('calc_btn').addEventListener('click', function() {
+    const net = parseFloat(document.getElementById('net_amount').value) || 0;
+    const vat = parseFloat(document.getElementById('vat_amount').value) || 0;
+    const total = parseFloat(document.getElementById('total_amount').value) || 0;
+    const rate = parseFloat(vatRate.value) / 100;
+
+    if (total && !net && !vat) {
+        // Split total into net + VAT
+        const n = total / (1 + rate);
+        document.getElementById('net_amount').value = n.toFixed(2);
+        document.getElementById('vat_amount').value = (total - n).toFixed(2);
+    } else if (net && !vat) {
+        const v = net * rate;
+        document.getElementById('vat_amount').value = v.toFixed(2);
+        document.getElementById('total_amount').value = (net + v).toFixed(2);
+    } else if (net && vat && !total) {
+        document.getElementById('total_amount').value = (net + vat).toFixed(2);
+    } else if (!net && vat && total) {
+        document.getElementById('net_amount').value = (total - vat).toFixed(2);
+    }
+});
+</script>
+{% endblock %}
