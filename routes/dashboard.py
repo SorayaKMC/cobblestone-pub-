@@ -576,6 +576,25 @@ def dashboard_page():
     current_week_end = datetime.strptime(end, "%Y-%m-%d").strftime("%b %-d, %Y")
     current_week_dates = _week_dates_label(current_year, current_week)
 
+    # Is the current week complete? (i.e. past Sunday 23:59 in Dublin timezone)
+    # If not, YoY uplift should exclude it so we compare only completed weeks.
+    try:
+        try:
+            from zoneinfo import ZoneInfo
+            now_dublin = datetime.now(ZoneInfo("Europe/Dublin"))
+        except Exception:
+            now_dublin = datetime.now()
+        week_end_dt = datetime.strptime(end, "%Y-%m-%d").replace(
+            hour=23, minute=59, second=59, tzinfo=now_dublin.tzinfo
+        )
+        current_week_complete = now_dublin > week_end_dt
+    except Exception:
+        current_week_complete = False
+
+    # Last completed week label - shown in the uplift KPI
+    last_complete_week = current_week if current_week_complete else current_week - 1
+    last_complete_week_label = f"W{last_complete_week:02d}"
+
     return render_template("dashboard.html",
         wks_json=json.dumps(wks),
         daily_json=json.dumps(daily),
@@ -591,6 +610,8 @@ def dashboard_page():
         current_week_label=current_week_label,
         current_week_end=current_week_end,
         current_week_dates=current_week_dates,
+        current_week_complete=current_week_complete,
+        last_complete_week_label=last_complete_week_label,
     )
 
 

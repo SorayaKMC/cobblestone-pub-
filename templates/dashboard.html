@@ -192,13 +192,22 @@ function fmt(n){if(n==null)return "—";return "\u20ac"+Math.round(n).toLocaleSt
 function laborC(p){if(p==null)return "#94a3b8";if(p>22)return "#ef4444";if(p>19)return "#f59e0b";if(p<17)return "#16a34a";return "#3b82f6";}
 
 // ─── COMPUTED ────────────────────────────────────────────────────────────────
+var CURRENT_WEEK_COMPLETE = {{ 'true' if current_week_complete else 'false' }};
+var LAST_COMPLETE_WEEK_LABEL = "{{ last_complete_week_label }}";
+
+// Current-week-inclusive totals (used for YTD sales + labour KPIs)
 var ytdNet = WKS.reduce(function(a,w){return a+w.n26;},0);
-var ytd25 = WKS.reduce(function(a,w){return a+(w.n25||0);},0);
-var yoyUpl = ytdNet-ytd25;
-var yoyPct = ytd25>0 ? (yoyUpl/ytd25*100).toFixed(1) : "0.0";
 var ytdPay = WKS.reduce(function(a,w){return a+(w.pay||0);},0);
 var ytdGross = Math.round(ytdNet*1.23);
 var labPct = ytdGross>0 ? (ytdPay/ytdGross*100).toFixed(1) : "0.0";
+
+// YoY uplift uses only COMPLETED weeks (excludes partial current week)
+// so we're always comparing apples-to-apples against 2025.
+var WKS_COMPLETE = CURRENT_WEEK_COMPLETE ? WKS : WKS.slice(0, -1);
+var ytdNet_complete = WKS_COMPLETE.reduce(function(a,w){return a+w.n26;},0);
+var ytd25 = WKS_COMPLETE.reduce(function(a,w){return a+(w.n25||0);},0);
+var yoyUpl = ytdNet_complete-ytd25;
+var yoyPct = ytd25>0 ? (yoyUpl/ytd25*100).toFixed(1) : "0.0";
 
 // Linear trend
 var tn=WKS.length, txm=(tn-1)/2, tym=ytdNet/tn;
@@ -539,7 +548,7 @@ document.getElementById("kpis").innerHTML =
   +'<div class="kpi-sub">'+WKS.length+' weeks · W02 onwards</div></div>'
   +(ytd25>0 ? '<div class="kpi"><div class="kpi-lbl">YOY uplift vs 2025</div>'
   +'<div class="kpi-val" style="color:'+(yoyUpl>=0?"#16a34a":"#ef4444")+';font-size:34px">'+(yoyUpl>=0?"+":"")+yoyPct+'%</div>'
-  +'<div class="kpi-sub" style="color:'+(yoyUpl>=0?"#16a34a":"#ef4444")+'">'+(yoyUpl>=0?"+":"")+fmt(yoyUpl)+' · 2025 = '+fmt(ytd25)+'</div></div>' : '')
+  +'<div class="kpi-sub" style="color:'+(yoyUpl>=0?"#16a34a":"#ef4444")+'">'+(yoyUpl>=0?"+":"")+fmt(yoyUpl)+' · through '+LAST_COMPLETE_WEEK_LABEL+' · 2025 = '+fmt(ytd25)+'</div></div>' : '')
   +'<div class="kpi"><div class="kpi-lbl">Labour cost M+S YTD</div>'
   +'<div class="kpi-val" style="color:'+laborC(msPct)+'">'+msPct+'%</div>'
   +'<div class="kpi-sub">M+S payroll ÷ net sales</div></div>'
