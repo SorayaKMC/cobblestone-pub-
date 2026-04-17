@@ -29,14 +29,11 @@ def _get_week_params():
     return year, week, start_date, end_date, label, iso_week
 
 
-def _build_payroll_data(timecards, team_members, categories, manual_tips=None, weekly_cleaning=None):
-    """Assemble payroll data from timecards, team members, categories + manual tips/cleaning.
+def _build_payroll_data(timecards, team_members, categories, manual_tips=None, weekly_cleaning=None, weekly_bonus=None):
+    """Assemble payroll data from timecards + manual tips/cleaning/bonus.
 
-    Tips are NOT pulled from Square - they come from the manual_tips dict
-    (keyed by team_member_id). Square tip fields are ignored.
-
-    Cleaning uses the weekly_cleaning override if present, else falls back to
-    the employee's default from employee_categories.cleaning_amount.
+    Tips, cleaning, and bonus are all entered manually (not from Square).
+    All three flow into the Total column and total_for_labor.
 
     Returns list of employee payroll dicts sorted by category then name.
     """
@@ -44,6 +41,8 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
         manual_tips = {}
     if weekly_cleaning is None:
         weekly_cleaning = {}
+    if weekly_bonus is None:
+        weekly_bonus = {}
 
     # Index team members and categories
     members_by_id = {m["id"]: m for m in team_members}
@@ -77,8 +76,8 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
                 "total": Decimal("0"),
             }
 
-    # Include anyone who has manual tips entered (even if no timecards/salary)
-    for tm_id in manual_tips:
+    # Include anyone who has manual tips/bonus entered (even if no timecards/salary)
+    for tm_id in list(manual_tips.keys()) + list(weekly_bonus.keys()):
         if tm_id not in employee_hours:
             employee_hours[tm_id] = {
                 "regular": Decimal("0"),
@@ -115,10 +114,11 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
         else:
             gross = hours["total"] * wage_rate
 
-        # Tips are manually entered (never from Square)
+        # Tips and bonus are manually entered (never from Square)
         tips = Decimal(str(manual_tips.get(tm_id, 0) or 0))
-        total = gross + tips + cleaning
-        total_for_labor = gross + cleaning
+        bonus = Decimal(str(weekly_bonus.get(tm_id, 0) or 0))
+        total = gross + tips + cleaning + bonus
+        total_for_labor = gross + cleaning + bonus
 
         payroll.append({
             "team_member_id": tm_id,
@@ -129,6 +129,7 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
             "hours": hours["total"].quantize(Decimal("0.01")),
             "tips": tips.quantize(Decimal("0.01")),
             "cleaning": cleaning.quantize(Decimal("0.01")),
+            "bonus": bonus.quantize(Decimal("0.01")),
             "total": total.quantize(Decimal("0.01")),
             "category": category,
             "total_for_labor": total_for_labor.quantize(Decimal("0.01")),
@@ -160,14 +161,16 @@ def payroll_page():
         categories = db.get_employee_categories()
         manual_tips = db.get_weekly_tips(iso_week)
         weekly_cleaning = db.get_weekly_cleaning(iso_week)
+        weekly_bonus = db.get_weekly_bonus(iso_week)
 
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning)
+        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning, weekly_bonus)
 
         # Totals
         total_hours = sum(p["hours"] for p in payroll)
         total_gross = sum(p["gross"] for p in payroll)
         total_tips = sum(p["tips"] for p in payroll)
         total_cleaning = sum(p["cleaning"] for p in payroll)
+        total_bonus = sum(p["bonus"] for p in payroll)
         grand_total = sum(p["total"] for p in payroll)
         total_labor = sum(p["total_for_labor"] for p in payroll)
 
@@ -183,7 +186,7 @@ def payroll_page():
         error = None
     except Exception as e:
         payroll = []
-        total_hours = total_gross = total_tips = total_cleaning = grand_total = total_labor = Decimal("0")
+        total_hours = total_gross = total_tips = total_cleaning = total_bonus = grand_total = total_labor = Decimal("0")
         um_total = mgmt_total = staff_total = Decimal("0")
         prev_week = next_week = iso_week
         is_finalized = False
@@ -199,6 +202,7 @@ def payroll_page():
         total_gross=total_gross,
         total_tips=total_tips,
         total_cleaning=total_cleaning,
+        total_bonus=total_bonus,
         grand_total=grand_total,
         total_labor=total_labor,
         um_total=um_total,
@@ -225,6 +229,7 @@ def save_tips():
 
     tips_by_employee = {}
     cleaning_by_employee = {}
+    bonus_by_employee = {}
     for key in request.form:
         if key.startswith("tip_"):
             tm_id = key.replace("tip_", "")
@@ -238,13 +243,21 @@ def save_tips():
                 cleaning_by_employee[tm_id] = float(request.form[key] or 0)
             except (ValueError, TypeError):
                 cleaning_by_employee[tm_id] = 0
+        elif key.startswith("bonus_"):
+            tm_id = key.replace("bonus_", "")
+            try:
+                bonus_by_employee[tm_id] = float(request.form[key] or 0)
+            except (ValueError, TypeError):
+                bonus_by_employee[tm_id] = 0
 
     if tips_by_employee:
         db.bulk_set_weekly_tips(iso_week, tips_by_employee)
     if cleaning_by_employee:
         db.bulk_set_weekly_cleaning(iso_week, cleaning_by_employee)
+    if bonus_by_employee:
+        db.bulk_set_weekly_bonus(iso_week, bonus_by_employee)
 
-    flash(f"Tips & cleaning saved for {iso_week}.", "success")
+    flash(f"Tips, cleaning & bonus saved for {iso_week}.", "success")
     return redirect(url_for("payroll.payroll_page", week=iso_week))
 
 
@@ -298,7 +311,8 @@ def download_peter():
         categories = db.get_employee_categories()
         manual_tips = db.get_weekly_tips(iso_week)
         weekly_cleaning = db.get_weekly_cleaning(iso_week)
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning)
+        weekly_bonus = db.get_weekly_bonus(iso_week)
+        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning, weekly_bonus)
 
         # Get sales for the summary
         try:
@@ -326,7 +340,8 @@ def download_raw():
         categories = db.get_employee_categories()
         manual_tips = db.get_weekly_tips(iso_week)
         weekly_cleaning = db.get_weekly_cleaning(iso_week)
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning)
+        weekly_bonus = db.get_weekly_bonus(iso_week)
+        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning, weekly_bonus)
 
         raw_data = [{
             "employee_id": p["given_name"] + " " + p["family_name"],

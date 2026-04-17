@@ -100,6 +100,16 @@ def init_db():
             finalized_at TIMESTAMP NOT NULL,
             finalized_by TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS weekly_bonus (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_member_id TEXT NOT NULL,
+            iso_week TEXT NOT NULL,
+            bonus REAL NOT NULL DEFAULT 0,
+            note TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(team_member_id, iso_week)
+        );
     """)
 
     # Migration: add weekly_salary and pay_type columns if missing
@@ -398,6 +408,36 @@ def bulk_set_weekly_cleaning(iso_week, cleaning_by_employee):
                VALUES (?, ?, ?, ?)
                ON CONFLICT(team_member_id, iso_week) DO UPDATE SET
                    cleaning=excluded.cleaning,
+                   updated_at=excluded.updated_at""",
+            (tm_id, iso_week, float(amount or 0), now),
+        )
+    conn.commit()
+    conn.close()
+
+
+# --- Weekly Bonus (manually entered per week, same rules as tips) ---
+
+def get_weekly_bonus(iso_week):
+    """Returns {team_member_id: bonus_amount} for the given week."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT team_member_id, bonus FROM weekly_bonus WHERE iso_week = ?",
+        (iso_week,),
+    ).fetchall()
+    conn.close()
+    return {r["team_member_id"]: r["bonus"] for r in rows}
+
+
+def bulk_set_weekly_bonus(iso_week, bonus_by_employee):
+    """Save multiple bonus amounts at once."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    for tm_id, amount in bonus_by_employee.items():
+        conn.execute(
+            """INSERT INTO weekly_bonus (team_member_id, iso_week, bonus, updated_at)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(team_member_id, iso_week) DO UPDATE SET
+                   bonus=excluded.bonus,
                    updated_at=excluded.updated_at""",
             (tm_id, iso_week, float(amount or 0), now),
         )
