@@ -1,7 +1,7 @@
 """Cobblestone Pub Management App."""
 
 from functools import wraps
-from flask import Flask, redirect, url_for, request, Response
+from flask import Flask, redirect, url_for, request, Response, render_template
 from datetime import date
 import os
 import re
