@@ -85,6 +85,21 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(team_member_id, iso_week)
         );
+
+        CREATE TABLE IF NOT EXISTS weekly_cleaning (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_member_id TEXT NOT NULL,
+            iso_week TEXT NOT NULL,
+            cleaning REAL NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(team_member_id, iso_week)
+        );
+
+        CREATE TABLE IF NOT EXISTS finalized_weeks (
+            iso_week TEXT PRIMARY KEY,
+            finalized_at TIMESTAMP NOT NULL,
+            finalized_by TEXT
+        );
     """)
 
     # Migration: add weekly_salary and pay_type columns if missing
@@ -358,6 +373,80 @@ def bulk_set_weekly_tips(iso_week, tips_by_employee):
         )
     conn.commit()
     conn.close()
+
+
+# --- Weekly Cleaning (editable per week, defaults to employee_categories.cleaning_amount) ---
+
+def get_weekly_cleaning(iso_week):
+    """Returns {team_member_id: cleaning_amount} for any overrides this week."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT team_member_id, cleaning FROM weekly_cleaning WHERE iso_week = ?",
+        (iso_week,),
+    ).fetchall()
+    conn.close()
+    return {r["team_member_id"]: r["cleaning"] for r in rows}
+
+
+def bulk_set_weekly_cleaning(iso_week, cleaning_by_employee):
+    """Save multiple cleaning overrides at once."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    for tm_id, amount in cleaning_by_employee.items():
+        conn.execute(
+            """INSERT INTO weekly_cleaning (team_member_id, iso_week, cleaning, updated_at)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(team_member_id, iso_week) DO UPDATE SET
+                   cleaning=excluded.cleaning,
+                   updated_at=excluded.updated_at""",
+            (tm_id, iso_week, float(amount or 0), now),
+        )
+    conn.commit()
+    conn.close()
+
+
+# --- Week finalization (locks payroll from editing) ---
+
+def is_week_finalized(iso_week):
+    """Check if a payroll week has been finalized."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT iso_week FROM finalized_weeks WHERE iso_week = ?",
+        (iso_week,),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def finalize_week(iso_week, finalized_by="admin"):
+    """Mark a week as finalized (locks payroll data)."""
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO finalized_weeks (iso_week, finalized_at, finalized_by)
+           VALUES (?, ?, ?)
+           ON CONFLICT(iso_week) DO NOTHING""",
+        (iso_week, datetime.now().isoformat(), finalized_by),
+    )
+    conn.commit()
+    conn.close()
+
+
+def unfinalize_week(iso_week):
+    """Unlock a finalized week."""
+    conn = get_db()
+    conn.execute("DELETE FROM finalized_weeks WHERE iso_week = ?", (iso_week,))
+    conn.commit()
+    conn.close()
+
+
+def get_finalized_weeks():
+    """Return list of finalized week info."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT iso_week, finalized_at, finalized_by FROM finalized_weeks ORDER BY iso_week DESC"
+    ).fetchall()
+    conn.close()
+    return rows
 
 
 # --- Cache ---

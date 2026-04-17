@@ -1,9 +1,12 @@
 from flask import Blueprint, render_template, request, send_file, flash, redirect, url_for
 from decimal import Decimal
 from datetime import date
+import secrets
 import square_client
 import db
 import excel_export
+import config
+import tips_historical_import
 
 bp = Blueprint("payroll", __name__)
 
@@ -26,16 +29,21 @@ def _get_week_params():
     return year, week, start_date, end_date, label, iso_week
 
 
-def _build_payroll_data(timecards, team_members, categories, manual_tips=None):
-    """Assemble payroll data from timecards, team members, categories + manual tips.
+def _build_payroll_data(timecards, team_members, categories, manual_tips=None, weekly_cleaning=None):
+    """Assemble payroll data from timecards, team members, categories + manual tips/cleaning.
 
     Tips are NOT pulled from Square - they come from the manual_tips dict
     (keyed by team_member_id). Square tip fields are ignored.
+
+    Cleaning uses the weekly_cleaning override if present, else falls back to
+    the employee's default from employee_categories.cleaning_amount.
 
     Returns list of employee payroll dicts sorted by category then name.
     """
     if manual_tips is None:
         manual_tips = {}
+    if weekly_cleaning is None:
+        weekly_cleaning = {}
 
     # Index team members and categories
     members_by_id = {m["id"]: m for m in team_members}
@@ -88,7 +96,14 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None):
         given_name = member.get("given_name", cat_row["given_name"] if cat_row else "Unknown")
         family_name = member.get("family_name", cat_row["family_name"] if cat_row else "")
         category = cat_row["category"] if cat_row else "Staff"
-        cleaning = Decimal(str(cat_row["cleaning_amount"])) if cat_row else Decimal("0")
+
+        # Cleaning: weekly override > employee default > 0
+        default_cleaning = Decimal(str(cat_row["cleaning_amount"])) if cat_row else Decimal("0")
+        if tm_id in weekly_cleaning:
+            cleaning = Decimal(str(weekly_cleaning[tm_id]))
+        else:
+            cleaning = default_cleaning
+
         pay_type = cat_row["pay_type"] if cat_row else "hourly"
         weekly_salary = Decimal(str(cat_row["weekly_salary"])) if cat_row else Decimal("0")
 
@@ -144,8 +159,9 @@ def payroll_page():
         team_members = square_client.get_team_members()
         categories = db.get_employee_categories()
         manual_tips = db.get_weekly_tips(iso_week)
+        weekly_cleaning = db.get_weekly_cleaning(iso_week)
 
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips)
+        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning)
 
         # Totals
         total_hours = sum(p["hours"] for p in payroll)
@@ -163,12 +179,14 @@ def payroll_page():
         prev_week = f"{year}-W{week-1:02d}" if week > 1 else f"{year-1}-W52"
         next_week = f"{year}-W{week+1:02d}" if week < 52 else f"{year+1}-W01"
 
+        is_finalized = db.is_week_finalized(iso_week)
         error = None
     except Exception as e:
         payroll = []
         total_hours = total_gross = total_tips = total_cleaning = grand_total = total_labor = Decimal("0")
         um_total = mgmt_total = staff_total = Decimal("0")
         prev_week = next_week = iso_week
+        is_finalized = False
         error = str(e)
 
     return render_template("payroll.html",
@@ -188,22 +206,25 @@ def payroll_page():
         staff_total=staff_total,
         prev_week=prev_week,
         next_week=next_week,
+        is_finalized=is_finalized,
         error=error,
     )
 
 
 @bp.route("/payroll/tips", methods=["POST"])
 def save_tips():
-    """Save manually-entered tips for a week.
-
-    Tips are NEVER pulled from Square - they must be entered here.
-    """
+    """Save manually-entered tips + cleaning for a week. Blocked if week finalized."""
     iso_week = request.form.get("iso_week")
     if not iso_week:
         flash("Missing week.", "danger")
         return redirect(url_for("payroll.payroll_page"))
 
+    if db.is_week_finalized(iso_week):
+        flash(f"{iso_week} is finalized. Unlock it first to make changes.", "warning")
+        return redirect(url_for("payroll.payroll_page", week=iso_week))
+
     tips_by_employee = {}
+    cleaning_by_employee = {}
     for key in request.form:
         if key.startswith("tip_"):
             tm_id = key.replace("tip_", "")
@@ -211,11 +232,59 @@ def save_tips():
                 tips_by_employee[tm_id] = float(request.form[key] or 0)
             except (ValueError, TypeError):
                 tips_by_employee[tm_id] = 0
+        elif key.startswith("clean_"):
+            tm_id = key.replace("clean_", "")
+            try:
+                cleaning_by_employee[tm_id] = float(request.form[key] or 0)
+            except (ValueError, TypeError):
+                cleaning_by_employee[tm_id] = 0
 
     if tips_by_employee:
         db.bulk_set_weekly_tips(iso_week, tips_by_employee)
-        flash(f"Tips saved for {iso_week}.", "success")
+    if cleaning_by_employee:
+        db.bulk_set_weekly_cleaning(iso_week, cleaning_by_employee)
 
+    flash(f"Tips & cleaning saved for {iso_week}.", "success")
+    return redirect(url_for("payroll.payroll_page", week=iso_week))
+
+
+@bp.route("/payroll/import-tips", methods=["POST"])
+def import_tips():
+    """One-time import of historical tips from the V1 tips spreadsheet."""
+    try:
+        result = tips_historical_import.run_import()
+        flash(
+            f"Imported tips for {result['weeks']} weeks ({result['records']} records).",
+            "success",
+        )
+    except Exception as e:
+        flash(f"Tips import failed: {str(e)}", "danger")
+    return redirect(url_for("payroll.payroll_page"))
+
+
+@bp.route("/payroll/finalize", methods=["POST"])
+def finalize():
+    iso_week = request.form.get("iso_week")
+    if not iso_week:
+        flash("Missing week.", "danger")
+        return redirect(url_for("payroll.payroll_page"))
+    db.finalize_week(iso_week, finalized_by=config.AUTH_USERNAME or "local")
+    flash(f"{iso_week} finalized. Tips and cleaning are now locked.", "success")
+    return redirect(url_for("payroll.payroll_page", week=iso_week))
+
+
+@bp.route("/payroll/unlock", methods=["POST"])
+def unlock():
+    iso_week = request.form.get("iso_week")
+    admin_pw = request.form.get("admin_password", "")
+    if not iso_week:
+        flash("Missing week.", "danger")
+        return redirect(url_for("payroll.payroll_page"))
+    if not secrets.compare_digest(admin_pw, config.ADMIN_PASSWORD):
+        flash("Incorrect admin password. Week remains locked.", "danger")
+        return redirect(url_for("payroll.payroll_page", week=iso_week))
+    db.unfinalize_week(iso_week)
+    flash(f"{iso_week} unlocked. You can edit it now.", "success")
     return redirect(url_for("payroll.payroll_page", week=iso_week))
 
 
@@ -228,7 +297,8 @@ def download_peter():
         team_members = square_client.get_team_members()
         categories = db.get_employee_categories()
         manual_tips = db.get_weekly_tips(iso_week)
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips)
+        weekly_cleaning = db.get_weekly_cleaning(iso_week)
+        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning)
 
         # Get sales for the summary
         try:
@@ -255,7 +325,8 @@ def download_raw():
         team_members = square_client.get_team_members()
         categories = db.get_employee_categories()
         manual_tips = db.get_weekly_tips(iso_week)
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips)
+        weekly_cleaning = db.get_weekly_cleaning(iso_week)
+        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning)
 
         raw_data = [{
             "employee_id": p["given_name"] + " " + p["family_name"],

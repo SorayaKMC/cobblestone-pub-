@@ -69,6 +69,19 @@ html, body{overflow-x:hidden;max-width:100vw}
 </div>
 
 <div class="sec">
+  <div class="sec-lbl">This week — daily sales vs 2026 average</div>
+  <div class="box">
+    <div class="ct">{{ current_week_label }} ({{ current_week_dates }}) vs 2026 daily average</div>
+    <canvas id="c-current-vs-avg" height="180"></canvas>
+    <div class="lgnd">
+      <span><span class="ldot" style="background:#3b82f6"></span>This week</span>
+      <span><span class="ldot" style="background:#c8bfb0"></span>2026 daily avg</span>
+    </div>
+    <div class="note">Average excludes current partial week.</div>
+  </div>
+</div>
+
+<div class="sec">
   <div class="sec-lbl">Sales &amp; labour</div>
   <div class="stack">
     <div class="box">
@@ -177,6 +190,7 @@ var MERCH = {{ merch_json|safe }};
 var PAYROLL_DATA = {{ payroll_json|safe }};
 var HRS = {{ hrs_json|safe }};
 var VAT_DATA = {{ vat_json|safe }};
+var CURRENT_VS_AVG = {{ current_vs_avg_json|safe }};
 
 var DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
@@ -393,7 +407,24 @@ function stackedBarChart(id, h, labels, bottom, middle, top, bColor, mColor, tCo
 // ─── DRAW ALL CHARTS ─────────────────────────────────────────────────────────
 var wkLabels = WKS.map(function(w){return w.wk;});
 
+function drawCurrentVsAvg(){
+  var labels = CURRENT_VS_AVG.map(function(d){return d.d;});
+  var currentData = CURRENT_VS_AVG.map(function(d){return d.current;});
+  var avgData = CURRENT_VS_AVG.map(function(d){return d.avg;});
+  var maxVal = Math.max.apply(null, currentData.concat(avgData));
+  if(maxVal === 0) maxVal = 1000;
+  var yMax = Math.ceil(maxVal/1000)*1000 + 1000;
+  barChart("c-current-vs-avg", 180, labels,
+    [{data: avgData, color:"#c8bfb0"},
+     {data: currentData, color: currentData.map(function(v,i){
+        if(v === 0) return "#e5e5e5";
+        return v >= avgData[i] ? "#16a34a" : "#ef4444";
+     })}],
+    yMax, function(v){return "\u20ac"+(v/1000).toFixed(1)+"k";});
+}
+
 function drawAll(){
+  drawCurrentVsAvg();
   var salesMax=Math.max.apply(null,WKS.map(function(w){return Math.max(w.n25||0, w.n26);}));
   var salesYMax=Math.ceil(salesMax/5000)*5000+5000;
   barChart("c-sales", 200, wkLabels,

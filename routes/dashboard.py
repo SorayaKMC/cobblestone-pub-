@@ -560,6 +560,26 @@ def dashboard_page():
     if not hrs:
         hrs = [{"d": d, "h": 0, "s": 0} for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]]
 
+    # Current week daily sales vs 2026 daily average (by day-of-week)
+    # Average is computed over COMPLETED weeks only (excludes current partial week)
+    _curr_lbl = f"W{current_week:02d}"
+    current_daily = daily.get(_curr_lbl, [0] * 7)
+    daily_sums = [0.0] * 7
+    daily_counts = [0] * 7
+    for wk_lbl, d_arr in daily.items():
+        if wk_lbl == _curr_lbl:
+            continue  # skip current (partial) week from average
+        for i in range(7):
+            if d_arr[i] > 0:
+                daily_sums[i] += d_arr[i]
+                daily_counts[i] += 1
+    daily_avg = [round(daily_sums[i] / daily_counts[i], 0) if daily_counts[i] > 0 else 0 for i in range(7)]
+
+    current_vs_avg = [
+        {"d": d, "current": current_daily[i], "avg": daily_avg[i]}
+        for i, d in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+    ]
+
     # T-shirt totals (revenue from cached weekly data)
     tshirt_total_units = sum(tshirt_weekly)
     tshirt_total_revenue = round(tshirt_total_units * 20)  # €20/unit average
@@ -604,6 +624,7 @@ def dashboard_page():
         payroll_json=json.dumps(payroll_data),
         hrs_json=json.dumps(hrs),
         vat_json=json.dumps(vat_periods),
+        current_vs_avg_json=json.dumps(current_vs_avg),
         tshirt_price=20,
         tshirt_total_units=tshirt_total_units,
         tshirt_total_revenue=tshirt_total_revenue,

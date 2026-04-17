@@ -12,6 +12,10 @@ AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "")
 # Disable auth entirely when running locally (no AUTH_USERNAME set)
 AUTH_ENABLED = bool(AUTH_USERNAME and AUTH_PASSWORD)
 
+# Admin password for unlocking finalized payroll weeks (separate from login)
+# If not set, defaults to the main AUTH_PASSWORD
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "") or AUTH_PASSWORD or "unlock2026"
+
 LOCATION_IDS = {
     "back_room": "LVTMD7JYHNV9E",
     "main_bar": "L72Q03M0KGGFR",
@@ -44,8 +48,11 @@ DEFAULT_CATEGORIES = {
 }
 
 # Default cleaning allowances (team_member_id -> weekly EUR amount)
-# Set to 0 for employees without cleaning allowance
-DEFAULT_CLEANING = {}
+# These act as the baseline if no weekly override is set
+DEFAULT_CLEANING = {
+    "TMUabsLvWiJhkG2M": 85,   # Nheaca Smyth
+    "TMkRH2KDKOoI8Vac": 350,  # Muhammed Naeem
+}
 
 # Default salary info (team_member_id -> (weekly_salary, pay_type))
 # From existing "for Peter" payroll sheets
