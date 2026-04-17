@@ -79,11 +79,16 @@ def extract_pdf_text(pdf_path):
     return "", True
 
 
+# Model names for this account's access tier
+MODEL_TEXT = "claude-haiku-4-5-20251001"      # fast + cheap for text extraction
+MODEL_VISION = "claude-sonnet-4-5-20250929"   # better for scanned/image PDFs
+
+
 def extract_with_text(text):
     """Send extracted text to Claude for structured extraction."""
     client = _anthropic_client()
     resp = client.messages.create(
-        model="claude-3-5-haiku-latest",  # fast + cheap for text
+        model=MODEL_TEXT,
         max_tokens=512,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": f"Extract from this invoice text:\n\n{text[:8000]}"}],
@@ -93,14 +98,14 @@ def extract_with_text(text):
 
 
 def extract_with_vision(pdf_path):
-    """Fallback: send PDF as image to Claude vision model."""
+    """Fallback: send PDF directly to Claude vision model."""
     client = _anthropic_client()
     with open(pdf_path, "rb") as f:
         pdf_bytes = f.read()
     b64 = base64.b64encode(pdf_bytes).decode()
 
     resp = client.messages.create(
-        model="claude-3-5-sonnet-latest",  # vision
+        model=MODEL_VISION,
         max_tokens=512,
         system=SYSTEM_PROMPT,
         messages=[{

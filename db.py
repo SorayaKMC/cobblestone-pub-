@@ -555,19 +555,37 @@ def list_suppliers():
 
 
 def find_supplier_by_name(name):
-    """Case-insensitive match on supplier name (with LIKE fallback)."""
+    """Match supplier name - exact, then substring-in-either-direction.
+
+    E.g. extracted 'Diageo Ireland' should match directory 'Diageo',
+    and extracted 'BWG' should match directory 'BWG Foods'.
+    """
+    if not name:
+        return None
     conn = get_db()
-    row = conn.execute(
-        "SELECT * FROM suppliers WHERE LOWER(name) = LOWER(?)", (name,)
-    ).fetchone()
-    if not row:
-        # Fuzzy match - supplier name contains the search term
-        row = conn.execute(
-            "SELECT * FROM suppliers WHERE LOWER(name) LIKE LOWER(?) LIMIT 1",
-            (f"%{name}%",),
-        ).fetchone()
+    name_low = name.lower().strip()
+
+    # 1. Exact (case-insensitive)
+    row = conn.execute("SELECT * FROM suppliers WHERE LOWER(name) = ?", (name_low,)).fetchone()
+    if row:
+        conn.close()
+        return row
+
+    # 2. Directory name is contained in extracted name (e.g. directory="Diageo", extracted="Diageo Ireland")
+    all_suppliers = conn.execute("SELECT * FROM suppliers ORDER BY LENGTH(name) DESC").fetchall()
+    for s in all_suppliers:
+        if s["name"].lower() in name_low:
+            conn.close()
+            return s
+
+    # 3. Extracted name is contained in directory name (e.g. extracted="BWG", directory="BWG Foods")
+    for s in all_suppliers:
+        if name_low in s["name"].lower():
+            conn.close()
+            return s
+
     conn.close()
-    return row
+    return None
 
 
 def add_supplier(name, default_vat_rate=23, default_category=None, vat_number=None):
