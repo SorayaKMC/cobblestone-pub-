@@ -204,6 +204,73 @@ def create_app():
     def healthz():
         return "ok", 200
 
+    # ── One-time admin import endpoint ────────────────────────────────────
+    # Protected by ADMIN_PASSWORD. Upload the xlsx, runs the historical
+    # import, shows results. Safe to leave in place — locked behind password.
+    @app.route("/admin/import-bookings", methods=["GET", "POST"])
+    def admin_import_bookings():
+        import tempfile, os as _os
+
+        # Simple password gate (POST param or query string)
+        provided = (request.form.get("password") or
+                    request.args.get("password") or "")
+        authed = secrets.compare_digest(provided, config.ADMIN_PASSWORD)
+
+        if request.method == "GET":
+            # Show login form (no password submitted yet)
+            return render_template("admin_import.html",
+                                   authed=False, results=None, error=None)
+
+        if not authed:
+            return render_template("admin_import.html",
+                                   authed=False, results=None,
+                                   error="Wrong password — try again.")
+
+        # Password correct — check for file
+        f = request.files.get("xlsx")
+        if not f or not f.filename:
+            return render_template("admin_import.html",
+                                   authed=True, results=None,
+                                   error="No file selected.")
+
+        if not f.filename.lower().endswith(".xlsx"):
+            return render_template("admin_import.html",
+                                   authed=True, results=None,
+                                   error="Please upload a .xlsx file.")
+
+        # Save to a temp file and run the import
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                f.save(tmp.name)
+                tmp_path = tmp.name
+
+            from openpyxl import load_workbook
+            import bookings_historical_import as bhi
+
+            db.init_db()
+            wb = load_workbook(tmp_path, data_only=True)
+            results = {}
+
+            if "Bookings" in wb.sheetnames:
+                ins, skip, err = bhi.import_main_sheet(wb["Bookings"], dry_run=False)
+                results["Bookings"] = {"inserted": ins, "skipped": skip, "errors": err}
+
+            archive_name = next((n for n in wb.sheetnames if n.startswith("Archive")), None)
+            if archive_name:
+                ins, skip, err = bhi.import_archive_sheet(wb[archive_name], dry_run=False)
+                results[archive_name] = {"inserted": ins, "skipped": skip, "errors": err}
+
+            counts = db.booking_counts()
+            _os.unlink(tmp_path)
+
+            return render_template("admin_import.html",
+                                   authed=True, results=results,
+                                   counts=counts, error=None)
+        except Exception as e:
+            return render_template("admin_import.html",
+                                   authed=True, results=None,
+                                   error=f"Import failed: {e}")
+
     return app
 
 
