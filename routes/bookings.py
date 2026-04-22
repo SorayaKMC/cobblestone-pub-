@@ -1,13 +1,16 @@
 """Backroom & Upstairs booking management routes.
 
-Phase 1 of the booking-system rebuild: internal-only tracker that replaces
-Backroom_Booking_Tracker.xlsx. Public band-facing routes (Phase 2),
-Squarespace block + auto-confirm emails (Phase 3), and Square payment
-links (Phase 4) land in subsequent commits.
+Internal tracker (Phase 1) + public band-facing routes (Phase 2).
+Squarespace block + auto-confirm emails land in Phase 3.
+Square payment links land in Phase 4.
 """
 
+import os
+import re
 from datetime import date, datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask import (Blueprint, render_template, request, redirect, url_for,
+                   flash, abort, jsonify, send_file)
+import config
 import db
 
 
@@ -273,3 +276,219 @@ def add_note(booking_id):
     db.add_booking_audit(booking_id, "internal", "note", note)
     flash("Note added.", "success")
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+
+# ─── Internal: attachment download ──────────────────────────────────────────
+
+@bp.route("/bookings/<int:booking_id>/attachment/<int:att_id>")
+def booking_attachment(booking_id, att_id):
+    """Serve an uploaded file for internal staff review."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+    att = next((a for a in db.get_booking_attachments(booking_id) if a["id"] == att_id), None)
+    if not att:
+        abort(404)
+    return send_file(att["file_path"], as_attachment=True, download_name=att["filename"])
+
+
+# ─── Public: band-facing routes (/book/...) ─────────────────────────────────
+
+def _parse_public_form(form):
+    """Parse the public band-facing booking form with stricter validation."""
+    def _opt(key, default=None):
+        v = (form.get(key) or "").strip()
+        return v if v else default
+
+    act_name = _opt("act_name")
+    if not act_name:
+        raise ValueError("Act / event name is required.")
+
+    contact_name = _opt("contact_name")
+    if not contact_name:
+        raise ValueError("Your name is required.")
+
+    contact_email = _opt("contact_email")
+    if not contact_email or "@" not in contact_email:
+        raise ValueError("A valid email address is required.")
+
+    event_date = _opt("event_date")
+    if not event_date:
+        raise ValueError("Please select a date on the calendar.")
+    if event_date < _today_iso():
+        raise ValueError("Please select a future date.")
+
+    try:
+        dow = datetime.strptime(event_date, "%Y-%m-%d").strftime("%A")
+    except Exception:
+        dow = None
+
+    return {
+        "venue":               _opt("venue", "Backroom"),
+        "event_date":          event_date,
+        "day_of_week":         dow,
+        "door_time":           None,
+        "start_time":          None,
+        "end_time":            None,
+        "status":              "inquiry",
+        "event_type":          _opt("event_type", "Gig"),
+        "act_name":            act_name,
+        "contact_name":        contact_name,
+        "contact_email":       contact_email,
+        "contact_phone":       _opt("contact_phone"),
+        "expected_attendance": None,
+        "description":         _opt("description"),
+        "media_links":         _opt("media_links"),
+        "ticketing":           None,
+        "ticket_price":        None,
+        "ticket_link":         None,
+        "door_person":         None,
+        "door_fee_required":   0,
+        "venue_fee_required":  1,
+        "announcement_date":   None,
+        "support_act":         None,
+        "promo_ok":            None,
+        "notes":               None,
+        "source":              "web",
+    }
+
+
+@bp.route("/book", methods=["GET"])
+def book_form():
+    """Public booking inquiry form."""
+    return render_template(
+        "book_public.html",
+        venues=VENUES,
+        event_types=EVENT_TYPES,
+        form_data={},
+    )
+
+
+@bp.route("/book", methods=["POST"])
+def book_submit():
+    """Handle public booking form submission."""
+    try:
+        data = _parse_public_form(request.form)
+        bid = db.save_booking(data)
+        booking = db.get_booking(bid)
+        db.add_booking_audit(bid, "band", "created", "Submitted via public booking form")
+
+        # Auto-ack email — non-blocking, failure does not break the flow
+        try:
+            import bookings_email
+            base_url = request.host_url.rstrip("/")
+            bookings_email.send_booking_ack(booking, base_url)
+        except Exception as email_err:
+            print(f"[bookings] Auto-ack email failed: {email_err}")
+
+        flash("Your inquiry has been received! We'll be in touch within 2–3 working days.", "success")
+        return redirect(url_for("bookings.book_portal", token=booking["public_token"]))
+
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"Something went wrong — please try again. ({e})", "danger")
+
+    return render_template(
+        "book_public.html",
+        venues=VENUES,
+        event_types=EVENT_TYPES,
+        form_data=request.form,
+    )
+
+
+@bp.route("/book/availability.json")
+def availability_json():
+    """Return date→status map for the availability calendar (no auth required)."""
+    venue = request.args.get("venue", "Backroom")
+    today = _today_iso()
+
+    rows = db.list_bookings(
+        status=["confirmed", "tentative"],
+        venue=venue,
+        start_date=today,
+    )
+
+    statuses = {}
+    for b in rows:
+        d = b["event_date"]
+        s = b["status"]
+        # confirmed wins over tentative — never downgrade
+        if s == "confirmed":
+            statuses[d] = "booked"
+        elif s == "tentative" and statuses.get(d) != "booked":
+            statuses[d] = "tentative"
+
+    return jsonify({"statuses": statuses, "venue": venue})
+
+
+@bp.route("/book/<token>")
+def book_portal(token):
+    """Band's booking portal — status, checklist, file uploads."""
+    booking = db.get_booking(token)
+    if not booking:
+        return render_template(
+            "book_portal.html",
+            booking=None,
+            attachments=[],
+            status_labels=STATUS_LABELS,
+            status_badges=STATUS_BADGES,
+        ), 404
+
+    return render_template(
+        "book_portal.html",
+        booking=booking,
+        attachments=db.get_booking_attachments(booking["id"]),
+        status_labels=STATUS_LABELS,
+        status_badges=STATUS_BADGES,
+    )
+
+
+@bp.route("/book/<token>/upload", methods=["POST"])
+def book_upload(token):
+    """Accept a file upload from the band portal."""
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+
+    if booking["status"] in ("cancelled", "completed"):
+        flash("This booking is no longer accepting uploads.", "warning")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    f = request.files.get("file")
+    if not f or not f.filename:
+        flash("No file selected.", "warning")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    ext = os.path.splitext(f.filename)[1].lower()
+    if ext not in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf"}:
+        flash("Only images (JPG, PNG, GIF, WebP) and PDFs are accepted.", "danger")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    kind = request.form.get("kind", "other")
+    booking_id = booking["id"]
+    upload_dir = os.path.join(config.BOOKING_UPLOADS_DIR, str(booking_id))
+    os.makedirs(upload_dir, exist_ok=True)
+
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_name = re.sub(r"[^\w.\-]", "_", f.filename)
+    filepath = os.path.join(upload_dir, f"{stamp}_{safe_name}")
+    f.save(filepath)
+
+    db.add_booking_attachment(booking_id, kind, f.filename, filepath)
+    db.add_booking_audit(booking_id, "band", "uploaded", f"{kind}: {f.filename}")
+
+    flash(f"'{f.filename}' uploaded successfully.", "success")
+    return redirect(url_for("bookings.book_portal", token=token))
+
+
+@bp.route("/book/<token>/attachment/<int:att_id>")
+def book_attachment(token, att_id):
+    """Serve an uploaded file to the band via their portal token."""
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+    att = next((a for a in db.get_booking_attachments(booking["id"]) if a["id"] == att_id), None)
+    if not att:
+        abort(404)
+    return send_file(att["file_path"], as_attachment=True, download_name=att["filename"])

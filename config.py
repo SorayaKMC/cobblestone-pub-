@@ -46,6 +46,25 @@ INVOICES_DIR = os.getenv(
     os.path.join(os.path.dirname(os.getenv("DATABASE_PATH", ".")), "invoice_pdfs"),
 )
 
+# Where booking file uploads are stored (poster, bio, etc.)
+# On Render: /var/data/booking_uploads/   Locally: ./booking_uploads/
+BOOKING_UPLOADS_DIR = os.getenv(
+    "BOOKING_UPLOADS_DIR",
+    os.path.join(os.path.dirname(os.getenv("DATABASE_PATH", ".")), "booking_uploads"),
+)
+
+# SMTP email for booking notifications — all optional, emails skipped if absent
+SMTP_HOST     = os.getenv("SMTP_HOST", "")
+SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+# From address shown to bands (defaults to SMTP_USERNAME if not set)
+BOOKING_FROM     = os.getenv("BOOKING_FROM", "")
+# Reply-to address for booking emails
+BOOKING_REPLY_TO = os.getenv("BOOKING_REPLY_TO", "bookings@cobblestonepub.ie")
+# Public base URL used when building portal links in emails
+PUBLIC_BASE_URL  = os.getenv("PUBLIC_BASE_URL", "https://cobblestone-pub.onrender.com")
+
 # Seed suppliers - based on the March 2026 invoices folder.
 # Format: (name, default_vat_rate %, default_category)
 DEFAULT_SUPPLIERS = [

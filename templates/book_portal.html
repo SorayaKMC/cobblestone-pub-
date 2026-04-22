@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        {% if booking %}Your Booking — {{ booking.act_name }}{% else %}Booking Not Found{% endif %}
+        — Cobblestone Pub
+    </title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body { background: #f0f2f5; }
+        .checklist-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+        .checklist-item:last-child { margin-bottom: 0; }
+    </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="navbar navbar-dark bg-dark py-3">
+    <div class="container">
+        <span class="navbar-brand fw-bold fs-5">🍺 Cobblestone Pub</span>
+        <span class="text-secondary small">Booking Portal</span>
+    </div>
+</nav>
+
+<div class="container py-4 py-lg-5" style="max-width: 740px;">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- ── 404 case ─────────────────────────────────────────────────────── -->
+    {% if not booking %}
+    <div class="text-center py-5">
+        <i class="bi bi-question-circle text-muted" style="font-size:3rem;"></i>
+        <h4 class="mt-3">Booking not found</h4>
+        <p class="text-muted">
+            This link may have expired or been entered incorrectly.<br>
+            Check the link in your confirmation email, or
+            <a href="mailto:bookings@cobblestonepub.ie">contact us</a>.
+        </p>
+        <a href="/book" class="btn btn-outline-secondary mt-2">
+            <i class="bi bi-arrow-left me-1"></i>Back to booking form
+        </a>
+    </div>
+
+    {% else %}
+
+    <!-- ── Status banner ─────────────────────────────────────────────────── -->
+    {% if booking.status == 'inquiry' %}
+        <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-hourglass-split fs-4 me-3 flex-shrink-0"></i>
+            <div>
+                <strong>Inquiry Received</strong> —
+                Thanks for getting in touch! Tomás will review and get back to you
+                within 2–3 working days.
+            </div>
+        </div>
+    {% elif booking.status == 'tentative' %}
+        <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-clock fs-4 me-3 flex-shrink-0"></i>
+            <div>
+                <strong>Pending Confirmation</strong> —
+                We're checking a few details and will confirm your booking shortly.
+            </div>
+        </div>
+    {% elif booking.status == 'confirmed' %}
+        <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-check-circle fs-4 me-3 flex-shrink-0"></i>
+            <div>
+                <strong>Booking Confirmed! 🎉</strong> —
+                You're all set. See the details below.
+                {% if booking.door_time %}
+                    Doors open at <strong>{{ booking.door_time }}</strong>{% if booking.start_time %},
+                    start at <strong>{{ booking.start_time }}</strong>{% endif %}.
+                {% endif %}
+            </div>
+        </div>
+    {% elif booking.status == 'completed' %}
+        <div class="alert alert-secondary d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-flag fs-4 me-3 flex-shrink-0"></i>
+            <div>
+                <strong>Event Completed</strong> —
+                Thanks for performing at the Cobblestone! Hope to see you back soon.
+            </div>
+        </div>
+    {% elif booking.status == 'cancelled' %}
+        <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-x-circle fs-4 me-3 flex-shrink-0"></i>
+            <div>
+                <strong>Booking Cancelled</strong> —
+                This booking was cancelled. If you think this is a mistake, please
+                <a href="mailto:bookings@cobblestonepub.ie" class="alert-link">contact us</a>.
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- ── Booking summary ───────────────────────────────────────────────── -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-semibold">{{ booking.act_name }}</h5>
+            <span class="badge bg-{{ status_badges.get(booking.status, 'secondary') }} fs-6">
+                {{ status_labels.get(booking.status, booking.status) }}
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 small">
+                <div class="col-6 col-md-3">
+                    <div class="text-muted mb-1">Date</div>
+                    <div class="fw-semibold">{{ booking.event_date }}</div>
+                    {% if booking.day_of_week %}
+                    <div class="text-muted">{{ booking.day_of_week }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted mb-1">Venue</div>
+                    <div class="fw-semibold">{{ booking.venue }}</div>
+                </div>
+                {% if booking.door_time or booking.start_time %}
+                <div class="col-6 col-md-3">
+                    <div class="text-muted mb-1">Doors / Start</div>
+                    <div class="fw-semibold">
+                        {{ booking.door_time or '—' }} / {{ booking.start_time or '—' }}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="col-6 col-md-3">
+                    <div class="text-muted mb-1">Type</div>
+                    <div class="fw-semibold">{{ booking.event_type }}</div>
+                </div>
+                {% if booking.contact_name %}
+                <div class="col-6 col-md-4">
+                    <div class="text-muted mb-1">Contact</div>
+                    <div class="fw-semibold">{{ booking.contact_name }}</div>
+                </div>
+                {% endif %}
+                {% if booking.contact_email %}
+                <div class="col-12 col-md-8">
+                    <div class="text-muted mb-1">Email on file</div>
+                    <div class="fw-semibold">{{ booking.contact_email }}</div>
+                </div>
+                {% endif %}
+                {% if booking.ticketing %}
+                <div class="col-6 col-md-4">
+                    <div class="text-muted mb-1">Ticketing</div>
+                    <div class="fw-semibold">
+                        {{ booking.ticketing }}
+                        {% if booking.ticket_price %} — {{ booking.ticket_price }}{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if booking.description %}
+            <hr class="my-3">
+            <div class="small text-muted mb-1">Description</div>
+            <div class="small">{{ booking.description }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Checklist (active bookings only) ─────────────────────────────── -->
+    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6 class="card-title fw-semibold mb-3">Checklist</h6>
+
+            <div class="checklist-item">
+                <i class="bi bi-check-circle-fill text-success mt-1 flex-shrink-0 fs-5"></i>
+                <div>
+                    <div class="fw-semibold small">Inquiry submitted</div>
+                    <div class="text-muted" style="font-size:.82rem;">
+                        Submitted on {{ booking.created_at[:10] }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="checklist-item">
+                {% if booking.status == 'confirmed' %}
+                <i class="bi bi-check-circle-fill text-success mt-1 flex-shrink-0 fs-5"></i>
+                <div>
+                    <div class="fw-semibold small">Booking confirmed by Cobblestone Pub</div>
+                    {% if booking.confirmation_sent_at %}
+                    <div class="text-muted" style="font-size:.82rem;">
+                        Confirmed {{ booking.confirmation_sent_at[:10] }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <i class="bi bi-circle text-muted mt-1 flex-shrink-0 fs-5"></i>
+                <div class="small text-muted">
+                    Waiting for Tomás to confirm
+                    <span class="badge bg-light text-dark ms-1" style="font-size:.7rem;">
+                        2–3 working days
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% set has_poster = attachments | selectattr('kind', 'equalto', 'poster') | list %}
+            <div class="checklist-item">
+                {% if has_poster %}
+                <i class="bi bi-check-circle-fill text-success mt-1 flex-shrink-0 fs-5"></i>
+                <div class="small fw-semibold">Poster / artwork uploaded</div>
+                {% else %}
+                <i class="bi bi-circle text-muted mt-1 flex-shrink-0 fs-5"></i>
+                <div class="small text-muted">
+                    Upload a poster or event artwork
+                    <em class="ms-1">(helps us promote you on social media!)</em>
+                </div>
+                {% endif %}
+            </div>
+
+            {% set has_bio = attachments | selectattr('kind', 'equalto', 'bio') | list %}
+            <div class="checklist-item">
+                {% if has_bio %}
+                <i class="bi bi-check-circle-fill text-success mt-1 flex-shrink-0 fs-5"></i>
+                <div class="small fw-semibold">Artist bio / press info uploaded</div>
+                {% else %}
+                <i class="bi bi-circle text-muted mt-1 flex-shrink-0 fs-5"></i>
+                <div class="small text-muted">
+                    Upload an artist bio or press kit
+                    <em class="ms-1">(optional, but useful for the website listing)</em>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── File uploads (active bookings only) ──────────────────────────── -->
+    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6 class="card-title fw-semibold mb-1">Upload Files</h6>
+            <p class="text-muted small mb-3">
+                JPG, PNG, GIF, WebP, or PDF · max 10 MB per file
+            </p>
+
+            <form method="POST" action="/book/{{ booking.public_token }}/upload"
+                  enctype="multipart/form-data">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small mb-1">File type</label>
+                        <select name="kind" class="form-select form-select-sm">
+                            <option value="poster">Poster / artwork</option>
+                            <option value="bio">Artist bio / press kit</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small mb-1">Choose file</label>
+                        <input type="file" name="file" class="form-control form-control-sm"
+                               accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                            <i class="bi bi-upload"></i> Upload
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            {% if attachments %}
+            <hr class="my-3">
+            <p class="text-muted small mb-2">Uploaded files:</p>
+            <ul class="list-unstyled mb-0 small">
+                {% for a in attachments %}
+                <li class="mb-2 d-flex align-items-center gap-2">
+                    <i class="bi bi-paperclip text-muted flex-shrink-0"></i>
+                    <a href="/book/{{ booking.public_token }}/attachment/{{ a.id }}"
+                       class="text-decoration-none">{{ a.filename }}</a>
+                    <span class="badge bg-light text-muted" style="font-size:.7rem;">
+                        {{ a.kind }}
+                    </span>
+                    <span class="text-muted" style="font-size:.75rem;">
+                        {{ a.uploaded_at[:10] }}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}{# end booking check #}
+
+    <!-- ── Footer / contact ─────────────────────────────────────────────── -->
+    <div class="text-center text-muted py-3" style="font-size:.82rem;">
+        <p class="mb-1">
+            Questions? Email
+            <a href="mailto:bookings@cobblestonepub.ie" class="text-muted">
+                bookings@cobblestonepub.ie
+            </a>
+        </p>
+        <a href="https://cobblestonepub.ie" class="text-muted text-decoration-none">
+            cobblestonepub.ie
+        </a>
+        &nbsp;·&nbsp; 77 King St N, Smithfield, Dublin 7
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

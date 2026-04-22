@@ -117,6 +117,7 @@ def require_auth(f):
 def create_app():
     app = Flask(__name__)
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "cobblestone-pub-local-app-2026")
+    app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB file upload limit
 
     @app.context_processor
     def inject_globals():
@@ -141,6 +142,9 @@ def create_app():
         def protect_all():
             # Allow static files and health checks without auth
             if request.endpoint in ("static", "healthz"):
+                return None
+            # Public booking form + band portal (no auth required)
+            if request.path.startswith("/book"):
                 return None
             auth = request.authorization
             if not auth or not check_auth(auth.username, auth.password):
