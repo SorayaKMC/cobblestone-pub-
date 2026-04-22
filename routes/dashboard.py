@@ -647,23 +647,45 @@ def dashboard_trend():
 
 @bp.route("/dashboard/refresh", methods=["POST"])
 def refresh_dashboard():
-    """Force-clear the dashboard cache so next load fetches fresh from Square."""
+    """Force-clear the dashboard cache so next load fetches fresh from Square.
+
+    Clears current week unconditionally, plus any recent completed week whose
+    cache was written before that week actually ended (catches the case where
+    a mid-week sync got frozen as the "completed" snapshot at week rollover).
+    """
     from flask import redirect, url_for, flash
     current_year, current_week = square_client.current_week()
     conn = db.get_db()
-    # Only clear CURRENT-week caches + VAT + hours-by-day. Historic stays cached.
+
+    keys_to_clear = [
+        f"week_sales_v3_{current_year}_W{current_week:02d}",
+        f"week_payroll_{current_year}_W{current_week:02d}",
+        f"timecard_hours_by_day_{current_year}_W{current_week:02d}",
+        f"vat_periods_{current_year}",
+    ]
+
+    # Also re-clear any completed week in the last 4 weeks whose cache was
+    # written before that week's Sunday 23:59 — those snapshots are stale.
+    for wk in range(max(2, current_week - 4), current_week):
+        _, end_date = square_client.week_dates(current_year, wk)
+        week_end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        for prefix in ("week_sales_v3", "week_payroll", "timecard_hours_by_day"):
+            key = f"{prefix}_{current_year}_W{wk:02d}"
+            row = conn.execute(
+                "SELECT last_synced_at FROM cache_metadata WHERE cache_key = ?", (key,)
+            ).fetchone()
+            if row:
+                try:
+                    synced_dt = datetime.fromisoformat(row["last_synced_at"])
+                    if synced_dt < week_end_dt:
+                        keys_to_clear.append(key)
+                except Exception:
+                    keys_to_clear.append(key)
+
+    placeholders = ",".join("?" * len(keys_to_clear))
     conn.execute(
-        "DELETE FROM cache_metadata WHERE cache_key LIKE ? OR cache_key LIKE ? OR cache_key LIKE ?",
-        (
-            f"week_sales_v3_{current_year}_W{current_week:02d}",
-            f"week_payroll_{current_year}_W{current_week:02d}",
-            f"vat_periods_{current_year}",
-        ),
-    )
-    # Also clear the timecard hours cache for current week
-    conn.execute(
-        "DELETE FROM cache_metadata WHERE cache_key = ?",
-        (f"timecard_hours_by_day_{current_year}_W{current_week:02d}",),
+        f"DELETE FROM cache_metadata WHERE cache_key IN ({placeholders})",
+        keys_to_clear,
     )
     conn.commit()
     conn.close()
