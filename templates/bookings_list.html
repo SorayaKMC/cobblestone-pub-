@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Bookings - Cobblestone Pub{% endblock %}
+{% block page_title %}Bookings{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h5 class="mb-0">Backroom &amp; Upstairs Bookings</h5>
+    <div class="d-flex gap-2">
+        <a href="/bookings/new" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Add Booking
+        </a>
+    </div>
+</div>
+
+<!-- KPI tiles -->
+<div class="row g-2 mb-4">
+    <div class="col-md col-6">
+        <a href="/bookings?view=upcoming&status=inquiry" class="text-decoration-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Inquiries to review</div>
+                    <div class="h3 mb-0 text-warning">{{ counts.inquiry }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md col-6">
+        <a href="/bookings?view=upcoming&status=tentative" class="text-decoration-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Tentative</div>
+                    <div class="h3 mb-0 text-info">{{ counts.tentative }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md col-6">
+        <a href="/bookings?view=upcoming&status=confirmed" class="text-decoration-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Confirmed upcoming</div>
+                    <div class="h3 mb-0 text-success">{{ counts.confirmed_upcoming }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md col-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Outstanding fees</div>
+                <div class="h3 mb-0 {% if counts.unpaid_fees > 0 %}text-danger{% else %}text-secondary{% endif %}">{{ counts.unpaid_fees }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md col-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Need website listing</div>
+                <div class="h3 mb-0 {% if counts.needs_publishing > 0 %}text-warning{% else %}text-secondary{% endif %}">{{ counts.needs_publishing }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small mb-1">View</label>
+                <select name="view" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="upcoming" {% if view == 'upcoming' %}selected{% endif %}>Upcoming</option>
+                    <option value="past"     {% if view == 'past'     %}selected{% endif %}>Past</option>
+                    <option value="all"      {% if view == 'all'      %}selected{% endif %}>All time</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ status_labels[s] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Venue</label>
+                <select name="venue" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    {% for v in venues %}
+                    <option value="{{ v }}" {% if filter_venue == v %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Type</label>
+                <select name="event_type" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    {% for t in event_types %}
+                    <option value="{{ t }}" {% if filter_event_type == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">From</label>
+                <input type="date" name="start_date" value="{{ filter_start }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">To</label>
+                <input type="date" name="end_date" value="{{ filter_end }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-funnel me-1"></i>Filter
+                </button>
+                <a href="/bookings" class="btn btn-sm btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Act / Event</th>
+                        <th>Type</th>
+                        <th>Venue</th>
+                        <th>Status</th>
+                        <th>Door</th>
+                        <th>Venue Fee</th>
+                        <th>Door Fee</th>
+                        <th>Website</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for b in bookings %}
+                    <tr>
+                        <td><span class="text-muted small">{{ b.event_date }}</span></td>
+                        <td><span class="small">{{ b.day_of_week or '' }}</span></td>
+                        <td>
+                            <a href="/bookings/{{ b.id }}" class="text-decoration-none fw-semibold">{{ b.act_name }}</a>
+                            {% if b.contact_email %}<div class="text-muted small">{{ b.contact_email }}</div>{% endif %}
+                        </td>
+                        <td><span class="small">{{ b.event_type }}</span></td>
+                        <td><span class="badge bg-light text-dark">{{ b.venue }}</span></td>
+                        <td><span class="badge bg-{{ status_badges.get(b.status, 'secondary') }}">{{ status_labels.get(b.status, b.status) }}</span></td>
+                        <td><span class="small">{{ b.door_time or '' }}</span></td>
+                        <td>
+                            {% if b.venue_fee_required %}
+                                {% if b.venue_fee_paid_at %}
+                                    <span class="text-success" title="Paid {{ b.venue_fee_paid_at[:10] }}"><i class="bi bi-check-circle-fill"></i></span>
+                                {% else %}
+                                    <span class="text-danger" title="Unpaid"><i class="bi bi-x-circle"></i></span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if b.door_fee_required %}
+                                {% if b.door_fee_paid_at %}
+                                    <span class="text-success" title="Paid {{ b.door_fee_paid_at[:10] }}"><i class="bi bi-check-circle-fill"></i></span>
+                                {% else %}
+                                    <span class="text-danger" title="Unpaid"><i class="bi bi-x-circle"></i></span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if b.squarespace_published_at %}
+                                <span class="text-success" title="Published {{ b.squarespace_published_at[:10] }}"><i class="bi bi-globe"></i></span>
+                            {% else %}
+                                <span class="text-muted" title="Not published"><i class="bi bi-globe"></i></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/bookings/{{ b.id }}" class="btn btn-sm btn-outline-primary">View</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="11" class="text-center text-muted py-4">
+                            No bookings match these filters.
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="text-muted small mt-3">
+    Showing {{ bookings|length }} booking{{ '' if bookings|length == 1 else 's' }}.
+</div>
+{% endblock %}

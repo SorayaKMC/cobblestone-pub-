@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}{{ booking.act_name if booking else 'New Booking' }} - Cobblestone Pub{% endblock %}
+{% block page_title %}{{ booking.act_name if booking else 'New Booking' }}{% endblock %}
+
+{% block content %}
+{% set is_new = booking is none %}
+{% set form_action = '/bookings/' ~ booking.id ~ '/edit' if not is_new else '/bookings/new' %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="/bookings" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to bookings
+    </a>
+    {% if not is_new %}
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <span class="text-muted small">Booking #{{ booking.id }}</span>
+        <span class="badge bg-{{ status_badges.get(booking.status, 'secondary') }}">{{ status_labels.get(booking.status, booking.status) }}</span>
+        <span class="text-muted small">{{ booking.venue }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row g-3">
+    <!-- Main column: edit form -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title mb-3">{{ 'Booking Details' if not is_new else 'New Booking' }}</h6>
+                <form method="POST" action="{{ form_action }}">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label small">Act / Event Name <span class="text-danger">*</span></label>
+                            <input type="text" name="act_name" class="form-control form-control-sm" required
+                                   value="{{ booking.act_name if booking else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Type</label>
+                            <select name="event_type" class="form-select form-select-sm">
+                                {% for t in event_types %}
+                                <option value="{{ t }}" {% if booking and booking.event_type == t %}selected{% endif %}>{{ t }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Venue</label>
+                            <select name="venue" class="form-select form-select-sm">
+                                {% for v in venues %}
+                                <option value="{{ v }}" {% if booking and booking.venue == v %}selected{% endif %}>{{ v }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Event Date <span class="text-danger">*</span></label>
+                            <input type="date" name="event_date" class="form-control form-control-sm" required
+                                   value="{{ booking.event_date if booking else '' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Door</label>
+                            <input type="time" name="door_time" class="form-control form-control-sm"
+                                   value="{{ booking.door_time if booking else '' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Start</label>
+                            <input type="time" name="start_time" class="form-control form-control-sm"
+                                   value="{{ booking.start_time if booking else '' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">End</label>
+                            <input type="time" name="end_time" class="form-control form-control-sm"
+                                   value="{{ booking.end_time if booking else '' }}">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small">Contact Name</label>
+                            <input type="text" name="contact_name" class="form-control form-control-sm"
+                                   value="{{ booking.contact_name if booking else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Contact Email</label>
+                            <input type="email" name="contact_email" class="form-control form-control-sm"
+                                   value="{{ booking.contact_email if booking else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Contact Phone</label>
+                            <input type="text" name="contact_phone" class="form-control form-control-sm"
+                                   value="{{ booking.contact_phone if booking else '' }}">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small">Door Person</label>
+                            <select name="door_person" class="form-select form-select-sm">
+                                <option value="">— select —</option>
+                                <option value="pub" {% if booking and booking.door_person == 'pub' %}selected{% endif %}>Pub-provided (€50)</option>
+                                <option value="own" {% if booking and booking.door_person == 'own' %}selected{% endif %}>Bringing own</option>
+                                <option value="none" {% if booking and booking.door_person == 'none' %}selected{% endif %}>Not needed</option>
+                                <option value="tbc" {% if booking and booking.door_person == 'tbc' %}selected{% endif %}>TBC</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Ticketing</label>
+                            <select name="ticketing" class="form-select form-select-sm">
+                                <option value="">— select —</option>
+                                <option value="Free" {% if booking and booking.ticketing == 'Free' %}selected{% endif %}>Free</option>
+                                <option value="Eventbrite" {% if booking and booking.ticketing == 'Eventbrite' %}selected{% endif %}>Eventbrite</option>
+                                <option value="Door" {% if booking and booking.ticketing == 'Door' %}selected{% endif %}>Door charge</option>
+                                <option value="Ticketed" {% if booking and booking.ticketing == 'Ticketed' %}selected{% endif %}>Other ticketed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Ticket Price</label>
+                            <input type="text" name="ticket_price" class="form-control form-control-sm"
+                                   value="{{ booking.ticket_price if booking else '' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Expected attendance</label>
+                            <input type="number" name="expected_attendance" class="form-control form-control-sm"
+                                   value="{{ booking.expected_attendance if booking and booking.expected_attendance else '' }}">
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small">Ticket / Event Link</label>
+                            <input type="text" name="ticket_link" class="form-control form-control-sm"
+                                   value="{{ booking.ticket_link if booking else '' }}">
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small">Description (for website)</label>
+                            <textarea name="description" rows="4" class="form-control form-control-sm">{{ booking.description if booking else '' }}</textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small">Media / social links</label>
+                            <textarea name="media_links" rows="2" class="form-control form-control-sm">{{ booking.media_links if booking else '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Notes</label>
+                            <textarea name="notes" rows="2" class="form-control form-control-sm">{{ booking.notes if booking else '' }}</textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="checkbox" name="venue_fee_required" class="form-check-input" id="vfee" value="1"
+                                       {% if (booking and booking.venue_fee_required) or is_new %}checked{% endif %}>
+                                <label class="form-check-label small" for="vfee">Venue fee €150 required</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" name="door_fee_required" class="form-check-input" id="dfee" value="1"
+                                       {% if booking and booking.door_fee_required %}checked{% endif %}>
+                                <label class="form-check-label small" for="dfee">Door person fee €50 required</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Status</label>
+                            <select name="status" class="form-select form-select-sm">
+                                {% for s in statuses %}
+                                <option value="{{ s }}" {% if booking and booking.status == s %}selected{% endif %}>{{ status_labels[s] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-check-lg me-1"></i>{{ 'Create Booking' if is_new else 'Save Changes' }}
+                        </button>
+                        <a href="/bookings" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: actions + audit (hidden when creating) -->
+    {% if not is_new %}
+    <div class="col-lg-4">
+        <!-- Status pipeline -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="card-title mb-3">Quick Actions</h6>
+                <div class="d-grid gap-2">
+                    {% if booking.status != 'confirmed' %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/status">
+                        <input type="hidden" name="status" value="confirmed">
+                        <button class="btn btn-success btn-sm w-100"><i class="bi bi-check-circle me-1"></i>Mark Confirmed</button>
+                    </form>
+                    {% endif %}
+                    {% if booking.status not in ('tentative','confirmed','completed') %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/status">
+                        <input type="hidden" name="status" value="tentative">
+                        <button class="btn btn-info btn-sm w-100"><i class="bi bi-question-circle me-1"></i>Mark Tentative</button>
+                    </form>
+                    {% endif %}
+                    {% if booking.status != 'completed' %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/status">
+                        <input type="hidden" name="status" value="completed">
+                        <button class="btn btn-secondary btn-sm w-100"><i class="bi bi-flag me-1"></i>Mark Completed</button>
+                    </form>
+                    {% endif %}
+                    {% if booking.status != 'cancelled' %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/status"
+                          onsubmit="return confirm('Cancel this booking?');">
+                        <input type="hidden" name="status" value="cancelled">
+                        <button class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-x-circle me-1"></i>Cancel Booking</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Fees + Squarespace -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="card-title mb-3">Fees &amp; Listing</h6>
+                {% if booking.venue_fee_required %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small">Venue fee €150</span>
+                    <form method="POST" action="/bookings/{{ booking.id }}/fee/venue" class="m-0">
+                        {% if booking.venue_fee_paid_at %}
+                        <button class="btn btn-sm btn-success" title="Click to mark unpaid"><i class="bi bi-check-circle-fill me-1"></i>Paid</button>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-danger">Mark Paid</button>
+                        {% endif %}
+                    </form>
+                </div>
+                {% endif %}
+                {% if booking.door_fee_required %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small">Door fee €50</span>
+                    <form method="POST" action="/bookings/{{ booking.id }}/fee/door" class="m-0">
+                        {% if booking.door_fee_paid_at %}
+                        <button class="btn btn-sm btn-success" title="Click to mark unpaid"><i class="bi bi-check-circle-fill me-1"></i>Paid</button>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-danger">Mark Paid</button>
+                        {% endif %}
+                    </form>
+                </div>
+                {% endif %}
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small">Squarespace listing</span>
+                    <form method="POST" action="/bookings/{{ booking.id }}/squarespace" class="m-0">
+                        {% if booking.squarespace_published_at %}
+                        <button class="btn btn-sm btn-success" title="Click to mark unpublished"><i class="bi bi-globe me-1"></i>Published</button>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-warning">Mark Published</button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add note -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="card-title mb-2">Add Note</h6>
+                <form method="POST" action="/bookings/{{ booking.id }}/note">
+                    <textarea name="note" rows="2" class="form-control form-control-sm mb-2" placeholder="e.g. Tomás called, agreed to push start time to 20:30"></textarea>
+                    <button class="btn btn-sm btn-outline-primary"><i class="bi bi-plus me-1"></i>Add Note</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Audit log -->
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title mb-3">Activity</h6>
+                {% if audit %}
+                    <ul class="list-unstyled small mb-0">
+                        {% for a in audit %}
+                        <li class="mb-2 pb-2 border-bottom">
+                            <div class="text-muted" style="font-size:0.7rem">
+                                {{ a.created_at[:16] }} · {{ a.actor }}
+                            </div>
+                            <div><strong>{{ a.action }}</strong>{% if a.detail %} — {{ a.detail }}{% endif %}</div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted small mb-0">No activity yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

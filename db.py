@@ -6,7 +6,7 @@ Square API is the source of truth for sales, timecards, and team members.
 
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, date
 import config
 
 
@@ -147,6 +147,74 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(invoice_date);
         CREATE INDEX IF NOT EXISTS idx_invoices_supplier ON invoices(supplier_id);
         CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+
+        -- Backroom / Upstairs venue bookings
+        CREATE TABLE IF NOT EXISTS bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            public_token TEXT UNIQUE NOT NULL,
+            venue TEXT NOT NULL DEFAULT 'Backroom',
+            event_date DATE NOT NULL,
+            day_of_week TEXT,
+            door_time TEXT,
+            start_time TEXT,
+            end_time TEXT,
+            status TEXT NOT NULL DEFAULT 'inquiry',
+            event_type TEXT NOT NULL DEFAULT 'Gig',
+            act_name TEXT NOT NULL,
+            contact_name TEXT,
+            contact_email TEXT,
+            contact_phone TEXT,
+            expected_attendance INTEGER,
+            description TEXT,
+            media_links TEXT,
+            ticketing TEXT,
+            ticket_price TEXT,
+            ticket_link TEXT,
+            door_person TEXT,
+            door_fee_required INTEGER NOT NULL DEFAULT 0,
+            venue_fee_required INTEGER NOT NULL DEFAULT 1,
+            door_fee_paid_at TIMESTAMP,
+            venue_fee_paid_at TIMESTAMP,
+            door_fee_payment_id TEXT,
+            venue_fee_payment_id TEXT,
+            confirmation_sent_at TIMESTAMP,
+            squarespace_published_at TIMESTAMP,
+            google_calendar_event_id TEXT,
+            announcement_date TEXT,
+            support_act TEXT,
+            promo_ok TEXT,
+            notes TEXT,
+            source TEXT NOT NULL DEFAULT 'web',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS booking_attachments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (booking_id) REFERENCES bookings(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS booking_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_id INTEGER NOT NULL,
+            actor TEXT NOT NULL,
+            action TEXT NOT NULL,
+            detail TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (booking_id) REFERENCES bookings(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(event_date);
+        CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+        CREATE INDEX IF NOT EXISTS idx_bookings_venue ON bookings(venue);
+        CREATE INDEX IF NOT EXISTS idx_bookings_token ON bookings(public_token);
+        CREATE INDEX IF NOT EXISTS idx_booking_attachments_booking ON booking_attachments(booking_id);
+        CREATE INDEX IF NOT EXISTS idx_booking_audit_booking ON booking_audit(booking_id);
     """)
 
     # Migration: add columns to employee_categories if missing
@@ -761,3 +829,226 @@ def set_cache(key, data):
     )
     conn.commit()
     conn.close()
+
+
+# --- Backroom / Upstairs Bookings ---
+
+import secrets as _secrets
+
+
+# Field set used by save_booking - keeps INSERT/UPDATE columns aligned.
+_BOOKING_FIELDS = (
+    "venue", "event_date", "day_of_week",
+    "door_time", "start_time", "end_time",
+    "status", "event_type", "act_name",
+    "contact_name", "contact_email", "contact_phone",
+    "expected_attendance", "description", "media_links",
+    "ticketing", "ticket_price", "ticket_link",
+    "door_person", "door_fee_required", "venue_fee_required",
+    "announcement_date", "support_act", "promo_ok", "notes", "source",
+)
+
+
+def _new_booking_token():
+    """Generate a URL-safe public booking token."""
+    return _secrets.token_urlsafe(16)
+
+
+def list_bookings(status=None, venue=None, start_date=None, end_date=None,
+                  event_type=None, limit=1000):
+    """Get bookings with optional filters. Returns rows ordered by event_date asc."""
+    conn = get_db()
+    sql = "SELECT * FROM bookings WHERE 1=1"
+    params = []
+    if status:
+        if isinstance(status, (list, tuple)):
+            placeholders = ",".join("?" * len(status))
+            sql += f" AND status IN ({placeholders})"
+            params.extend(status)
+        else:
+            sql += " AND status = ?"
+            params.append(status)
+    if venue:
+        sql += " AND venue = ?"
+        params.append(venue)
+    if event_type:
+        sql += " AND event_type = ?"
+        params.append(event_type)
+    if start_date:
+        sql += " AND event_date >= ?"
+        params.append(start_date)
+    if end_date:
+        sql += " AND event_date <= ?"
+        params.append(end_date)
+    sql += " ORDER BY event_date ASC, id ASC LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return rows
+
+
+def get_booking(id_or_token):
+    """Look up a booking by integer id or by public_token string."""
+    conn = get_db()
+    if isinstance(id_or_token, int) or (isinstance(id_or_token, str) and id_or_token.isdigit()):
+        row = conn.execute("SELECT * FROM bookings WHERE id = ?", (int(id_or_token),)).fetchone()
+    else:
+        row = conn.execute("SELECT * FROM bookings WHERE public_token = ?", (id_or_token,)).fetchone()
+    conn.close()
+    return row
+
+
+def save_booking(data, booking_id=None):
+    """Insert a new booking or update an existing one. Returns the booking id.
+
+    On insert, generates a unique public_token if one isn't supplied.
+    `data` is a dict with keys from _BOOKING_FIELDS.
+    """
+    conn = get_db()
+    now = datetime.now().isoformat()
+
+    if booking_id:
+        sets = ", ".join(f"{f}=?" for f in _BOOKING_FIELDS)
+        params = [data.get(f) for f in _BOOKING_FIELDS] + [now, booking_id]
+        conn.execute(f"UPDATE bookings SET {sets}, updated_at=? WHERE id=?", params)
+        new_id = booking_id
+    else:
+        token = data.get("public_token") or _new_booking_token()
+        cols = ["public_token"] + list(_BOOKING_FIELDS) + ["updated_at"]
+        placeholders = ",".join("?" * len(cols))
+        values = [token] + [data.get(f) for f in _BOOKING_FIELDS] + [now]
+        cursor = conn.execute(
+            f"INSERT INTO bookings ({','.join(cols)}) VALUES ({placeholders})", values
+        )
+        new_id = cursor.lastrowid
+
+    conn.commit()
+    conn.close()
+    return new_id
+
+
+def update_booking_status(booking_id, new_status, actor="system", detail=None):
+    """Set status and write an audit row. Returns True on success."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE bookings SET status=?, updated_at=? WHERE id=?",
+        (new_status, now, booking_id),
+    )
+    conn.execute(
+        "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+        (booking_id, actor, f"status:{new_status}", detail),
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+def update_booking_field(booking_id, field, value, actor="system"):
+    """Update a single column on a booking + write audit row.
+
+    Restricted to a safe column list to avoid SQL injection via the field name.
+    """
+    safe = {
+        "venue_fee_paid_at", "door_fee_paid_at",
+        "venue_fee_payment_id", "door_fee_payment_id",
+        "confirmation_sent_at", "squarespace_published_at",
+        "google_calendar_event_id", "notes",
+    }
+    if field not in safe:
+        raise ValueError(f"Field '{field}' not allowed for direct update")
+    conn = get_db()
+    now = datetime.now().isoformat()
+    conn.execute(
+        f"UPDATE bookings SET {field}=?, updated_at=? WHERE id=?",
+        (value, now, booking_id),
+    )
+    conn.execute(
+        "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+        (booking_id, actor, f"set:{field}", str(value)[:200] if value else "cleared"),
+    )
+    conn.commit()
+    conn.close()
+
+
+def add_booking_audit(booking_id, actor, action, detail=None):
+    """Append a free-form audit entry."""
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+        (booking_id, actor, action, detail),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_booking_audit(booking_id):
+    """Return audit log for a booking, newest first."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM booking_audit WHERE booking_id=? ORDER BY id DESC",
+        (booking_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def get_booking_attachments(booking_id):
+    """Return all attachments for a booking, newest first."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM booking_attachments WHERE booking_id=? ORDER BY id DESC",
+        (booking_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def add_booking_attachment(booking_id, kind, filename, file_path):
+    """Record an uploaded attachment."""
+    conn = get_db()
+    cursor = conn.execute(
+        "INSERT INTO booking_attachments (booking_id, kind, filename, file_path) VALUES (?, ?, ?, ?)",
+        (booking_id, kind, filename, file_path),
+    )
+    conn.commit()
+    conn.close()
+    return cursor.lastrowid
+
+
+def booking_counts():
+    """Return summary counts for the tracker top bar."""
+    today = date.today().isoformat()
+    conn = get_db()
+    inquiry = conn.execute(
+        "SELECT COUNT(*) FROM bookings WHERE status='inquiry' AND event_date >= ?",
+        (today,),
+    ).fetchone()[0]
+    tentative = conn.execute(
+        "SELECT COUNT(*) FROM bookings WHERE status='tentative' AND event_date >= ?",
+        (today,),
+    ).fetchone()[0]
+    confirmed_upcoming = conn.execute(
+        "SELECT COUNT(*) FROM bookings WHERE status='confirmed' AND event_date >= ?",
+        (today,),
+    ).fetchone()[0]
+    unpaid_fees = conn.execute(
+        """SELECT COUNT(*) FROM bookings
+           WHERE status IN ('confirmed','completed')
+             AND ((venue_fee_required=1 AND venue_fee_paid_at IS NULL)
+                  OR (door_fee_required=1 AND door_fee_paid_at IS NULL))""",
+    ).fetchone()[0]
+    needs_publishing = conn.execute(
+        """SELECT COUNT(*) FROM bookings
+           WHERE status='confirmed' AND event_date >= ?
+             AND squarespace_published_at IS NULL""",
+        (today,),
+    ).fetchone()[0]
+    conn.close()
+    return {
+        "inquiry": inquiry,
+        "tentative": tentative,
+        "confirmed_upcoming": confirmed_upcoming,
+        "unpaid_fees": unpaid_fees,
+        "needs_publishing": needs_publishing,
+    }

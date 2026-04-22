@@ -151,12 +151,13 @@ def create_app():
                 )
 
     # Register blueprints
-    from routes import settings, payroll, dashboard, pto, bookkeeping
+    from routes import settings, payroll, dashboard, pto, bookkeeping, bookings
     app.register_blueprint(settings.bp)
     app.register_blueprint(payroll.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(pto.bp)
     app.register_blueprint(bookkeeping.bp)
+    app.register_blueprint(bookings.bp)
 
     @app.route("/")
     def index():

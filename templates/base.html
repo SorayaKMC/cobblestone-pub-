@@ -39,6 +39,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link text-white {% if '/bookings' in request.path %}active{% endif %}" href="/bookings">
+                        <i class="bi bi-music-note-list me-2"></i>Bookings
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link text-white-50 disabled" href="#">
                         <i class="bi bi-box-seam me-2"></i>Inventory
                         <span class="badge bg-secondary ms-1">Soon</span>
