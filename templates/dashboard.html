@@ -108,7 +108,8 @@ html, body{overflow-x:hidden;max-width:100vw}
       <div class="note">M+S payroll ÷ net sales · reference line = 16%</div>
     </div>
     <div class="box">
-      <div class="ct">{{ current_week_label }} labour hours per day — {{ current_week_dates }} (Square timecards)</div>
+      <div class="ct" id="hrs-title">{{ current_week_label }} labour hours per day — {{ current_week_dates }} (Square timecards)</div>
+      <div class="wbtns" id="hbtns"></div>
       <canvas id="c-hrs" height="160"></canvas>
       <div class="lgnd">
         <span><span class="ldot" style="background:#6366f1"></span>Hours</span>
@@ -194,6 +195,8 @@ var OUT = {{ out_json|safe }};
 var MERCH = {{ merch_json|safe }};
 var PAYROLL_DATA = {{ payroll_json|safe }};
 var HRS = {{ hrs_json|safe }};
+var HRS_BY_WEEK = {{ hrs_by_week_json|safe }};
+var CURRENT_WK = "{{ current_week_label }}";
 var VAT_DATA = {{ vat_json|safe }};
 var CURRENT_VS_AVG = {{ current_vs_avg_json|safe }};
 
@@ -451,11 +454,7 @@ function drawAll(){
     [{data:labVals, color:labVals.map(function(v){return laborC(v);})}],
     30, function(v){return v+"%";}, null, 16, "16%");
 
-  dualAxisChart("c-hrs", 180,
-    HRS.map(function(d){return d.d;}),
-    HRS.map(function(d){return d.h;}), 65,
-    HRS.map(function(d){return d.s;}), 9000,
-    function(d){return d==="Fri"?"#6366f1":d==="Sat"?"#8b5cf6":"#93c5fd";});
+  drawHrs();
 
   drawDaily();
 
@@ -470,6 +469,43 @@ function drawAll(){
 }
 
 var activeWk = WKS.length ? WKS[WKS.length-1].wk : null;
+var activeHrsWk = HRS_BY_WEEK[CURRENT_WK] ? CURRENT_WK : (Object.keys(HRS_BY_WEEK).pop() || CURRENT_WK);
+
+function drawHrs(){
+  var data = HRS_BY_WEEK[activeHrsWk] || [{d:"Mon",h:0,s:0},{d:"Tue",h:0,s:0},{d:"Wed",h:0,s:0},{d:"Thu",h:0,s:0},{d:"Fri",h:0,s:0},{d:"Sat",h:0,s:0},{d:"Sun",h:0,s:0}];
+  var maxH = 65;
+  Object.keys(HRS_BY_WEEK).forEach(function(wk){
+    HRS_BY_WEEK[wk].forEach(function(d){if(d.h>maxH)maxH=d.h;});
+  });
+  maxH = Math.ceil(maxH/10)*10;
+  dualAxisChart("c-hrs", 180,
+    data.map(function(d){return d.d;}),
+    data.map(function(d){return d.h;}), maxH,
+    data.map(function(d){return d.s;}), 9000,
+    function(d){return d==="Fri"?"#6366f1":d==="Sat"?"#8b5cf6":"#93c5fd";});
+}
+
+function buildHrsUI(){
+  var btns="";
+  Object.keys(HRS_BY_WEEK).forEach(function(wk){
+    btns+='<button class="wbtn'+(activeHrsWk===wk?" on":"")+'" onclick="selHrsWk(\''+wk+'\')">'+wk+'</button>';
+  });
+  var el = document.getElementById("hbtns");
+  if(el) el.innerHTML = btns;
+  var titleEl = document.getElementById("hrs-title");
+  if(titleEl){
+    var wk = WKS.filter(function(w){return w.wk===activeHrsWk;})[0];
+    var dates = wk ? wk.dates : "";
+    titleEl.textContent = activeHrsWk+" labour hours per day"+(dates?" — "+dates:"")+" (Square timecards)";
+  }
+}
+
+function selHrsWk(wk){
+  if(!HRS_BY_WEEK[wk]) return;
+  activeHrsWk = wk;
+  buildHrsUI();
+  drawHrs();
+}
 
 function drawDaily(){
   var datasets = Object.keys(DAILY).map(function(wk){return {wk:wk, data:DAILY[wk], color:WK_COL[wk]||"#888"};});
@@ -686,6 +722,7 @@ function renderWeeklyTable(){
 renderWeeklyTable();
 
 buildDailyUI();
+buildHrsUI();
 drawAll();
 
 window.addEventListener("resize", drawAll);

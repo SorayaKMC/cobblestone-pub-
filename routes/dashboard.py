@@ -519,6 +519,7 @@ def dashboard_page():
     out = {}
     payroll_data = []
     tshirt_weekly = []
+    hrs_by_week = {}
 
     # Iterate W02 through current week
     for week in range(2, current_week + 1):
@@ -560,9 +561,14 @@ def dashboard_page():
 
         tshirt_weekly.append(sales.get("tshirt_units", 0))
 
-    hrs = _get_week_timecard_hours_by_day(current_year, current_week)
+        wk_hrs = _get_week_timecard_hours_by_day(current_year, week)
+        if wk_hrs:
+            hrs_by_week[wk_label] = wk_hrs
+
+    hrs = hrs_by_week.get(f"W{current_week:02d}")
     if not hrs:
         hrs = [{"d": d, "h": 0, "s": 0} for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]]
+        hrs_by_week[f"W{current_week:02d}"] = hrs
 
     # Current week daily sales vs 2026 daily average (by day-of-week)
     # Average is computed over COMPLETED weeks only (excludes current partial week)
@@ -627,6 +633,7 @@ def dashboard_page():
         merch_json=json.dumps(tshirt_weekly),
         payroll_json=json.dumps(payroll_data),
         hrs_json=json.dumps(hrs),
+        hrs_by_week_json=json.dumps(hrs_by_week),
         vat_json=json.dumps(vat_periods),
         current_vs_avg_json=json.dumps(current_vs_avg),
         tshirt_price=20,
