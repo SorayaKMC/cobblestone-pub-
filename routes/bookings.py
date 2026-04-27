@@ -197,7 +197,42 @@ def booking_detail(booking_id):
         event_types=EVENT_TYPES,
         venues=VENUES,
         today=_today_iso(),
+        squarespace_block=_squarespace_block(booking),
     )
+
+
+@bp.route("/bookings/<int:booking_id>/confirm", methods=["POST"])
+def confirm_booking(booking_id):
+    """Confirm a booking: set status, stamp confirmation time, send email."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+
+    db.update_booking_status(booking_id, "confirmed", actor="internal",
+                             detail="Confirmed via Quick Actions")
+    db.update_booking_field(booking_id, "confirmation_sent_at",
+                            datetime.now().isoformat(), actor="internal")
+
+    # Send confirmation email — non-blocking
+    email_sent = False
+    if booking["contact_email"]:
+        try:
+            import bookings_email
+            email_sent = bookings_email.send_booking_confirmation(
+                db.get_booking(booking_id),          # re-fetch with updated status
+                request.host_url.rstrip("/"),
+            )
+        except Exception as e:
+            print(f"[bookings] Confirmation email failed: {e}")
+
+    if email_sent:
+        flash("Booking confirmed and confirmation email sent to the band. ✓", "success")
+    elif booking["contact_email"]:
+        flash("Booking confirmed. Email could not be sent — check SMTP settings in Render.", "warning")
+    else:
+        flash("Booking confirmed. No email address on file.", "success")
+
+    return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
 
 @bp.route("/bookings/<int:booking_id>/edit", methods=["POST"])
@@ -276,6 +311,78 @@ def add_note(booking_id):
     db.add_booking_audit(booking_id, "internal", "note", note)
     flash("Note added.", "success")
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+
+# ─── Squarespace block generator ────────────────────────────────────────────
+
+def _squarespace_block(booking):
+    """Return a copy-pasteable Squarespace event text block for a confirmed booking."""
+    if not booking:
+        return ""
+
+    try:
+        dt = datetime.strptime(booking["event_date"], "%Y-%m-%d")
+        date_str = dt.strftime("%A, %-d %B %Y")
+    except Exception:
+        date_str = booking["event_date"] or ""
+
+    door  = booking["door_time"]  or "TBC"
+    start = booking["start_time"] or "TBC"
+    end   = booking["end_time"]   or ""
+
+    times = f"Doors {door}"
+    if start != "TBC":
+        times += f" · Music {start}"
+    if end:
+        times += f" · End {end}"
+
+    venue_line = f"Cobblestone Pub — {booking['venue']}\n77 King St N, Smithfield, Dublin 7"
+
+    parts = [
+        "── SQUARESPACE EVENT ──────────────────────────────────────────",
+        "",
+        f"TITLE:     {booking['act_name']} | Live at the Cobblestone Pub",
+        "",
+        f"DATE:      {date_str}",
+        f"TIMES:     {times}",
+        "",
+        "LOCATION:",
+        venue_line,
+        "",
+    ]
+
+    if booking["description"]:
+        parts += [
+            "DESCRIPTION:",
+            "─" * 50,
+            booking["description"].strip(),
+            "─" * 50,
+            "",
+        ]
+
+    if booking["support_act"]:
+        parts += [f"SUPPORT:   {booking['support_act']}", ""]
+
+    if booking["ticketing"]:
+        ticket = booking["ticketing"]
+        if booking["ticket_price"]:
+            ticket += f" — {booking['ticket_price']}"
+        parts += [f"TICKETS:   {ticket}", ""]
+        if booking["ticket_link"]:
+            parts += [f"TICKET LINK: {booking['ticket_link']}", ""]
+
+    if booking["media_links"]:
+        parts += ["LINKS:", booking["media_links"].strip(), ""]
+
+    if booking["announcement_date"]:
+        parts += [f"ANNOUNCE:  {booking['announcement_date']}", ""]
+
+    parts += [
+        f"TAGS:      Live Music · {booking['venue']} · {booking['act_name']}",
+        "───────────────────────────────────────────────────────────────",
+    ]
+
+    return "\n".join(parts)
 
 
 # ─── Internal: attachment download ──────────────────────────────────────────

@@ -1,7 +1,7 @@
 """Cobblestone Pub Management App."""
 
 from functools import wraps
-from flask import Flask, redirect, url_for, request, Response, render_template
+from flask import Flask, redirect, url_for, request, Response, render_template, jsonify
 from datetime import date
 import os
 import re
@@ -270,6 +270,64 @@ def create_app():
             return render_template("admin_import.html",
                                    authed=True, results=None,
                                    error=f"Import failed: {e}")
+
+    # ── Daily reminder cron endpoint ─────────────────────────────────────
+    # Call this daily (e.g. Render Cron Job) to send 3-day reminder emails.
+    # URL: /admin/run-reminders?key=<CRON_KEY>
+    # CRON_KEY env var defaults to ADMIN_PASSWORD if not set separately.
+    @app.route("/admin/run-reminders")
+    def run_reminders():
+        from datetime import timedelta
+        import bookings_email
+
+        cron_key = os.getenv("CRON_KEY", config.ADMIN_PASSWORD)
+        provided  = request.args.get("key", "")
+        if not secrets.compare_digest(provided, cron_key):
+            return jsonify({"error": "Forbidden"}), 403
+
+        target_date = (date.today() + timedelta(days=3)).isoformat()
+        bookings    = db.list_bookings(status="confirmed",
+                                       start_date=target_date,
+                                       end_date=target_date)
+
+        sent = skipped = errors = 0
+        base_url = request.host_url.rstrip("/")
+        today_iso = date.today().isoformat()
+
+        for b in bookings:
+            # Skip if reminder already logged today (prevents double-send)
+            conn = db.get_db()
+            already = conn.execute(
+                """SELECT 1 FROM booking_audit
+                   WHERE booking_id=? AND action='reminder_sent'
+                     AND created_at >= ?""",
+                (b["id"], today_iso),
+            ).fetchone()
+            conn.close()
+
+            if already:
+                skipped += 1
+                continue
+
+            try:
+                ok = bookings_email.send_booking_reminder(b, base_url)
+                if ok:
+                    db.add_booking_audit(b["id"], "system", "reminder_sent",
+                                         f"3-day reminder → {b['contact_email']}")
+                    sent += 1
+                else:
+                    skipped += 1   # SMTP not configured or no email address
+            except Exception as e:
+                db.add_booking_audit(b["id"], "system", "reminder_error", str(e))
+                errors += 1
+
+        return jsonify({
+            "target_date":     target_date,
+            "bookings_found":  len(bookings),
+            "reminders_sent":  sent,
+            "skipped":         skipped,
+            "errors":          errors,
+        })
 
     return app
 
