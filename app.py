@@ -329,6 +329,43 @@ def create_app():
             "errors":          errors,
         })
 
+    # ── SMTP test endpoint ───────────────────────────────────────────────────
+    # Hit this to verify email is working without going through a full booking.
+    # URL: /admin/test-email?key=<ADMIN_PASSWORD>&to=you@example.com
+    @app.route("/admin/test-email")
+    def test_email():
+        provided = request.args.get("key", "")
+        if not secrets.compare_digest(provided, config.ADMIN_PASSWORD):
+            return jsonify({"error": "Forbidden"}), 403
+
+        to = request.args.get("to", "")
+        if not to:
+            return jsonify({"error": "Pass ?to=your@email.com"}), 400
+
+        # Report current SMTP config (passwords masked)
+        smtp_status = {
+            "SMTP_HOST":     config.SMTP_HOST or "(not set)",
+            "SMTP_PORT":     config.SMTP_PORT,
+            "SMTP_USERNAME": config.SMTP_USERNAME or "(not set)",
+            "SMTP_PASSWORD": "****" if config.SMTP_PASSWORD else "(not set)",
+            "BOOKING_FROM":  config.BOOKING_FROM or "(not set)",
+        }
+
+        import smtplib
+        try:
+            with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=10) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(config.SMTP_USERNAME, config.SMTP_PASSWORD)
+                server.sendmail(
+                    config.BOOKING_FROM or config.SMTP_USERNAME,
+                    to,
+                    f"Subject: Cobblestone SMTP test\r\n\r\nSMTP is working correctly.",
+                )
+            return jsonify({"status": "sent", "to": to, "config": smtp_status})
+        except Exception as e:
+            return jsonify({"status": "failed", "error": str(e), "config": smtp_status}), 500
+
     return app
 
 
