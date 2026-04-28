@@ -278,6 +278,33 @@
             </div>
         </div>
 
+        <!-- Message Band -->
+        {% if booking.contact_email %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="card-title mb-2">
+                    <i class="bi bi-envelope me-1"></i>Message Band
+                </h6>
+                <form method="POST" action="/bookings/{{ booking.id }}/message">
+                    <input type="text" name="subject"
+                           class="form-control form-control-sm mb-2"
+                           placeholder="Subject" required
+                           value="Re: {{ booking.act_name }} — {{ booking.event_date }}">
+                    <textarea name="body" rows="4"
+                              class="form-control form-control-sm mb-2"
+                              placeholder="Your message to {{ booking.contact_name or booking.contact_email }}..."
+                              required></textarea>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">→ {{ booking.contact_email }}</small>
+                        <button class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-send me-1"></i>Send Email
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Uploaded files -->
         {% if attachments %}
         <div class="card mb-3">

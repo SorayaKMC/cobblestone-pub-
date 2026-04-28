@@ -150,7 +150,17 @@
                         </td>
                         <td><span class="small">{{ b.event_type }}</span></td>
                         <td><span class="badge bg-light text-dark">{{ b.venue }}</span></td>
-                        <td><span class="badge bg-{{ status_badges.get(b.status, 'secondary') }}">{{ status_labels.get(b.status, b.status) }}</span></td>
+                        <td>
+                            {% if b.status == 'cancelled' and b.cancelled_by %}
+                                <span class="badge bg-dark" title="Cancelled by {{ b.cancelled_by }}">
+                                    Cancelled ({{ 'band' if b.cancelled_by == 'band' else 'us' }})
+                                </span>
+                            {% else %}
+                                <span class="badge bg-{{ status_badges.get(b.status, 'secondary') }}">
+                                    {{ status_labels.get(b.status, b.status) }}
+                                </span>
+                            {% endif %}
+                        </td>
                         <td><span class="small">{{ b.door_time or '' }}</span></td>
                         <td>
                             {% if b.venue_fee_required %}

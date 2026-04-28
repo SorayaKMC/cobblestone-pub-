@@ -589,6 +589,91 @@ def book_upload(token):
     return redirect(url_for("bookings.book_portal", token=token))
 
 
+@bp.route("/bookings/<int:booking_id>/message", methods=["POST"])
+def send_message(booking_id):
+    """Send a staff-composed email to the band from inside the booking detail page."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+
+    subject = (request.form.get("subject") or "").strip()
+    body    = (request.form.get("body") or "").strip()
+
+    if not subject:
+        flash("Subject is required.", "warning")
+        return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+    if not body:
+        flash("Message body is required.", "warning")
+        return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+    if not booking["contact_email"]:
+        flash("No email address on file for this booking.", "warning")
+        return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+    try:
+        import bookings_email
+        sent = bookings_email.send_staff_message(
+            booking, subject, body, request.host_url.rstrip("/")
+        )
+        if sent:
+            db.add_booking_audit(booking_id, "internal", "email_sent",
+                                 f"Subject: {subject}")
+            flash(f"Email sent to {booking['contact_email']}. ✓", "success")
+        else:
+            flash("Email could not be sent — check SMTP settings in Render.", "warning")
+    except Exception as e:
+        flash(f"Email failed: {e}", "danger")
+
+    return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+
+@bp.route("/book/<token>/cancel", methods=["POST"])
+def band_cancel_booking(token):
+    """Handle a band cancelling their own booking via the portal."""
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+
+    if booking["status"] in ("cancelled", "completed"):
+        flash("This booking is already closed.", "info")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    reason = (request.form.get("reason") or "").strip() or "No reason given"
+
+    db.cancel_booking(
+        booking["id"],
+        cancelled_by="band",
+        actor="band",
+        detail=f"Cancelled via portal. Reason: {reason}",
+    )
+
+    # Refresh booking row before sending emails
+    updated = db.get_booking(booking["id"])
+
+    # Confirmation to band
+    try:
+        import bookings_email
+        bookings_email.send_band_cancellation_confirmation(
+            updated, request.host_url.rstrip("/")
+        )
+    except Exception as e:
+        print(f"[bookings] Band cancel confirmation email failed: {e}")
+
+    # Alert to pub staff
+    try:
+        import bookings_email
+        bookings_email.send_cancellation_alert_to_pub(
+            updated,
+            request.host_url.rstrip("/"),
+            cancelled_by="band",
+            reason=reason,
+        )
+    except Exception as e:
+        print(f"[bookings] Pub cancellation alert failed: {e}")
+
+    flash("Your booking has been cancelled. We've sent a confirmation to your email.", "info")
+    return redirect(url_for("bookings.book_portal", token=token))
+
+
 @bp.route("/book/<token>/attachment/<int:att_id>")
 def book_attachment(token, att_id):
     """Serve an uploaded file to the band via their portal token."""

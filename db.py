@@ -231,6 +231,11 @@ def init_db():
     if "source" not in acc_cols:
         cursor.execute("ALTER TABLE pto_accruals ADD COLUMN source TEXT NOT NULL DEFAULT 'square'")
 
+    # Migration: add cancelled_by column to bookings (tracks who cancelled: 'band' | 'pub' | 'system')
+    bk_cols = [row[1] for row in cursor.execute("PRAGMA table_info(bookings)").fetchall()]
+    if "cancelled_by" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN cancelled_by TEXT")
+
     # Seed default categories if table is empty
     count = cursor.execute("SELECT COUNT(*) FROM employee_categories").fetchone()[0]
     if count == 0:
@@ -963,6 +968,28 @@ def update_booking_status(booking_id, new_status, actor="system", detail=None):
     conn.execute(
         "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
         (booking_id, actor, f"status:{new_status}", detail),
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+def cancel_booking(booking_id, cancelled_by="pub", actor="internal", detail=None):
+    """Cancel a booking and record who initiated the cancellation.
+
+    cancelled_by — 'band' | 'pub' | 'system'
+    Writes an audit row automatically.
+    """
+    conn = get_db()
+    now = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE bookings SET status='cancelled', cancelled_by=?, updated_at=? WHERE id=?",
+        (cancelled_by, now, booking_id),
+    )
+    conn.execute(
+        "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+        (booking_id, actor, "status:cancelled",
+         detail or f"Cancelled by {cancelled_by}"),
     )
     conn.commit()
     conn.close()

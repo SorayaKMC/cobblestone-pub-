@@ -97,7 +97,12 @@
             <i class="bi bi-x-circle fs-4 me-3 flex-shrink-0"></i>
             <div>
                 <strong>Booking Cancelled</strong> —
-                This booking was cancelled. If you think this is a mistake, please
+                {% if booking.cancelled_by == 'band' %}
+                    This booking was cancelled at your request.
+                {% else %}
+                    This booking was cancelled.
+                {% endif %}
+                If you think this is a mistake, please
                 <a href="mailto:bookings@cobblestonepub.ie" class="alert-link">contact us</a>.
             </div>
         </div>
@@ -289,6 +294,55 @@
                 {% endfor %}
             </ul>
             {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Cancel booking (active only) ────────────────────────────────── -->
+    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    <div class="text-center mt-1 mb-4">
+        <button type="button" class="btn btn-sm btn-outline-danger"
+                data-bs-toggle="modal" data-bs-target="#cancelModal">
+            <i class="bi bi-x-circle me-1"></i>Cancel my booking
+        </button>
+    </div>
+
+    <!-- Cancel modal -->
+    <div class="modal fade" id="cancelModal" tabindex="-1"
+         aria-labelledby="cancelModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="/book/{{ booking.public_token }}/cancel">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cancelModalLabel">
+                            Cancel booking — {{ booking.act_name }}?
+                        </h5>
+                        <button type="button" class="btn-close"
+                                data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">
+                            Are you sure you want to cancel your booking on
+                            <strong>{{ booking.event_date }}</strong>?
+                            This action can't be undone.
+                        </p>
+                        <label class="form-label small fw-semibold">
+                            Reason <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <textarea name="reason" rows="2" class="form-control"
+                                  placeholder="e.g. Change of plans, band no longer available..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary"
+                                data-bs-dismiss="modal">
+                            Keep my booking
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle me-1"></i>Yes, cancel booking
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
     {% endif %}
