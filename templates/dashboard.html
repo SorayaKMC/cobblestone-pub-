@@ -6,9 +6,10 @@
 <style>
 html, body{overflow-x:hidden;max-width:100vw}
 .main-content{overflow-x:hidden;max-width:calc(100vw - 240px)}
-.cb-dash{font-family:Georgia,serif;background:#f5f0e8;color:#1a1a1a;font-size:14px;margin:-1.5rem;padding:16px 18px;overflow-x:hidden;max-width:100%;min-width:0}
+.cb-dash{font-family:Georgia,serif;background:#f5f0e8;color:#1a1a1a;font-size:14px;margin:-1.5rem;padding:20px 28px;overflow-x:hidden;max-width:100%;min-width:0}
 .cb-dash *{box-sizing:border-box;min-width:0}
-.cb-dash .hdr{background:#fff;border-bottom:1px solid #ddd;padding:12px 18px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;margin:-16px -18px 20px}
+.cb-dash .hdr{background:#fff;border-bottom:1px solid #ddd;padding:12px 18px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;margin:-20px -28px 20px}
+#c-daily{cursor:crosshair}
 .cb-dash .hdr-title{font-size:22px;font-weight:500}
 .cb-dash .hdr-sub{font-size:10px;letter-spacing:.15em;color:#888;text-transform:uppercase;margin-top:2px}
 .cb-dash .hdr-meta{text-align:right;font-size:11px;color:#888;line-height:1.8}
@@ -74,15 +75,18 @@ html, body{overflow-x:hidden;max-width:100vw}
 </div>
 
 <div class="sec">
-  <div class="sec-lbl">This week — daily sales vs 2026 average</div>
+  <div class="sec-lbl">Daily sales vs 2026 average — select any week to explore</div>
   <div class="box">
-    <div class="ct">{{ current_week_label }} ({{ current_week_dates }}) vs 2026 daily average</div>
-    <canvas id="c-current-vs-avg" height="180"></canvas>
+    <div class="wbtns" id="cva-btns"></div>
+    <div class="ct" id="cva-title">{{ current_week_label }} ({{ current_week_dates }}) vs 2026 avg &amp; 2025</div>
+    <canvas id="c-current-vs-avg" height="200"></canvas>
     <div class="lgnd">
-      <span><span class="ldot" style="background:#3b82f6"></span>This week</span>
-      <span><span class="ldot" style="background:#c8bfb0"></span>2026 daily avg</span>
+      <span><span class="ldot" style="background:#c8bfb0"></span>2025 same week</span>
+      <span><span class="ldot" style="background:#93c5fd"></span>2026 avg (other weeks)</span>
+      <span><span class="ldot" style="background:#16a34a"></span>Selected week (≥ avg)</span>
+      <span><span class="ldot" style="background:#ef4444"></span>Selected week (&lt; avg)</span>
     </div>
-    <div class="note">Average excludes current partial week.</div>
+    <div class="note">Average excludes the selected week itself and the current partial week.</div>
   </div>
 </div>
 
@@ -123,11 +127,12 @@ html, body{overflow-x:hidden;max-width:100vw}
   <div class="sec-lbl">Daily sales profile by week — net sales Mon-Sun</div>
   <div class="box">
     <div class="wbtns" id="wbtns"></div>
-    <div class="note" style="margin-bottom:6px">Click a week to highlight · click again to show all</div>
+    <div class="note" style="margin-bottom:6px">Click a week to highlight · click again to show all · hover for exact totals</div>
     <canvas id="c-daily" height="220"></canvas>
     <div class="lgnd" id="dlgnd" style="margin-top:10px"></div>
   </div>
 </div>
+<div id="daily-tooltip" style="position:fixed;display:none;background:rgba(26,26,26,0.93);color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;font-family:Georgia,serif;pointer-events:none;z-index:9999;min-width:130px;line-height:1.7;box-shadow:0 4px 12px rgba(0,0,0,0.3)"></div>
 
 <div class="sec">
   <div class="sec-lbl">Cobblestone T-Shirt sales</div>
@@ -198,9 +203,10 @@ var HRS = {{ hrs_json|safe }};
 var HRS_BY_WEEK = {{ hrs_by_week_json|safe }};
 var CURRENT_WK = "{{ current_week_label }}";
 var VAT_DATA = {{ vat_json|safe }};
-var CURRENT_VS_AVG = {{ current_vs_avg_json|safe }};
+var CVA_BY_WEEK = {{ cva_by_week_json|safe }};
 
 var DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+var cvaActiveWk = CURRENT_WK;
 
 var WK_COL = {
   W01:"#dbeafe",W02:"#93c5fd",W03:"#60a5fa",W04:"#3b82f6",W05:"#2563eb",
@@ -415,24 +421,87 @@ function stackedBarChart(id, h, labels, bottom, middle, top, bColor, mColor, tCo
 // ─── DRAW ALL CHARTS ─────────────────────────────────────────────────────────
 var wkLabels = WKS.map(function(w){return w.wk;});
 
-function drawCurrentVsAvg(){
-  var labels = CURRENT_VS_AVG.map(function(d){return d.d;});
-  var currentData = CURRENT_VS_AVG.map(function(d){return d.current;});
-  var avgData = CURRENT_VS_AVG.map(function(d){return d.avg;});
-  var maxVal = Math.max.apply(null, currentData.concat(avgData));
-  if(maxVal === 0) maxVal = 1000;
-  var yMax = Math.ceil(maxVal/1000)*1000 + 1000;
-  barChart("c-current-vs-avg", 180, labels,
-    [{data: avgData, color:"#c8bfb0"},
-     {data: currentData, color: currentData.map(function(v,i){
-        if(v === 0) return "#e5e5e5";
-        return v >= avgData[i] ? "#16a34a" : "#ef4444";
-     })}],
-    yMax, function(v){return "\u20ac"+(v/1000).toFixed(1)+"k";});
+// ── CvA: week picker + 3-bar grouped chart ────────────────────────────
+function buildCvaUI(){
+  var keys = Object.keys(CVA_BY_WEEK);
+  var btns = "";
+  keys.forEach(function(wk){
+    btns += '<button class="wbtn'+(cvaActiveWk===wk?" on":"")+'" onclick="selCvaWk(\''+wk+'\')">'+wk+'</button>';
+  });
+  var el = document.getElementById("cva-btns");
+  if(el) el.innerHTML = btns;
+  var titleEl = document.getElementById("cva-title");
+  if(titleEl){
+    var wkInfo = WKS.filter(function(w){return w.wk===cvaActiveWk;})[0];
+    var dates = wkInfo ? " ("+wkInfo.dates+")" : "";
+    titleEl.textContent = cvaActiveWk+dates+" vs 2026 avg & 2025";
+  }
+}
+
+function selCvaWk(wk){
+  if(!CVA_BY_WEEK[wk]) return;
+  cvaActiveWk = wk;
+  buildCvaUI();
+  drawCvaChart();
+}
+
+function drawCvaChart(){
+  var data = CVA_BY_WEEK[cvaActiveWk];
+  if(!data||!data.length) return;
+  var cv = setupCanvas("c-current-vs-avg", 200);
+  if(!cv) return;
+  var ctx=cv.ctx, W=cv.W, H=cv.H;
+  var pad={t:28,r:8,b:26,l:50};
+  var CW=W-pad.l-pad.r, CH=H-pad.t-pad.b;
+  var n=data.length;
+
+  var allVals=[];
+  data.forEach(function(d){allVals.push(d.current,d.avg,d.n25);});
+  var maxVal=Math.max.apply(null,allVals.filter(function(v){return v>0;}));
+  if(!maxVal||maxVal<=0) maxVal=1000;
+  var yMax=Math.ceil(maxVal/1000)*1000+1000;
+
+  drawGrid(ctx,pad,W,H,yMax,function(v){return "\u20ac"+(v/1000).toFixed(1)+"k";});
+  drawXLabels(ctx,data.map(function(d){return d.d;}),pad,W,H);
+
+  var groupW=CW/n;
+  var bw=Math.min(14,groupW*0.22);
+  var gap=2;
+  var totalBarsW=3*bw+2*gap;
+
+  data.forEach(function(d,i){
+    var groupCx=pad.l+(i+0.5)*groupW;
+    var x0=groupCx-totalBarsW/2;
+
+    // Bar 1 — 2025 (warm grey)
+    var bh25=d.n25>0?Math.max(2,(d.n25/yMax)*CH):0;
+    if(bh25>0){ctx.fillStyle="#c8bfb0";rrect(ctx,x0,pad.t+CH-bh25,bw,bh25,2);ctx.fill();}
+
+    // Bar 2 — 2026 avg (light blue)
+    var bhAvg=d.avg>0?Math.max(2,(d.avg/yMax)*CH):0;
+    if(bhAvg>0){ctx.fillStyle="#93c5fd";rrect(ctx,x0+bw+gap,pad.t+CH-bhAvg,bw,bhAvg,2);ctx.fill();}
+
+    // Bar 3 — selected week actual (green/red/ghost)
+    var bhCur=d.current>0?Math.max(2,(d.current/yMax)*CH):2;
+    var curCol=d.current===0?"#e5e5e5":(d.current>=d.avg?"#16a34a":"#ef4444");
+    ctx.fillStyle=curCol;
+    rrect(ctx,x0+2*(bw+gap),pad.t+CH-bhCur,bw,bhCur,2);ctx.fill();
+
+    // % label above bar 3
+    if(d.avg>0&&d.current>0){
+      var pct=Math.round((d.current-d.avg)/d.avg*100);
+      var pctStr=(pct>=0?"+":"")+pct+"%";
+      var labelY=Math.max(pad.t-1,pad.t+CH-bhCur-4);
+      ctx.font="bold 9px Georgia";
+      ctx.textAlign="center";
+      ctx.fillStyle=d.current>=d.avg?"#16a34a":"#ef4444";
+      ctx.fillText(pctStr,x0+2*(bw+gap)+bw/2,labelY);
+    }
+  });
 }
 
 function drawAll(){
-  drawCurrentVsAvg();
+  drawCvaChart();
   var salesMax=Math.max.apply(null,WKS.map(function(w){return Math.max(w.n25||0, w.n26);}));
   var salesYMax=Math.ceil(salesMax/5000)*5000+5000;
   barChart("c-sales", 200, wkLabels,
@@ -722,9 +791,72 @@ function renderWeeklyTable(){
 renderWeeklyTable();
 
 buildDailyUI();
+buildCvaUI();
 buildHrsUI();
 drawAll();
+initDailyTooltip();
 
-window.addEventListener("resize", drawAll);
+window.addEventListener("resize", function(){
+  drawAll();
+  // Tooltip is mouse-driven, no redraw needed
+});
+// ─── DAILY CHART HOVER TOOLTIP ───────────────────────────────────────────────
+function initDailyTooltip(){
+  var canvas = document.getElementById("c-daily");
+  var tip = document.getElementById("daily-tooltip");
+  if(!canvas||!tip) return;
+
+  canvas.addEventListener("mousemove", function(e){
+    var rect = canvas.getBoundingClientRect();
+    var W = rect.width;
+    var pad = {l:50, r:10};
+    var CW = W - pad.l - pad.r;
+    var n = 7;
+    var mx = e.clientX - rect.left;
+    var relX = mx - pad.l;
+    if(relX < 0 || relX > CW){ tip.style.display="none"; return; }
+    var dayIdx = Math.floor(relX / (CW/n));
+    dayIdx = Math.max(0, Math.min(n-1, dayIdx));
+
+    var dayName = DAYS[dayIdx];
+    var html = "<div style=\'font-weight:600;border-bottom:1px solid rgba(255,255,255,0.2);margin-bottom:4px;padding-bottom:3px;font-size:12px\'>" + dayName + "</div>";
+
+    var entries = [];
+    if(activeWk && DAILY[activeWk]){
+      var val = DAILY[activeWk][dayIdx] || 0;
+      entries.push({wk: activeWk, val: val});
+    } else {
+      Object.keys(DAILY).forEach(function(wk){
+        var val = DAILY[wk][dayIdx] || 0;
+        if(val > 0) entries.push({wk:wk, val:val});
+      });
+      entries.sort(function(a,b){return b.val-a.val;});
+    }
+
+    entries.forEach(function(entry){
+      html += "<div style=\'display:flex;justify-content:space-between;gap:12px\'>"
+        + "<span style=\'color:"+(WK_COL[entry.wk]||"#aaa")+";font-family:monospace\'>" + entry.wk + "</span>"
+        + "<span style=\'font-family:monospace\'>€" + Math.round(entry.val).toLocaleString("en-IE") + "</span></div>";
+    });
+    if(entries.length===0) html += "<div style=\'color:#aaa\'>No data</div>";
+
+    tip.innerHTML = html;
+    tip.style.display = "block";
+
+    // Position near cursor, keep in viewport
+    var tipW = tip.offsetWidth, tipH = tip.offsetHeight;
+    var left = e.clientX + 16;
+    var top  = e.clientY - 10;
+    if(left + tipW > window.innerWidth - 10) left = e.clientX - tipW - 16;
+    if(top + tipH > window.innerHeight - 10) top = e.clientY - tipH - 10;
+    tip.style.left = left + "px";
+    tip.style.top  = top  + "px";
+  });
+
+  canvas.addEventListener("mouseleave", function(){
+    tip.style.display = "none";
+  });
+}
+
 </script>
 {% endblock %}

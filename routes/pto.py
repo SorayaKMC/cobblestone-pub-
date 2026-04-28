@@ -29,6 +29,20 @@ def pto_page():
         member = members_by_id.get(emp["team_member_id"], {})
         emp["accrual_type"] = "Salaried" if member.get("pay_type") == "SALARY" else "Hourly"
 
+    # Batch-compute 13-week avg shift for all hourly employees (single Square API call)
+    today_iso = date.today().isoformat()
+    hourly_ids = [emp["team_member_id"] for emp in summary if emp["accrual_type"] == "Hourly"]
+    try:
+        avg_shifts = pto_engine.calculate_13_week_avg_shift_batch(hourly_ids, today_iso)
+    except Exception:
+        avg_shifts = {}
+    for emp in summary:
+        if emp["accrual_type"] == "Hourly":
+            raw = avg_shifts.get(emp["team_member_id"])
+            emp["avg_shift"] = float(raw) if raw is not None else 8.0
+        else:
+            emp["avg_shift"] = None  # salaried — not used for accrual
+
     categories = db.get_employee_categories()
     # Only active employees appear in the Log Leave / Adjust dropdowns
     active_employees = [

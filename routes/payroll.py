@@ -165,6 +165,13 @@ def payroll_page():
 
         payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning, weekly_bonus)
 
+        # Holiday pay: pull from PTO tracker (auto-sync — no double-entry)
+        pto_taken = db.get_pto_taken_for_week(start_date, end_date)
+        for p in payroll:
+            pto = pto_taken.get(p["team_member_id"], {})
+            p["holiday_hours"] = pto.get("hours", 0.0)
+            p["holiday_days"] = pto.get("days", 0.0)
+
         # Totals
         total_hours = sum(p["hours"] for p in payroll)
         total_gross = sum(p["gross"] for p in payroll)
@@ -173,6 +180,7 @@ def payroll_page():
         total_bonus = sum(p["bonus"] for p in payroll)
         grand_total = sum(p["total"] for p in payroll)
         total_labor = sum(p["total_for_labor"] for p in payroll)
+        total_holiday_hours = sum(p["holiday_hours"] for p in payroll)
 
         # Category subtotals
         um_total = sum(p["total_for_labor"] for p in payroll if p["category"] == "Upper Management")
@@ -187,6 +195,7 @@ def payroll_page():
     except Exception as e:
         payroll = []
         total_hours = total_gross = total_tips = total_cleaning = total_bonus = grand_total = total_labor = Decimal("0")
+        total_holiday_hours = 0.0
         um_total = mgmt_total = staff_total = Decimal("0")
         prev_week = next_week = iso_week
         is_finalized = False
@@ -205,6 +214,7 @@ def payroll_page():
         total_bonus=total_bonus,
         grand_total=grand_total,
         total_labor=total_labor,
+        total_holiday_hours=total_holiday_hours,
         um_total=um_total,
         mgmt_total=mgmt_total,
         staff_total=staff_total,

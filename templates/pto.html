@@ -29,6 +29,7 @@
                 <tr>
                     <th>Employee</th>
                     <th>Type</th>
+                    <th class="text-end">Avg Shift</th>
                     <th class="text-end">Days Accrued</th>
                     <th class="text-end">Days Taken</th>
                     <th class="text-end">Adjustments</th>
@@ -44,6 +45,13 @@
                         {% if not emp.is_active %}<span class="badge bg-secondary ms-1" style="font-size:0.65rem">Former</span>{% endif %}
                     </td>
                     <td><span class="badge bg-secondary">{{ emp.accrual_type }}</span></td>
+                    <td class="text-end text-muted" style="font-size:.85rem">
+                        {% if emp.avg_shift is not none %}
+                            {{ "%.1f"|format(emp.avg_shift) }}h
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
                     <td class="text-end">{{ "%.2f"|format(emp.total_accrued) }}</td>
                     <td class="text-end">{{ "%.2f"|format(emp.total_taken) }}</td>
                     <td class="text-end">
@@ -65,7 +73,7 @@
                 {% endfor %}
                 {% if not summary %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
+                    <td colspan="8" class="text-center text-muted py-4">
                         No PTO data yet. Click "Recalculate from Square" to sync accruals.
                     </td>
                 </tr>

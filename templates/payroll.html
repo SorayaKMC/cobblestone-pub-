@@ -69,6 +69,7 @@
                     <th class="text-end" style="width:110px">Tips {% if not is_finalized %}<small class="text-info">(edit)</small>{% endif %}</th>
                     <th class="text-end" style="width:110px">Cleaning {% if not is_finalized %}<small class="text-info">(edit)</small>{% endif %}</th>
                     <th class="text-end" style="width:110px">Bonus {% if not is_finalized %}<small class="text-info">(edit)</small>{% endif %}</th>
+                    <th class="text-end" title="Auto-filled from PTO tracker. Log leave on the PTO page.">Holiday Pay <small class="text-muted">(h)</small></th>
                     <th class="text-end">Total</th>
                     <th>Category</th>
                     <th class="text-end">Labor Cost</th>
@@ -121,6 +122,16 @@
                             </div>
                         {% endif %}
                     </td>
+                    <td class="text-end text-muted" style="font-size:.85rem">
+                        {% if emp.holiday_hours and emp.holiday_hours > 0 %}
+                            <span class="text-success fw-semibold">{{ "%.1f"|format(emp.holiday_hours|float) }}h</span>
+                            {% if emp.holiday_days and emp.holiday_days > 0 %}
+                            <br><small class="text-muted">({{ "%.1f"|format(emp.holiday_days|float) }}d)</small>
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
                     <td class="text-end"><strong>&euro;{{ "%.2f"|format(emp.total|float) }}</strong></td>
                     <td>
                         {% if emp.category == 'Upper Management' %}
@@ -144,6 +155,11 @@
                     <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_tips|float) }}</strong></td>
                     <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_cleaning|float) }}</strong></td>
                     <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_bonus|float) }}</strong></td>
+                    <td class="text-end text-muted" style="font-size:.85rem">
+                        {% if total_holiday_hours and total_holiday_hours > 0 %}
+                            {{ "%.1f"|format(total_holiday_hours|float) }}h
+                        {% else %}—{% endif %}
+                    </td>
                     <td class="text-end"><strong>&euro;{{ "%.2f"|format(grand_total|float) }}</strong></td>
                     <td></td>
                     <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_labor|float) }}</strong></td>
@@ -156,6 +172,7 @@
 <div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
     <small class="text-muted">
         <i class="bi bi-info-circle me-1"></i>Tips, cleaning &amp; bonus are entered manually (not from Square). Edit above and click Save.
+        &nbsp;·&nbsp;<i class="bi bi-calendar-check"></i> Holiday Pay hours auto-filled from <a href="/pto" class="text-muted">PTO tracker</a>.
     </small>
     <div class="d-flex gap-2">
         {% if not is_finalized %}

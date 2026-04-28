@@ -515,6 +515,7 @@ def dashboard_page():
 
     wks = []
     daily = {}
+    daily_2025 = {}
     bb = {}
     out = {}
     payroll_data = []
@@ -542,6 +543,7 @@ def dashboard_page():
         })
 
         daily[wk_label] = [round(d) for d in sales["daily"]]
+        daily_2025[wk_label] = [round(d) for d in sales_2025["daily"]] if sales_2025 else [0] * 7
 
         br_amt = round(sales["by_location"].get(BACK_ROOM, 0))
         out_amt = round(sales["by_location"].get(OUTSIDE, 0))
@@ -570,25 +572,27 @@ def dashboard_page():
         hrs = [{"d": d, "h": 0, "s": 0} for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]]
         hrs_by_week[f"W{current_week:02d}"] = hrs
 
-    # Current week daily sales vs 2026 daily average (by day-of-week)
-    # Average is computed over COMPLETED weeks only (excludes current partial week)
+    # Per-week CvA: for every week, daily actual vs avg-of-all-other-completed-weeks vs 2025 same week.
+    # The avg excludes both the selected week itself AND the current (partial) week,
+    # so each week is compared against the rest of the completed dataset only.
     _curr_lbl = f"W{current_week:02d}"
-    current_daily = daily.get(_curr_lbl, [0] * 7)
-    daily_sums = [0.0] * 7
-    daily_counts = [0] * 7
-    for wk_lbl, d_arr in daily.items():
-        if wk_lbl == _curr_lbl:
-            continue  # skip current (partial) week from average
-        for i in range(7):
-            if d_arr[i] > 0:
-                daily_sums[i] += d_arr[i]
-                daily_counts[i] += 1
-    daily_avg = [round(daily_sums[i] / daily_counts[i], 0) if daily_counts[i] > 0 else 0 for i in range(7)]
-
-    current_vs_avg = [
-        {"d": d, "current": current_daily[i], "avg": daily_avg[i]}
-        for i, d in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
-    ]
+    _days_ord = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    cva_by_week = {}
+    for _wk_lbl in daily.keys():
+        _other = [k for k in daily.keys() if k != _wk_lbl and k != _curr_lbl]
+        _sums = [0.0] * 7
+        _cnts = [0] * 7
+        for _k in _other:
+            for _i in range(7):
+                if daily[_k][_i] > 0:
+                    _sums[_i] += daily[_k][_i]
+                    _cnts[_i] += 1
+        _avg = [round(_sums[_i] / _cnts[_i]) if _cnts[_i] > 0 else 0 for _i in range(7)]
+        _d25 = daily_2025.get(_wk_lbl, [0] * 7)
+        cva_by_week[_wk_lbl] = [
+            {"d": _days_ord[_i], "current": daily[_wk_lbl][_i], "avg": _avg[_i], "n25": _d25[_i]}
+            for _i in range(7)
+        ]
 
     # T-shirt totals (revenue from cached weekly data)
     tshirt_total_units = sum(tshirt_weekly)
@@ -635,7 +639,7 @@ def dashboard_page():
         hrs_json=json.dumps(hrs),
         hrs_by_week_json=json.dumps(hrs_by_week),
         vat_json=json.dumps(vat_periods),
-        current_vs_avg_json=json.dumps(current_vs_avg),
+        cva_by_week_json=json.dumps(cva_by_week),
         tshirt_price=20,
         tshirt_total_units=tshirt_total_units,
         tshirt_total_revenue=tshirt_total_revenue,

@@ -49,6 +49,53 @@ def calculate_13_week_avg_shift(team_member_id, end_date):
     return avg.quantize(Decimal("0.01"))
 
 
+def calculate_13_week_avg_shift_batch(employee_ids, end_date):
+    """Batch version: compute 13-week rolling avg shift for all given employee IDs.
+
+    Makes a SINGLE Square API call covering the full 13-week window, then groups
+    results by team member — much faster than calling calculate_13_week_avg_shift
+    once per employee.
+
+    Args:
+        employee_ids: list of Square team member IDs to compute for
+        end_date: 'YYYY-MM-DD' end of lookback window
+
+    Returns dict: {team_member_id: Decimal avg_shift}
+    Missing / insufficient employees fall back to DEFAULT_SHIFT_HOURS.
+    """
+    from datetime import datetime, timedelta
+
+    if not employee_ids:
+        return {}
+
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    start_dt = end_dt - timedelta(weeks=13)
+    start_str = start_dt.strftime("%Y-%m-%d")
+
+    try:
+        timecards = square_client.get_timecards(start_str, end_date)
+    except Exception:
+        return {tm_id: DEFAULT_SHIFT_HOURS for tm_id in employee_ids}
+
+    shifts_by_emp = {tm_id: [] for tm_id in employee_ids}
+    for tc in timecards:
+        tm_id = tc["team_member_id"]
+        if tm_id in shifts_by_emp and tc["paid_minutes"] > 0:
+            shift_hours = tc["paid_minutes"] / Decimal("60")
+            shifts_by_emp[tm_id].append(shift_hours)
+
+    result = {}
+    for tm_id in employee_ids:
+        shifts = shifts_by_emp.get(tm_id, [])
+        if len(shifts) < 5:
+            result[tm_id] = DEFAULT_SHIFT_HOURS
+        else:
+            avg = sum(shifts) / Decimal(str(len(shifts)))
+            result[tm_id] = avg.quantize(Decimal("0.01"))
+
+    return result
+
+
 def get_employee_accrual_type(team_member_id, team_members=None):
     """Determine if employee is hourly or salaried.
 

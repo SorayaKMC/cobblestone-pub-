@@ -466,6 +466,31 @@ def get_pto_taken_log(team_member_id=None):
     return rows
 
 
+def get_pto_taken_for_week(start_date, end_date):
+    """Return PTO taken (hours and days) per employee for a date range.
+
+    Used by the payroll page to auto-populate the Holiday Pay column from
+    the PTO tracker — no double-entry needed.
+
+    Returns dict: {team_member_id: {"hours": float, "days": float}}
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT team_member_id,
+                  COALESCE(SUM(hours_equivalent), 0) AS total_hours,
+                  COALESCE(SUM(days_taken), 0) AS total_days
+           FROM pto_taken
+           WHERE date BETWEEN ? AND ?
+           GROUP BY team_member_id""",
+        (start_date, end_date),
+    ).fetchall()
+    conn.close()
+    return {
+        r["team_member_id"]: {"hours": float(r["total_hours"]), "days": float(r["total_days"])}
+        for r in rows
+    }
+
+
 def add_pto_adjustment(team_member_id, adjustment_days, reason, effective_date):
     """Record a manual PTO adjustment."""
     conn = get_db()
