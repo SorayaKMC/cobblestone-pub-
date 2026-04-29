@@ -94,6 +94,14 @@ def _booking_to_event(booking):
     if booking["description"]:
         parts.append(f"\n{booking['description']}")
 
+    parts += [
+        "",
+        "─" * 50,
+        "⚠️  This event is managed by the Cobblestone booking system.",
+        "To edit or cancel, use: cobblestone-pub.onrender.com/bookings",
+        "Do NOT add bookings directly in Google Calendar — they won't appear in the system.",
+    ]
+
     return {
         "summary": f"{act} | {venue} — Cobblestone Pub",
         "location": f"Cobblestone Pub — {venue}, 77 King St N, Smithfield, Dublin 7",
