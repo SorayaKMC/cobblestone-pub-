@@ -381,7 +381,7 @@ def send_booking_confirmation(booking, base_url=None):
                   <table cellpadding="0" cellspacing="0" style="margin-top:16px;">
                     <tr>
                       <td style="padding-right:10px;">
-                        <a href="{base}/static/docs/Cobblestone_Backroom_Info_Sheet.pdf"
+                        <a href="https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet-2.pdf"
                            style="display:inline-block;background:#1c1c2e;color:#fff;
                                   padding:10px 18px;border-radius:6px;text-decoration:none;
                                   font-size:13px;font-weight:bold;">
@@ -389,7 +389,7 @@ def send_booking_confirmation(booking, base_url=None):
                         </a>
                       </td>
                       <td>
-                        <a href="{base}/static/docs/Cobblestone_Backroom_Tech_Spec.pdf"
+                        <a href="https://www.cobblestonepub.ie/s/Cobblestone-Backroom-Tech-Spec.pdf"
                            style="display:inline-block;background:#f3f4f6;color:#1c1c2e;
                                   border:1px solid #d1d5db;padding:10px 18px;border-radius:6px;
                                   text-decoration:none;font-size:13px;font-weight:bold;">
@@ -509,8 +509,8 @@ Times: {times_str}
 📍 Access via Red Cow Lane — enter through the Cobblestone Pub.
    Free parking after 7pm & Sundays.
 
-📄 Info Sheet: {base}/static/docs/Cobblestone_Backroom_Info_Sheet.pdf
-🎛️ Tech Spec:  {base}/static/docs/Cobblestone_Backroom_Tech_Spec.pdf
+📄 Info Sheet: https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet-2.pdf
+🎛️ Tech Spec:  https://www.cobblestonepub.ie/s/Cobblestone-Backroom-Tech-Spec.pdf
 ──────────────────────────────────────────────────────────────────
 
 View your booking and upload your poster/bio here:
