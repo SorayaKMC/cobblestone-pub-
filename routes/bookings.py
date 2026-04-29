@@ -213,21 +213,37 @@ def confirm_booking(booking_id):
     db.update_booking_field(booking_id, "confirmation_sent_at",
                             datetime.now().isoformat(), actor="internal")
 
+    # Re-fetch booking with updated status for emails / calendar
+    updated = db.get_booking(booking_id)
+
+    # Create Google Calendar event — non-blocking
+    cal_event_id = None
+    try:
+        import calendar_client
+        cal_event_id = calendar_client.create_calendar_event(updated)
+        if cal_event_id:
+            db.update_booking_field(booking_id, "google_calendar_event_id",
+                                    cal_event_id, actor="internal")
+    except Exception as e:
+        print(f"[bookings] Calendar event creation failed: {e}")
+
     # Send confirmation email — non-blocking
     email_sent = False
-    if booking["contact_email"]:
+    if updated["contact_email"]:
         try:
             import bookings_email
             email_sent = bookings_email.send_booking_confirmation(
-                db.get_booking(booking_id),          # re-fetch with updated status
+                updated,
                 request.host_url.rstrip("/"),
             )
         except Exception as e:
             print(f"[bookings] Confirmation email failed: {e}")
 
-    if email_sent:
+    if email_sent and cal_event_id:
+        flash("Booking confirmed — confirmation email sent and Google Calendar event created. ✓", "success")
+    elif email_sent:
         flash("Booking confirmed and confirmation email sent to the band. ✓", "success")
-    elif booking["contact_email"]:
+    elif updated["contact_email"]:
         flash("Booking confirmed. Email could not be sent — check SMTP settings in Render.", "warning")
     else:
         flash("Booking confirmed. No email address on file.", "success")
@@ -265,6 +281,15 @@ def change_status(booking_id):
     note = request.form.get("note", "").strip() or None
     actor = request.form.get("actor", "internal")
     db.update_booking_status(booking_id, new_status, actor=actor, detail=note)
+
+    # If cancelling, remove the Calendar event
+    if new_status == "cancelled" and booking["google_calendar_event_id"]:
+        try:
+            import calendar_client
+            calendar_client.delete_calendar_event(booking, booking["google_calendar_event_id"])
+        except Exception as e:
+            print(f"[bookings] Calendar delete failed: {e}")
+
     flash(f"Status set to {STATUS_LABELS.get(new_status, new_status)}.", "success")
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
@@ -645,6 +670,14 @@ def band_cancel_booking(token):
         actor="band",
         detail=f"Cancelled via portal. Reason: {reason}",
     )
+
+    # Remove Calendar event if one was created
+    if booking["google_calendar_event_id"]:
+        try:
+            import calendar_client
+            calendar_client.delete_calendar_event(booking, booking["google_calendar_event_id"])
+        except Exception as e:
+            print(f"[bookings] Calendar delete on band cancel failed: {e}")
 
     # Refresh booking row before sending emails
     updated = db.get_booking(booking["id"])
