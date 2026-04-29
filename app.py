@@ -321,12 +321,41 @@ def create_app():
                 db.add_booking_audit(b["id"], "system", "reminder_error", str(e))
                 errors += 1
 
+        # ── Door-person alert (7-day window) ─────────────────────────────
+        door_pending = db.get_bookings_needing_door_confirmation(days_ahead=7)
+        door_alert_sent = False
+        if door_pending:
+            # Only send once per day — check audit on the first booking in the list
+            conn = db.get_db()
+            already_alerted = conn.execute(
+                """SELECT 1 FROM booking_audit
+                   WHERE action='door_alert_sent' AND created_at >= ?""",
+                (today_iso,),
+            ).fetchone()
+            conn.close()
+
+            if not already_alerted:
+                try:
+                    ok = bookings_email.send_door_person_alert(door_pending, base_url)
+                    if ok:
+                        # Log against the first booking as a proxy record
+                        ids = ", ".join(str(b["id"]) for b in door_pending)
+                        db.add_booking_audit(
+                            door_pending[0]["id"], "system", "door_alert_sent",
+                            f"Door person alert sent for booking IDs: {ids}",
+                        )
+                        door_alert_sent = True
+                except Exception as e:
+                    print(f"[reminders] Door person alert error: {e}")
+
         return jsonify({
-            "target_date":     target_date,
-            "bookings_found":  len(bookings),
-            "reminders_sent":  sent,
-            "skipped":         skipped,
-            "errors":          errors,
+            "target_date":          target_date,
+            "bookings_found":       len(bookings),
+            "reminders_sent":       sent,
+            "skipped":              skipped,
+            "errors":               errors,
+            "door_unconfirmed":     len(door_pending),
+            "door_alert_sent":      door_alert_sent,
         })
 
     # ── SMTP test endpoint ───────────────────────────────────────────────────

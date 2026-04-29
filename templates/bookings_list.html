@@ -69,6 +69,19 @@
             </div>
         </div>
     </div>
+    <div class="col-md col-6">
+        <a href="/bookings?view=upcoming&status=confirmed" class="text-decoration-none">
+            <div class="card border-0 shadow-sm {% if counts.door_unconfirmed > 0 %}border-warning border{% endif %}">
+                <div class="card-body">
+                    <div class="text-muted small">Door person TBC <span class="text-muted" style="font-size:.7rem;">(≤7 days)</span></div>
+                    <div class="h3 mb-0 {% if counts.door_unconfirmed > 0 %}text-warning{% else %}text-secondary{% endif %}">
+                        {{ counts.door_unconfirmed }}
+                        {% if counts.door_unconfirmed > 0 %}<i class="bi bi-exclamation-triangle-fill fs-5 ms-1"></i>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <!-- Filters -->
@@ -150,11 +163,16 @@
                 </thead>
                 <tbody>
                 {% for b in bookings %}
-                    <tr>
+                    <tr {% if b.id in door_warning_ids %}class="table-warning"{% endif %}>
                         <td><span class="text-muted small">{{ b.event_date }}</span></td>
                         <td><span class="small">{{ b.day_of_week or '' }}</span></td>
                         <td>
                             <a href="/bookings/{{ b.id }}" class="text-decoration-none fw-semibold">{{ b.act_name }}</a>
+                            {% if b.id in door_warning_ids %}
+                                <span class="badge bg-warning text-dark ms-1" title="Door person not set — gig within 7 days">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Door person TBC
+                                </span>
+                            {% endif %}
                             {% if b.contact_email %}<div class="text-muted small">{{ b.contact_email }}</div>{% endif %}
                         </td>
                         <td><span class="small">{{ b.event_type }}</span></td>

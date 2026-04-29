@@ -131,6 +131,12 @@ def bookings_list():
 
     counts = db.booking_counts()
 
+    # IDs of confirmed bookings within 7 days with no door_person set — used
+    # to show a warning icon on individual rows in the table.
+    door_warning_ids = {
+        b["id"] for b in db.get_bookings_needing_door_confirmation(days_ahead=7)
+    }
+
     return render_template(
         "bookings_list.html",
         bookings=bookings,
@@ -147,6 +153,7 @@ def bookings_list():
         filter_end=end,
         view=view,
         today=today,
+        door_warning_ids=door_warning_ids,
     )
 
 

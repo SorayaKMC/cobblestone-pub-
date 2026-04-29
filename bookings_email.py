@@ -1255,3 +1255,112 @@ Cobblestone Pub · 77 King St N, Smithfield, Dublin 7
 
     return _send(SHANE_EMAIL, subject, html, text)
 
+
+# ---------------------------------------------------------------------------
+# Staff alert — door person unconfirmed within 7 days
+# ---------------------------------------------------------------------------
+
+def send_door_person_alert(bookings, base_url=None):
+    """Send a digest email to staff listing confirmed bookings within the next
+    7 days where the door person arrangement has not yet been set.
+
+    Returns True if the email was sent, False otherwise.
+    """
+    if not bookings:
+        return False
+
+    base    = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
+    to_addr = config.BOOKING_REPLY_TO or config.SMTP_USERNAME
+    count   = len(bookings)
+    subject = (
+        f"⚠️ Action needed: door person unconfirmed for {count} "
+        f"upcoming gig{'s' if count != 1 else ''}"
+    )
+
+    rows_html = ""
+    for b in bookings:
+        detail_url = f"{base}/bookings/{b['id']}"
+        rows_html += f"""
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">
+            <a href="{detail_url}" style="color:#2563eb;text-decoration:none;font-weight:600;">
+              {b['event_date']}
+            </a>
+          </td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">{b['act_name']}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">{b['venue']}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">{b['start_time'] or 'TBC'}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">
+            <a href="{detail_url}" style="color:#2563eb;">Set now →</a>
+          </td>
+        </tr>"""
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;font-size:15px;color:#1f2937;margin:0;padding:0;">
+<div style="max-width:640px;margin:32px auto;padding:0 16px;">
+
+  <div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:16px 20px;
+              border-radius:4px;margin-bottom:24px;">
+    <p style="margin:0;font-weight:700;font-size:16px;">⚠️ Door person not yet confirmed</p>
+    <p style="margin:8px 0 0;">
+      The following {count} confirmed gig{'s are' if count != 1 else ' is'} within the next
+      7 days but the door person arrangement has <strong>not been set</strong>.
+      Decide whether the pub will provide a door person, the band will,
+      or none is needed — then update the booking so the roster can be finalised.
+    </p>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <thead>
+      <tr style="background:#f3f4f6;">
+        <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;
+                   color:#6b7280;">Date</th>
+        <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;
+                   color:#6b7280;">Act</th>
+        <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;
+                   color:#6b7280;">Venue</th>
+        <th style="padding:8px 12px;text-align:left;font-size:12px;text-transform:uppercase;
+                   color:#6b7280;">Show</th>
+        <th style="padding:8px 12px;"></th>
+      </tr>
+    </thead>
+    <tbody>{rows_html}
+    </tbody>
+  </table>
+
+  <p style="margin-top:24px;">
+    <a href="{base}/bookings?view=upcoming&amp;status=confirmed"
+       style="background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;
+              text-decoration:none;font-weight:600;font-size:14px;">
+      Open booking tracker →
+    </a>
+  </p>
+
+  <p style="margin-top:32px;font-size:12px;color:#9ca3af;">
+    This is an automated daily reminder from the Cobblestone booking system.
+    Once the door person field is filled in on a booking, it will stop appearing here.
+  </p>
+</div>
+</body>
+</html>"""
+
+    lines = []
+    for b in bookings:
+        lines.append(
+            f"  {b['event_date']}  {b['act_name']}  ({b['venue']})  "
+            f"— {base}/bookings/{b['id']}"
+        )
+
+    text = (
+        "ACTION NEEDED — Door person unconfirmed\n\n"
+        "The following confirmed gigs are within 7 days and the door person\n"
+        "arrangement has not been set. Please update each booking now.\n\n"
+        + "\n".join(lines)
+        + f"\n\nOpen tracker: {base}/bookings?view=upcoming&status=confirmed\n\n"
+        "--\nCobblestone Pub booking system · automated daily reminder\n"
+    )
+
+    return _send(to_addr, subject, html, text)
+

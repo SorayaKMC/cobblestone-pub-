@@ -6,7 +6,7 @@ Square API is the source of truth for sales, timecards, and team members.
 
 import sqlite3
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import config
 
 
@@ -1120,6 +1120,7 @@ def add_booking_attachment(booking_id, kind, filename, file_path):
 def booking_counts():
     """Return summary counts for the tracker top bar."""
     today = date.today().isoformat()
+    cutoff = (date.today() + timedelta(days=7)).isoformat()
     conn = get_db()
     inquiry = conn.execute(
         "SELECT COUNT(*) FROM bookings WHERE status='inquiry' AND event_date >= ?",
@@ -1145,6 +1146,13 @@ def booking_counts():
              AND squarespace_published_at IS NULL""",
         (today,),
     ).fetchone()[0]
+    door_unconfirmed = conn.execute(
+        """SELECT COUNT(*) FROM bookings
+           WHERE status='confirmed'
+             AND event_date >= ? AND event_date <= ?
+             AND (door_person IS NULL OR door_person = '')""",
+        (today, cutoff),
+    ).fetchone()[0]
     conn.close()
     return {
         "inquiry": inquiry,
@@ -1152,7 +1160,26 @@ def booking_counts():
         "confirmed_upcoming": confirmed_upcoming,
         "unpaid_fees": unpaid_fees,
         "needs_publishing": needs_publishing,
+        "door_unconfirmed": door_unconfirmed,
     }
+
+
+def get_bookings_needing_door_confirmation(days_ahead=7):
+    """Return confirmed bookings within the next `days_ahead` days where
+    door_person has not been set. Used by the daily cron alert."""
+    today = date.today().isoformat()
+    cutoff = (date.today() + timedelta(days=days_ahead)).isoformat()
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT * FROM bookings
+           WHERE status='confirmed'
+             AND event_date >= ? AND event_date <= ?
+             AND (door_person IS NULL OR door_person = '')
+           ORDER BY event_date ASC""",
+        (today, cutoff),
+    ).fetchall()
+    conn.close()
+    return rows
 
 
 # --- Recurring booking series ---
