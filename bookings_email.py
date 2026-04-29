@@ -1100,3 +1100,158 @@ https://cobblestonepub.ie
 """
 
     return _send(booking["contact_email"], subject, html, text)
+
+
+# ---------------------------------------------------------------------------
+# Shane Hannigan — sound engineer notification
+# ---------------------------------------------------------------------------
+
+SHANE_EMAIL = "onsoundie@gmail.com"
+SHANE_NAME  = "Shane Hannigan"
+
+
+def send_shane_notification(booking, base_url=None, sender_name=None):
+    """Email Shane Hannigan a booking briefing sheet.
+
+    Sends all logistical details he needs: act, date, times, door person,
+    contact info, and notes.  Called manually via the 'Notify Shane' button
+    on the booking detail page.
+
+    Returns True on success, False on failure.
+    """
+    base   = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
+    act    = booking["act_name"]
+    venue  = booking["venue"]
+
+    try:
+        from datetime import datetime as _dt
+        d = _dt.strptime(booking["event_date"], "%Y-%m-%d")
+        date_str = d.strftime("%A, %-d %B %Y")
+    except Exception:
+        date_str = booking["event_date"]
+
+    door_time  = booking["door_time"]  or "TBC"
+    start_time = booking["start_time"] or "TBC"
+    end_time   = booking["end_time"]   or "TBC"
+
+    dp = booking["door_person"]
+    if dp == "pub":
+        door_line = "Pub providing door person (€50 — band pays on night)"
+    elif dp == "own":
+        door_line = "Band providing their own door person"
+    elif dp == "none":
+        door_line = "No door person required"
+    else:
+        door_line = "TBC"
+
+    subject = f"Cobblestone gig — {act}, {date_str}"
+
+    def _row(label, value, bg="#fff"):
+        return (
+            f"<tr style='background:{bg};'>"
+            f"<td style='padding:8px 12px;color:#6b7280;font-size:13px;width:130px;"
+            f"border-bottom:1px solid #f3f4f6;'>{label}</td>"
+            f"<td style='padding:8px 12px;font-size:13px;font-weight:600;"
+            f"border-bottom:1px solid #f3f4f6;'>{value}</td>"
+            f"</tr>"
+        )
+
+    notes_block = (
+        f"<p style='margin:0 0 16px;font-size:13px;background:#fffbeb;"
+        f"border-left:3px solid #f59e0b;padding:12px;border-radius:4px;'>"
+        f"<strong>Notes:</strong> {booking['notes']}</p>"
+        if booking.get("notes") else ""
+    )
+    desc_block = (
+        f"<p style='margin:0 0 16px;font-size:13px;background:#f0f9ff;"
+        f"border-left:3px solid #38bdf8;padding:12px;border-radius:4px;'>"
+        f"<strong>Description:</strong> {booking['description']}</p>"
+        if booking.get("description") else ""
+    )
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+             style="background:#fff;border-radius:8px;overflow:hidden;
+                    box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr>
+          <td style="background:#1c1c2e;padding:24px 28px;">
+            <h2 style="margin:0;color:#fff;font-size:20px;">&#127866; Cobblestone Pub — Gig Briefing</h2>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px;">
+            <p style="margin:0 0 20px;font-size:15px;color:#333;">Hi {SHANE_NAME},</p>
+            <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#333;">
+              Here are the details for an upcoming booking.
+              Please get in touch with the act directly to arrange load-in,
+              sound check, and any technical requirements.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="border:1px solid #e5e7eb;border-radius:6px;
+                          border-collapse:collapse;margin-bottom:20px;">
+              {_row("Act",          act,                     "#f9fafb")}
+              {_row("Date",         date_str                          )}
+              {_row("Venue",        venue + " — Cobblestone", "#f9fafb")}
+              {_row("Doors open",   door_time                         )}
+              {_row("Show starts",  start_time,              "#f9fafb")}
+              {_row("End time",     end_time                          )}
+              {_row("Door person",  door_line,               "#f9fafb")}
+              {_row("Contact",      booking['contact_name']  or "—"  )}
+              {_row("Email",        booking['contact_email'] or "—",  "#f9fafb")}
+              {_row("Phone",        booking['contact_phone'] or "—"  )}
+            </table>
+            {notes_block}{desc_block}
+            <p style="margin:16px 0 0;font-size:13px;color:#777;">
+              Questions? Reply here or email
+              <a href="mailto:bookings@cobblestonepub.ie" style="color:#2563eb;">
+                bookings@cobblestonepub.ie
+              </a>.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f8f8;padding:14px 28px;
+                     border-top:1px solid #eee;font-size:12px;color:#999;">
+            77 King St N, Smithfield, Dublin 7 &nbsp;&middot;&nbsp;
+            <a href="https://cobblestonepub.ie" style="color:#999;">cobblestonepub.ie</a>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    text = f"""Hi {SHANE_NAME},
+
+Here are the details for an upcoming Cobblestone booking.
+Please contact the act directly to arrange load-in and sound check.
+
+Act:          {act}
+Date:         {date_str}
+Venue:        {venue} — Cobblestone Pub
+Doors open:   {door_time}
+Show starts:  {start_time}
+End time:     {end_time}
+Door person:  {door_line}
+
+Contact:      {booking['contact_name']  or '—'}
+Email:        {booking['contact_email'] or '—'}
+Phone:        {booking['contact_phone'] or '—'}
+{"Notes:        " + booking['notes'] if booking.get('notes') else ""}
+
+Questions? Reply here or email bookings@cobblestonepub.ie.
+
+--
+Cobblestone Pub · 77 King St N, Smithfield, Dublin 7
+"""
+
+    return _send(SHANE_EMAIL, subject, html, text)
+

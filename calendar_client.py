@@ -81,18 +81,66 @@ def _booking_to_event(booking):
     act   = booking["act_name"]
     venue = booking["venue"]
 
-    # Build a useful description
-    parts = [f"Venue: {venue} — Cobblestone Pub, 77 King St N, Smithfield, Dublin 7"]
-    if door_time:
-        parts.append(f"Doors: {door_time}")
+    # Build a rich structured description
+    parts = [
+        f"📍 {venue} — Cobblestone Pub, 77 King St N, Smithfield, Dublin 7",
+        f"🎭 {booking['event_type'] or 'Gig'}",
+        "",
+        "── TIMES ──────────────────────────────────────",
+        f"Doors:  {booking['door_time'] or 'TBC'}",
+        f"Show:   {booking['start_time'] or 'TBC'}",
+        f"End:    {booking['end_time'] or 'TBC'}",
+        "",
+        "── CONTACTS ────────────────────────────────────",
+    ]
     if booking["contact_name"]:
-        parts.append(f"Contact: {booking['contact_name']}")
+        parts.append(f"Act contact: {booking['contact_name']}")
     if booking["contact_email"]:
-        parts.append(f"Email: {booking['contact_email']}")
+        parts.append(f"Email:       {booking['contact_email']}")
     if booking["contact_phone"]:
-        parts.append(f"Phone: {booking['contact_phone']}")
+        parts.append(f"Phone:       {booking['contact_phone']}")
+
+    parts += [
+        "",
+        "── LOGISTICS ───────────────────────────────────",
+    ]
+
+    # Door person
+    dp = booking["door_person"]
+    dp_fee = booking["door_fee_required"]
+    if dp == "pub":
+        parts.append("Door person: Pub provided (€50 — band to pay on night)")
+    elif dp == "own":
+        parts.append("Door person: Band providing their own")
+    elif dp == "none":
+        parts.append("Door person: Not required")
+    elif dp_fee:
+        parts.append("Door person: Required (€50)")
+    else:
+        parts.append("Door person: TBC")
+
+    # Ticketing
+    if booking["ticketing"]:
+        ticket_line = f"Ticketing:   {booking['ticketing']}"
+        if booking["ticket_price"]:
+            ticket_line += f" — {booking['ticket_price']}"
+        parts.append(ticket_line)
+    if booking["ticket_link"]:
+        parts.append(f"Ticket link: {booking['ticket_link']}")
+
+    # Sound engineer
+    parts += [
+        "Sound eng:   Shane Hannigan — +353 (85) 175 8254 / onsoundie@gmail.com",
+    ]
+
+    if booking["support_act"]:
+        parts.append(f"Support:     {booking['support_act']}")
+
     if booking["description"]:
-        parts.append(f"\n{booking['description']}")
+        parts += ["", "── DESCRIPTION ─────────────────────────────────", booking["description"].strip()]
+
+    if booking["notes"]:
+        parts += ["", "── INTERNAL NOTES ──────────────────────────────", booking["notes"].strip()]
 
     parts += [
         "",
