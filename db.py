@@ -209,12 +209,42 @@ def init_db():
             FOREIGN KEY (booking_id) REFERENCES bookings(id)
         );
 
+        CREATE TABLE IF NOT EXISTS booking_series (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            venue TEXT NOT NULL DEFAULT 'Backroom',
+            event_type TEXT NOT NULL DEFAULT 'Class',
+            act_name TEXT NOT NULL,
+            contact_name TEXT,
+            contact_email TEXT,
+            contact_phone TEXT,
+            recurrence TEXT NOT NULL DEFAULT 'weekly',
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            door_time TEXT,
+            start_time TEXT,
+            end_time TEXT,
+            description TEXT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS booking_blackouts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            blackout_date DATE NOT NULL,
+            venue TEXT NOT NULL DEFAULT 'all',
+            reason TEXT,
+            created_by TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(blackout_date, venue)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(event_date);
         CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
         CREATE INDEX IF NOT EXISTS idx_bookings_venue ON bookings(venue);
         CREATE INDEX IF NOT EXISTS idx_bookings_token ON bookings(public_token);
         CREATE INDEX IF NOT EXISTS idx_booking_attachments_booking ON booking_attachments(booking_id);
         CREATE INDEX IF NOT EXISTS idx_booking_audit_booking ON booking_audit(booking_id);
+        CREATE INDEX IF NOT EXISTS idx_blackouts_date ON booking_blackouts(blackout_date);
     """)
 
     # Migration: add columns to employee_categories if missing
@@ -231,10 +261,12 @@ def init_db():
     if "source" not in acc_cols:
         cursor.execute("ALTER TABLE pto_accruals ADD COLUMN source TEXT NOT NULL DEFAULT 'square'")
 
-    # Migration: add cancelled_by column to bookings (tracks who cancelled: 'band' | 'pub' | 'system')
+    # Migration: add cancelled_by and series_id columns to bookings
     bk_cols = [row[1] for row in cursor.execute("PRAGMA table_info(bookings)").fetchall()]
     if "cancelled_by" not in bk_cols:
         cursor.execute("ALTER TABLE bookings ADD COLUMN cancelled_by TEXT")
+    if "series_id" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN series_id INTEGER REFERENCES booking_series(id)")
 
     # Seed default categories if table is empty
     count = cursor.execute("SELECT COUNT(*) FROM employee_categories").fetchone()[0]
@@ -1104,3 +1136,285 @@ def booking_counts():
         "unpaid_fees": unpaid_fees,
         "needs_publishing": needs_publishing,
     }
+
+
+# --- Recurring booking series ---
+
+def _generate_series_dates(start_date_str, end_date_str, recurrence):
+    """Return a list of YYYY-MM-DD strings for a recurring series.
+
+    recurrence — 'weekly' | 'biweekly' | 'monthly'
+    Dates are inclusive of start_date; stops before or on end_date.
+    """
+    from datetime import timedelta
+    start = date.fromisoformat(start_date_str)
+    end   = date.fromisoformat(end_date_str)
+
+    dates = []
+    current = start
+    if recurrence == "weekly":
+        delta = timedelta(weeks=1)
+    elif recurrence == "biweekly":
+        delta = timedelta(weeks=2)
+    else:
+        delta = None  # monthly handled separately
+
+    if delta:
+        while current <= end:
+            dates.append(current.isoformat())
+            current += delta
+    else:
+        # Monthly: same day-of-month, advancing month by month
+        import calendar as _cal
+        while current <= end:
+            dates.append(current.isoformat())
+            # Advance by one month
+            month = current.month + 1
+            year  = current.year + (1 if month > 12 else 0)
+            month = month if month <= 12 else month - 12
+            day   = min(current.day, _cal.monthrange(year, month)[1])
+            current = date(year, month, day)
+
+    return dates
+
+
+def create_booking_series(series_data):
+    """Create a booking_series row and all individual booking rows.
+
+    series_data keys match booking_series columns plus the booking-level
+    fields (door_time, start_time, end_time, description, …).
+
+    Returns (series_id, list_of_booking_ids).
+    """
+    conn = get_db()
+    now = datetime.now().isoformat()
+
+    # Insert series header
+    cursor = conn.execute(
+        """INSERT INTO booking_series
+           (venue, event_type, act_name, contact_name, contact_email, contact_phone,
+            recurrence, start_date, end_date, door_time, start_time, end_time,
+            description, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            series_data.get("venue", "Backroom"),
+            series_data.get("event_type", "Class"),
+            series_data["act_name"],
+            series_data.get("contact_name"),
+            series_data.get("contact_email"),
+            series_data.get("contact_phone"),
+            series_data.get("recurrence", "weekly"),
+            series_data["start_date"],
+            series_data["end_date"],
+            series_data.get("door_time"),
+            series_data.get("start_time"),
+            series_data.get("end_time"),
+            series_data.get("description"),
+            series_data.get("notes"),
+        ),
+    )
+    series_id = cursor.lastrowid
+
+    # Generate individual booking dates
+    dates = _generate_series_dates(
+        series_data["start_date"],
+        series_data["end_date"],
+        series_data.get("recurrence", "weekly"),
+    )
+
+    booking_ids = []
+    for d in dates:
+        try:
+            dow = datetime.strptime(d, "%Y-%m-%d").strftime("%A")
+        except Exception:
+            dow = None
+
+        token = _new_booking_token()
+        booking_cursor = conn.execute(
+            """INSERT INTO bookings
+               (public_token, venue, event_date, day_of_week, door_time, start_time,
+                end_time, status, event_type, act_name, contact_name, contact_email,
+                contact_phone, description, notes, source, series_id,
+                door_fee_required, venue_fee_required, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                token,
+                series_data.get("venue", "Backroom"),
+                d,
+                dow,
+                series_data.get("door_time"),
+                series_data.get("start_time"),
+                series_data.get("end_time"),
+                "confirmed",
+                series_data.get("event_type", "Class"),
+                series_data["act_name"],
+                series_data.get("contact_name"),
+                series_data.get("contact_email"),
+                series_data.get("contact_phone"),
+                series_data.get("description"),
+                series_data.get("notes"),
+                "series",
+                series_id,
+                0,  # door_fee_required
+                0,  # venue_fee_required (classes/regulars often don't pay)
+                now,
+            ),
+        )
+        booking_ids.append(booking_cursor.lastrowid)
+
+        conn.execute(
+            "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+            (booking_cursor.lastrowid, "system", "created",
+             f"Auto-created as part of series #{series_id} ({series_data.get('recurrence','weekly')})"),
+        )
+
+    conn.commit()
+    conn.close()
+    return series_id, booking_ids
+
+
+def get_booking_series(series_id):
+    """Fetch a single booking_series row by id."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM booking_series WHERE id=?", (series_id,)
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def list_booking_series():
+    """Return all booking series ordered by start_date desc."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM booking_series ORDER BY start_date DESC"
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def get_series_bookings(series_id):
+    """Return all bookings belonging to a series, ordered by event_date."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM bookings WHERE series_id=? ORDER BY event_date ASC",
+        (series_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def cancel_series_remaining(series_id, actor="internal"):
+    """Cancel all upcoming (non-cancelled/completed) bookings in a series.
+
+    Returns count of bookings cancelled.
+    """
+    today = date.today().isoformat()
+    conn = get_db()
+    now = datetime.now().isoformat()
+
+    rows = conn.execute(
+        """SELECT id FROM bookings
+           WHERE series_id=? AND event_date >= ? AND status NOT IN ('cancelled','completed')""",
+        (series_id, today),
+    ).fetchall()
+
+    for row in rows:
+        bid = row["id"]
+        conn.execute(
+            "UPDATE bookings SET status='cancelled', cancelled_by='pub', updated_at=? WHERE id=?",
+            (now, bid),
+        )
+        conn.execute(
+            "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+            (bid, actor, "status:cancelled", f"Cancelled via series #{series_id} cancel-remaining"),
+        )
+
+    conn.commit()
+    conn.close()
+    return len(rows)
+
+
+# --- Blackout dates ---
+
+def add_blackout(blackout_date, venue="all", reason=None, created_by=None):
+    """Add a blackout date. venue can be 'Backroom', 'Upstairs', or 'all'.
+
+    Returns the new row id, or None if the date+venue combo already exists.
+    """
+    conn = get_db()
+    try:
+        cursor = conn.execute(
+            "INSERT INTO booking_blackouts (blackout_date, venue, reason, created_by) VALUES (?, ?, ?, ?)",
+            (blackout_date, venue, reason, created_by),
+        )
+        conn.commit()
+        row_id = cursor.lastrowid
+    except Exception:
+        row_id = None
+    finally:
+        conn.close()
+    return row_id
+
+
+def list_blackouts(venue=None, from_date=None):
+    """Return blackout rows, optionally filtered.
+
+    If venue is given, returns rows where venue matches OR venue='all'.
+    """
+    conn = get_db()
+    sql = "SELECT * FROM booking_blackouts WHERE 1=1"
+    params = []
+    if venue:
+        sql += " AND (venue=? OR venue='all')"
+        params.append(venue)
+    if from_date:
+        sql += " AND blackout_date >= ?"
+        params.append(from_date)
+    sql += " ORDER BY blackout_date ASC"
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return rows
+
+
+def delete_blackout(blackout_id):
+    """Remove a blackout date by id. Returns True on success."""
+    conn = get_db()
+    conn.execute("DELETE FROM booking_blackouts WHERE id=?", (blackout_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_blackout_dates_set(venue=None, from_date=None):
+    """Return a set of YYYY-MM-DD strings that are blacked out for venue."""
+    rows = list_blackouts(venue=venue, from_date=from_date)
+    return {r["blackout_date"] for r in rows}
+
+
+# --- Band / contact list ---
+
+def list_band_contacts():
+    """Return one row per unique contact email with booking stats.
+
+    Ordered by most recently booked first.
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT
+               LOWER(contact_email) AS email_key,
+               contact_email,
+               contact_name,
+               act_name,
+               contact_phone,
+               COUNT(*) AS total_bookings,
+               SUM(CASE WHEN status='confirmed' OR status='completed' THEN 1 ELSE 0 END) AS confirmed_count,
+               MAX(event_date) AS last_booking_date,
+               MIN(event_date) AS first_booking_date
+           FROM bookings
+           WHERE contact_email IS NOT NULL AND contact_email != ''
+           GROUP BY LOWER(contact_email)
+           ORDER BY last_booking_date DESC"""
+    ).fetchall()
+    conn.close()
+    return rows

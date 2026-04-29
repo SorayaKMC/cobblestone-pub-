@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Blackout Dates — Cobblestone Pub{% endblock %}
+{% block page_title %}Blackout Dates{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <a href="/bookings" class="text-muted text-decoration-none small">
+            <i class="bi bi-arrow-left me-1"></i>Back to Bookings
+        </a>
+        <h5 class="mb-0 mt-1">Blackout Dates</h5>
+        <p class="text-muted small mb-0">
+            Blocked dates appear as unavailable on the public booking form.
+            Use these for bank holidays, private events, or venue maintenance.
+        </p>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}{% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endfor %}{% endif %}{% endwith %}
+
+<div class="row g-4">
+
+    <!-- Add new blackout -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">
+                    <i class="bi bi-slash-circle me-1 text-danger"></i>Add Blackout Date
+                </h6>
+                <form method="POST" action="/bookings/blackouts/add">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Date <span class="text-danger">*</span></label>
+                        <input type="date" name="blackout_date" class="form-control"
+                               min="{{ today }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Applies to</label>
+                        <select name="venue" class="form-select">
+                            <option value="all">Both venues (Backroom &amp; Upstairs)</option>
+                            {% for v in venues %}
+                            <option value="{{ v }}">{{ v }} only</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Reason <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="text" name="reason" class="form-control"
+                               placeholder="e.g. Bank holiday, Private event…">
+                    </div>
+                    <button type="submit" class="btn btn-danger btn-sm w-100">
+                        <i class="bi bi-slash-circle me-1"></i>Add Blackout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming blackouts -->
+    <div class="col-lg-8">
+
+        {% if upcoming_blackouts %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 fw-semibold small">
+                Upcoming Blackout Dates
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Venue</th>
+                                <th>Reason</th>
+                                <th>Added</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for b in upcoming_blackouts %}
+                        <tr>
+                            <td class="fw-semibold small">{{ b.blackout_date }}</td>
+                            <td>
+                                {% if b.venue == 'all' %}
+                                    <span class="badge bg-dark">Both venues</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ b.venue }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">{{ b.reason or '—' }}</td>
+                            <td class="small text-muted">{{ b.created_at[:10] }}</td>
+                            <td>
+                                <form method="POST" action="/bookings/blackouts/{{ b.id }}/delete"
+                                      onsubmit="return confirm('Remove this blackout date?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2"
+                                            title="Remove blackout">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-light border">
+            <i class="bi bi-check-circle text-success me-1"></i>
+            No upcoming blackout dates. Add one using the form on the left.
+        </div>
+        {% endif %}
+
+        {% if past_blackouts %}
+        <div class="card shadow-sm">
+            <div class="card-header py-2 fw-semibold small text-muted">
+                Past Blackout Dates
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle text-muted">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Venue</th>
+                                <th>Reason</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for b in past_blackouts %}
+                        <tr>
+                            <td class="small">{{ b.blackout_date }}</td>
+                            <td class="small">{{ b.venue if b.venue != 'all' else 'Both' }}</td>
+                            <td class="small">{{ b.reason or '—' }}</td>
+                            <td>
+                                <form method="POST" action="/bookings/blackouts/{{ b.id }}/delete"
+                                      onsubmit="return confirm('Remove this past blackout?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                            title="Remove">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

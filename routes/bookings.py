@@ -551,6 +551,11 @@ def availability_json():
         elif s == "tentative" and statuses.get(d) != "booked":
             statuses[d] = "tentative"
 
+    # Overlay blackout dates — they always show as "booked"
+    blackouts = db.get_blackout_dates_set(venue=venue, from_date=today)
+    for d in blackouts:
+        statuses[d] = "booked"
+
     return jsonify({"statuses": statuses, "venue": venue})
 
 
@@ -717,3 +722,185 @@ def book_attachment(token, att_id):
     if not att:
         abort(404)
     return send_file(att["file_path"], as_attachment=True, download_name=att["filename"])
+
+
+# ─── Recurring series ────────────────────────────────────────────────────────
+
+@bp.route("/bookings/series")
+def series_list():
+    """List all recurring booking series."""
+    series = db.list_booking_series()
+    # Attach a quick count of upcoming / total bookings for each series
+    today = _today_iso()
+    series_with_counts = []
+    for s in series:
+        bookings = db.get_series_bookings(s["id"])
+        upcoming = [b for b in bookings if b["event_date"] >= today and b["status"] not in ("cancelled",)]
+        series_with_counts.append({
+            "series": s,
+            "total": len(bookings),
+            "upcoming": len(upcoming),
+        })
+    return render_template(
+        "booking_series_list.html",
+        series_with_counts=series_with_counts,
+        venues=VENUES,
+        event_types=EVENT_TYPES,
+    )
+
+
+@bp.route("/bookings/series/new", methods=["GET", "POST"])
+def new_series():
+    """Create a recurring booking series."""
+    if request.method == "GET":
+        return render_template(
+            "booking_series_new.html",
+            venues=VENUES,
+            event_types=EVENT_TYPES,
+            today=_today_iso(),
+        )
+
+    # POST — validate and create
+    def _opt(key, default=None):
+        v = (request.form.get(key) or "").strip()
+        return v if v else default
+
+    try:
+        act_name = _opt("act_name")
+        if not act_name:
+            raise ValueError("Act / class name is required.")
+        start_date = _opt("start_date")
+        if not start_date:
+            raise ValueError("Start date is required.")
+        end_date = _opt("end_date")
+        if not end_date:
+            raise ValueError("End date is required.")
+        if end_date < start_date:
+            raise ValueError("End date must be on or after start date.")
+
+        data = {
+            "venue":         _opt("venue", "Backroom"),
+            "event_type":    _opt("event_type", "Class"),
+            "act_name":      act_name,
+            "contact_name":  _opt("contact_name"),
+            "contact_email": _opt("contact_email"),
+            "contact_phone": _opt("contact_phone"),
+            "recurrence":    _opt("recurrence", "weekly"),
+            "start_date":    start_date,
+            "end_date":      end_date,
+            "door_time":     _opt("door_time"),
+            "start_time":    _opt("start_time"),
+            "end_time":      _opt("end_time"),
+            "description":   _opt("description"),
+            "notes":         _opt("notes"),
+        }
+
+        series_id, booking_ids = db.create_booking_series(data)
+        flash(
+            f"Series created — {len(booking_ids)} booking{'s' if len(booking_ids) != 1 else ''} "
+            f"generated from {start_date} to {end_date}.",
+            "success",
+        )
+        return redirect(url_for("bookings.series_detail", series_id=series_id))
+
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"Could not create series: {e}", "danger")
+
+    return render_template(
+        "booking_series_new.html",
+        venues=VENUES,
+        event_types=EVENT_TYPES,
+        today=_today_iso(),
+        form_data=request.form,
+    )
+
+
+@bp.route("/bookings/series/<int:series_id>")
+def series_detail(series_id):
+    """View a single recurring series and all its bookings."""
+    series = db.get_booking_series(series_id)
+    if not series:
+        flash("Series not found.", "danger")
+        return redirect(url_for("bookings.series_list"))
+
+    bookings = db.get_series_bookings(series_id)
+    today = _today_iso()
+    return render_template(
+        "booking_series_detail.html",
+        series=series,
+        bookings=bookings,
+        status_labels=STATUS_LABELS,
+        status_badges=STATUS_BADGES,
+        today=today,
+    )
+
+
+@bp.route("/bookings/series/<int:series_id>/cancel-remaining", methods=["POST"])
+def cancel_series_remaining(series_id):
+    """Cancel all upcoming bookings in a series."""
+    series = db.get_booking_series(series_id)
+    if not series:
+        abort(404)
+    count = db.cancel_series_remaining(series_id, actor="internal")
+    flash(f"Cancelled {count} upcoming booking{'s' if count != 1 else ''} in this series.", "warning")
+    return redirect(url_for("bookings.series_detail", series_id=series_id))
+
+
+# ─── Blackout dates ──────────────────────────────────────────────────────────
+
+@bp.route("/bookings/blackouts")
+def blackouts_list():
+    """Manage blackout dates — view + add form."""
+    today = _today_iso()
+    upcoming = db.list_blackouts(from_date=today)
+    past     = db.list_blackouts()
+    past     = [b for b in past if b["blackout_date"] < today]
+    return render_template(
+        "booking_blackouts.html",
+        upcoming_blackouts=upcoming,
+        past_blackouts=past,
+        venues=VENUES,
+        today=today,
+    )
+
+
+@bp.route("/bookings/blackouts/add", methods=["POST"])
+def add_blackout():
+    """Add a new blackout date."""
+    blackout_date = (request.form.get("blackout_date") or "").strip()
+    venue         = (request.form.get("venue") or "all").strip()
+    reason        = (request.form.get("reason") or "").strip() or None
+
+    if not blackout_date:
+        flash("Date is required.", "danger")
+        return redirect(url_for("bookings.blackouts_list"))
+
+    row_id = db.add_blackout(blackout_date, venue=venue, reason=reason, created_by="internal")
+    if row_id:
+        flash(f"Blackout added for {blackout_date} ({venue}).", "success")
+    else:
+        flash(f"That date is already blacked out for {venue}.", "warning")
+    return redirect(url_for("bookings.blackouts_list"))
+
+
+@bp.route("/bookings/blackouts/<int:blackout_id>/delete", methods=["POST"])
+def delete_blackout(blackout_id):
+    """Remove a blackout date."""
+    db.delete_blackout(blackout_id)
+    flash("Blackout removed.", "success")
+    return redirect(url_for("bookings.blackouts_list"))
+
+
+# ─── Band / contact list ─────────────────────────────────────────────────────
+
+@bp.route("/bookings/contacts")
+def band_contacts():
+    """View all unique bands and contacts ever booked."""
+    contacts = db.list_band_contacts()
+    return render_template(
+        "booking_contacts.html",
+        contacts=contacts,
+        today=_today_iso(),
+    )

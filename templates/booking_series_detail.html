@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Series: {{ series.act_name }} — Cobblestone Pub{% endblock %}
+{% block page_title %}Recurring Series{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/bookings/series" class="text-muted text-decoration-none small">
+        <i class="bi bi-arrow-left me-1"></i>Back to Series
+    </a>
+    <h5 class="mb-0 mt-1">{{ series.act_name }}</h5>
+    <span class="badge bg-info text-dark me-1">{{ series.recurrence | capitalize }}</span>
+    <span class="badge bg-light text-dark">{{ series.venue }}</span>
+    <span class="badge bg-secondary">{{ series.event_type }}</span>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}{% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endfor %}{% endif %}{% endwith %}
+
+<div class="row g-4">
+    <!-- Bookings table -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <span class="fw-semibold small">All Dates in Series</span>
+                <span class="text-muted small">{{ bookings|length }} booking{{ '' if bookings|length == 1 else 's' }}</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Day</th>
+                                <th>Times</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for b in bookings %}
+                        <tr class="{{ 'text-muted' if b.status == 'cancelled' else '' }}">
+                            <td class="small">
+                                {{ b.event_date }}
+                                {% if b.event_date == today %}
+                                    <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Today</span>
+                                {% elif b.event_date < today %}
+                                    <span class="text-muted" style="font-size:.7rem;">past</span>
+                                {% endif %}
+                            </td>
+                            <td class="small">{{ b.day_of_week or '' }}</td>
+                            <td class="small text-muted">
+                                {% if b.start_time %}{{ b.start_time }}{% endif %}
+                                {% if b.end_time %} – {{ b.end_time }}{% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ status_badges.get(b.status, 'secondary') }}">
+                                    {{ status_labels.get(b.status, b.status) }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/bookings/{{ b.id }}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.78rem;">View</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-muted text-center py-3">No bookings found.</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+
+        <!-- Series info -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">Series Info</h6>
+                <dl class="row mb-0 small">
+                    <dt class="col-5 text-muted">Frequency</dt>
+                    <dd class="col-7">{{ series.recurrence | capitalize }}</dd>
+                    <dt class="col-5 text-muted">Venue</dt>
+                    <dd class="col-7">{{ series.venue }}</dd>
+                    <dt class="col-5 text-muted">Type</dt>
+                    <dd class="col-7">{{ series.event_type }}</dd>
+                    <dt class="col-5 text-muted">Period</dt>
+                    <dd class="col-7">{{ series.start_date }}<br>→ {{ series.end_date }}</dd>
+                    {% if series.door_time or series.start_time %}
+                    <dt class="col-5 text-muted">Times</dt>
+                    <dd class="col-7">
+                        {% if series.door_time %}Doors {{ series.door_time }}{% endif %}
+                        {% if series.start_time %}<br>Start {{ series.start_time }}{% endif %}
+                        {% if series.end_time %}<br>End {{ series.end_time }}{% endif %}
+                    </dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        <!-- Contact -->
+        {% if series.contact_name or series.contact_email %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-2">Contact</h6>
+                <div class="small">
+                    {% if series.contact_name %}<div class="fw-semibold">{{ series.contact_name }}</div>{% endif %}
+                    {% if series.contact_email %}
+                        <a href="mailto:{{ series.contact_email }}" class="text-decoration-none">
+                            {{ series.contact_email }}
+                        </a>
+                    {% endif %}
+                    {% if series.contact_phone %}<div class="text-muted">{{ series.contact_phone }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Description -->
+        {% if series.description %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-2">Description</h6>
+                <div class="small text-muted">{{ series.description }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="card shadow-sm border-danger mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold text-danger mb-2">Cancel Remaining</h6>
+                <p class="small text-muted mb-3">
+                    Cancels all upcoming bookings in this series.
+                    Past and already-cancelled dates are left unchanged.
+                    This cannot be undone.
+                </p>
+                <form method="POST" action="/bookings/series/{{ series.id }}/cancel-remaining"
+                      onsubmit="return confirm('Cancel all upcoming bookings in this series?')">
+                    <button type="submit" class="btn btn-sm btn-danger w-100">
+                        <i class="bi bi-x-circle me-1"></i>Cancel Remaining Dates
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

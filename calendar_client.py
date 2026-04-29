@@ -4,12 +4,14 @@ Creates / updates / deletes events in the Cobblestone Google Calendar whenever
 a booking is confirmed, rescheduled, or cancelled.
 
 Required environment variables:
-    GOOGLE_SERVICE_ACCOUNT_JSON  — full JSON key file contents (one-line string)
-    GOOGLE_CALENDAR_ID           — calendar ID to write events into
-                                   (e.g. "cobblestonedublin@gmail.com")
+    GOOGLE_SERVICE_ACCOUNT_JSON   — full JSON key file contents (one-line string)
+    GOOGLE_CALENDAR_ID            — Backroom calendar ID
+    GOOGLE_CALENDAR_ID_UPSTAIRS   — Upstairs calendar ID (optional; falls back
+                                    to GOOGLE_CALENDAR_ID if not set)
 
-Both vars are optional.  If either is missing the functions log a message and
-return None so the booking flow continues uninterrupted.
+All vars are optional.  If credentials or a calendar ID are missing the
+functions log a message and return None so the booking flow continues
+uninterrupted.
 """
 
 import json
@@ -22,13 +24,23 @@ import config
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _calendar_service():
+def _calendar_id(venue="Backroom"):
+    """Return the Google Calendar ID for the given venue."""
+    if venue == "Upstairs":
+        return (
+            os.getenv("GOOGLE_CALENDAR_ID_UPSTAIRS", "")
+            or os.getenv("GOOGLE_CALENDAR_ID", "")
+        )
+    return os.getenv("GOOGLE_CALENDAR_ID", "")
+
+
+def _calendar_service(venue="Backroom"):
     """Build and return an authenticated Google Calendar service, or None."""
     if not config.GOOGLE_SERVICE_ACCOUNT_JSON:
         print("[calendar] GOOGLE_SERVICE_ACCOUNT_JSON not set — Calendar disabled")
         return None
-    if not os.getenv("GOOGLE_CALENDAR_ID"):
-        print("[calendar] GOOGLE_CALENDAR_ID not set — Calendar disabled")
+    if not _calendar_id(venue):
+        print(f"[calendar] No calendar ID configured for venue '{venue}' — Calendar disabled")
         return None
 
     try:
@@ -44,10 +56,6 @@ def _calendar_service():
     except Exception as e:
         print(f"[calendar] Failed to build service: {e}")
         return None
-
-
-def _calendar_id():
-    return os.getenv("GOOGLE_CALENDAR_ID", "")
 
 
 def _booking_to_event(booking):
@@ -108,20 +116,22 @@ def _booking_to_event(booking):
 def create_calendar_event(booking):
     """Create a Google Calendar event for a confirmed booking.
 
+    Routes to the correct calendar based on booking['venue'].
     Returns the created event ID string, or None on failure / misconfiguration.
     """
-    service = _calendar_service()
+    venue = booking.get("venue", "Backroom")
+    service = _calendar_service(venue)
     if not service:
         return None
 
     try:
         event_body = _booking_to_event(booking)
         result = service.events().insert(
-            calendarId=_calendar_id(),
+            calendarId=_calendar_id(venue),
             body=event_body,
         ).execute()
         event_id = result.get("id")
-        print(f"[calendar] Created event {event_id!r} for booking #{booking['id']}")
+        print(f"[calendar] Created event {event_id!r} on {venue} calendar for booking #{booking['id']}")
         return event_id
     except Exception as e:
         print(f"[calendar] Failed to create event for booking #{booking['id']}: {e}")
@@ -131,22 +141,24 @@ def create_calendar_event(booking):
 def update_calendar_event(booking, event_id):
     """Update an existing Calendar event after booking details change.
 
+    Routes to the correct calendar based on booking['venue'].
     Returns True on success, False on failure.
     """
     if not event_id:
         return False
-    service = _calendar_service()
+    venue = booking.get("venue", "Backroom")
+    service = _calendar_service(venue)
     if not service:
         return False
 
     try:
         event_body = _booking_to_event(booking)
         service.events().update(
-            calendarId=_calendar_id(),
+            calendarId=_calendar_id(venue),
             eventId=event_id,
             body=event_body,
         ).execute()
-        print(f"[calendar] Updated event {event_id!r} for booking #{booking['id']}")
+        print(f"[calendar] Updated event {event_id!r} on {venue} calendar for booking #{booking['id']}")
         return True
     except Exception as e:
         print(f"[calendar] Failed to update event {event_id!r}: {e}")
@@ -156,20 +168,22 @@ def update_calendar_event(booking, event_id):
 def delete_calendar_event(booking, event_id):
     """Delete a Calendar event when a booking is cancelled.
 
+    Routes to the correct calendar based on booking['venue'].
     Returns True on success, False on failure.
     """
     if not event_id:
         return False
-    service = _calendar_service()
+    venue = booking.get("venue", "Backroom")
+    service = _calendar_service(venue)
     if not service:
         return False
 
     try:
         service.events().delete(
-            calendarId=_calendar_id(),
+            calendarId=_calendar_id(venue),
             eventId=event_id,
         ).execute()
-        print(f"[calendar] Deleted event {event_id!r} for booking #{booking['id']}")
+        print(f"[calendar] Deleted event {event_id!r} from {venue} calendar for booking #{booking['id']}")
         return True
     except Exception as e:
         print(f"[calendar] Failed to delete event {event_id!r}: {e}")

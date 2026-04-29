@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}New Recurring Series — Cobblestone Pub{% endblock %}
+{% block page_title %}New Recurring Series{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/bookings/series" class="text-muted text-decoration-none small">
+        <i class="bi bi-arrow-left me-1"></i>Back to Series
+    </a>
+    <h5 class="mb-0 mt-1">Create a Recurring Booking Series</h5>
+    <p class="text-muted small mb-0">
+        Use this for weekly classes, regular sessions, or any repeating booking.
+        Each date in the series becomes its own booking (status: Confirmed).
+    </p>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}{% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endfor %}{% endif %}{% endwith %}
+
+{% set fd = form_data or {} %}
+
+<form method="POST" action="/bookings/series/new">
+<div class="row g-4">
+
+    <!-- Left column: core info -->
+    <div class="col-lg-7">
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">Series Details</h6>
+                <div class="row g-3">
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Act / Class Name <span class="text-danger">*</span></label>
+                        <input type="text" name="act_name" class="form-control"
+                               value="{{ fd.get('act_name','') }}"
+                               placeholder="e.g. Irish Traditional Session, Monday Yoga…" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Venue <span class="text-danger">*</span></label>
+                        <select name="venue" class="form-select">
+                            {% for v in venues %}
+                            <option value="{{ v }}" {% if fd.get('venue', 'Backroom') == v %}selected{% endif %}>{{ v }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Event Type <span class="text-danger">*</span></label>
+                        <select name="event_type" class="form-select">
+                            {% for t in event_types %}
+                            <option value="{{ t }}" {% if fd.get('event_type', 'Class') == t %}selected{% endif %}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Description</label>
+                        <textarea name="description" rows="3" class="form-control"
+                                  placeholder="Short description for the Squarespace listing (optional)">{{ fd.get('description','') }}</textarea>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Internal Notes</label>
+                        <textarea name="notes" rows="2" class="form-control"
+                                  placeholder="Staff-only notes (not visible to the band)">{{ fd.get('notes','') }}</textarea>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">Recurrence</h6>
+                <div class="row g-3">
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Frequency <span class="text-danger">*</span></label>
+                        <select name="recurrence" class="form-select">
+                            <option value="weekly"    {% if fd.get('recurrence','weekly') == 'weekly'    %}selected{% endif %}>Weekly</option>
+                            <option value="biweekly"  {% if fd.get('recurrence','') == 'biweekly'  %}selected{% endif %}>Every 2 weeks</option>
+                            <option value="monthly"   {% if fd.get('recurrence','') == 'monthly'   %}selected{% endif %}>Monthly</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Start Date <span class="text-danger">*</span></label>
+                        <input type="date" name="start_date" class="form-control"
+                               value="{{ fd.get('start_date', today) }}" min="{{ today }}" required>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">End Date <span class="text-danger">*</span></label>
+                        <input type="date" name="end_date" class="form-control"
+                               value="{{ fd.get('end_date','') }}" min="{{ today }}" required>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="alert alert-light border small mb-0">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Each occurrence becomes its own booking set to <strong>Confirmed</strong>.
+                            You can cancel individual dates from the booking detail page, or use
+                            "Cancel remaining" to end the whole series.
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">Times</h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small">Doors open</label>
+                        <input type="time" name="door_time" class="form-control"
+                               value="{{ fd.get('door_time','') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Start time</label>
+                        <input type="time" name="start_time" class="form-control"
+                               value="{{ fd.get('start_time','') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">End time</label>
+                        <input type="time" name="end_time" class="form-control"
+                               value="{{ fd.get('end_time','') }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right column: contact -->
+    <div class="col-lg-5">
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">Contact Details</h6>
+                <div class="row g-3">
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Contact Name</label>
+                        <input type="text" name="contact_name" class="form-control"
+                               value="{{ fd.get('contact_name','') }}"
+                               placeholder="Name of the organiser / band manager">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Email</label>
+                        <input type="email" name="contact_email" class="form-control"
+                               value="{{ fd.get('contact_email','') }}"
+                               placeholder="contact@example.com">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Phone</label>
+                        <input type="tel" name="contact_phone" class="form-control"
+                               value="{{ fd.get('contact_phone','') }}"
+                               placeholder="+353 …">
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-warning mb-3">
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Series bookings are automatically set to <strong>no venue fee</strong>
+                    and <strong>no door fee</strong> (suitable for classes and regular
+                    sessions). If fees apply, edit individual bookings after creation.
+                </p>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-arrow-repeat me-1"></i>Create Series &amp; Generate Bookings
+            </button>
+            <a href="/bookings/series" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+
+    </div>
+</div>
+</form>
+{% endblock %}
