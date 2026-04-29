@@ -619,6 +619,33 @@ def book_upload(token):
     return redirect(url_for("bookings.book_portal", token=token))
 
 
+@bp.route("/bookings/<int:booking_id>/send-portal-link", methods=["POST"])
+def send_portal_link(booking_id):
+    """Send a short portal-intro email to the band for this booking."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+    if not booking["contact_email"]:
+        flash("No email address on file for this booking.", "warning")
+        return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+    try:
+        import bookings_email
+        sent = bookings_email.send_portal_intro(
+            booking, request.host_url.rstrip("/")
+        )
+        if sent:
+            db.add_booking_audit(booking_id, "internal", "email_sent",
+                                 "Portal intro link sent manually")
+            flash(f"Portal link sent to {booking['contact_email']}. ✓", "success")
+        else:
+            flash("Email could not be sent — check SMTP settings in Render.", "warning")
+    except Exception as e:
+        flash(f"Email failed: {e}", "danger")
+
+    return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+
 @bp.route("/bookings/<int:booking_id>/message", methods=["POST"])
 def send_message(booking_id):
     """Send a staff-composed email to the band from inside the booking detail page."""

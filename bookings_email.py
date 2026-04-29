@@ -858,3 +858,124 @@ https://cobblestonepub.ie
 """
 
     return _send(booking["contact_email"], subject, html, plain)
+
+
+def send_portal_intro(booking, base_url=None):
+    """Send a short 'here's your portal link' email to a band.
+
+    Used when introducing the booking portal to bands that were already
+    confirmed before the portal existed (e.g. imported from spreadsheet).
+    Deliberately short — not a full confirmation re-send.
+
+    Returns True on success, False on failure.
+    """
+    if not booking["contact_email"]:
+        return False
+
+    base       = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
+    portal_url = f"{base}/book/{booking['public_token']}"
+    act        = booking["act_name"]
+    name       = booking["contact_name"] or "there"
+    venue      = booking["venue"]
+
+    try:
+        from datetime import datetime as _dt
+        d = _dt.strptime(booking["event_date"], "%Y-%m-%d")
+        date_str = d.strftime("%A, %-d %B %Y")
+    except Exception:
+        date_str = booking["event_date"]
+
+    subject = f"Cobblestone Pub — your booking portal: {act}, {date_str}"
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#fff;border-radius:8px;overflow:hidden;
+                    box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr>
+          <td style="background:#1c1c2e;padding:28px 32px;">
+            <h2 style="margin:0;color:#fff;font-size:22px;">&#127866; Cobblestone Pub</h2>
+            <p  style="margin:4px 0 0;color:#aaa;font-size:13px;">
+              Backroom &amp; Upstairs Bookings
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 16px;font-size:16px;">Hi {name},</p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333;">
+              We've set up a new booking portal where you can view your upcoming booking
+              for <strong>{act}</strong> at the Cobblestone Pub ({venue}) on
+              <strong>{date_str}</strong>.
+            </p>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#333;">
+              Through your portal you can check your booking status, upload a poster or
+              artist bio, and see any updates from us. Bookmark the link below — it's yours:
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+              <tr>
+                <td style="background:#16a34a;border-radius:6px;">
+                  <a href="{portal_url}"
+                     style="display:block;padding:14px 28px;color:#fff;
+                            text-decoration:none;font-weight:bold;font-size:15px;">
+                    View your booking &#8594;
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 20px;font-size:13px;color:#777;text-align:center;">
+              <a href="{portal_url}" style="color:#2563eb;">{portal_url}</a>
+            </p>
+            <p style="margin:0 0 8px;font-size:14px;color:#555;">
+              If you have any questions just reply to this email or contact us at
+              <a href="tel:+353894770682" style="color:#555;">+353 89 477 06 82</a>.
+            </p>
+            <p style="margin:24px 0 0;font-size:15px;color:#333;">
+              Looking forward to seeing you!<br>
+              <strong>The Cobblestone staff</strong>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f8f8;padding:16px 32px;
+                     border-top:1px solid #eee;font-size:12px;color:#999;">
+            77 King St N, Smithfield, Dublin 7 &nbsp;&middot;&nbsp;
+            <a href="https://cobblestonepub.ie" style="color:#999;">cobblestonepub.ie</a>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    text = f"""Hi {name},
+
+We've set up a new booking portal for your upcoming booking at the Cobblestone Pub.
+
+Act:   {act}
+Date:  {date_str}
+Venue: {venue}, Cobblestone Pub
+
+View your booking, check your status, and upload a poster or bio here:
+{portal_url}
+
+Bookmark this link — it's yours to keep.
+
+Any questions? Just reply to this email or call us on +353 89 477 06 82.
+
+Looking forward to seeing you!
+The Cobblestone Pub team
+
+--
+77 King St N, Smithfield, Dublin 7
+https://cobblestonepub.ie
+"""
+
+    return _send(booking["contact_email"], subject, html, text)
