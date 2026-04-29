@@ -239,14 +239,41 @@ def confirm_booking(booking_id):
         except Exception as e:
             print(f"[bookings] Confirmation email failed: {e}")
 
-    if email_sent and cal_event_id:
-        flash("Booking confirmed — confirmation email sent and Google Calendar event created. ✓", "success")
-    elif email_sent:
-        flash("Booking confirmed and confirmation email sent to the band. ✓", "success")
-    elif updated["contact_email"]:
-        flash("Booking confirmed. Email could not be sent — check SMTP settings in Render.", "warning")
-    else:
-        flash("Booking confirmed. No email address on file.", "success")
+    # Auto-decline any competing inquiry/tentative bookings for the same date+venue
+    declined_count = 0
+    try:
+        import bookings_email as _be
+        competing = db.get_competing_bookings(
+            updated["event_date"], updated["venue"], booking_id
+        )
+        for comp in competing:
+            db.cancel_booking(
+                comp["id"],
+                cancelled_by="pub",
+                actor="internal",
+                detail=f"Auto-declined: booking #{booking_id} ({updated['act_name']}) "
+                       f"confirmed for this date",
+            )
+            try:
+                _be.send_date_taken_decline(comp, request.host_url.rstrip("/"))
+            except Exception as e:
+                print(f"[bookings] Decline email failed for #{comp['id']}: {e}")
+            declined_count += 1
+    except Exception as e:
+        print(f"[bookings] Auto-decline step failed: {e}")
+
+    # Build flash message
+    parts = ["Booking confirmed"]
+    if email_sent:
+        parts.append("confirmation email sent")
+    if cal_event_id:
+        parts.append("Google Calendar event created")
+    if declined_count:
+        parts.append(
+            f"{declined_count} competing inquir{'y' if declined_count == 1 else 'ies'} "
+            f"auto-declined and notified"
+        )
+    flash(". ".join(parts) + ". ✓", "success" if email_sent else "warning")
 
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
@@ -737,6 +764,114 @@ def band_cancel_booking(token):
 
     flash("Your booking has been cancelled. We've sent a confirmation to your email.", "info")
     return redirect(url_for("bookings.book_portal", token=token))
+
+
+@bp.route("/book/<token>/rebook", methods=["GET", "POST"])
+def book_rebook(token):
+    """Let a declined band pick a new date without re-filling the whole form."""
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+
+    # Only makes sense for cancelled bookings — redirect active ones to their portal
+    if booking["status"] != "cancelled":
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    if request.method == "GET":
+        return render_template(
+            "book_rebook.html",
+            booking=booking,
+            venues=VENUES,
+        )
+
+    # POST — validate new date and create a fresh inquiry
+    new_date = (request.form.get("event_date") or "").strip()
+    new_venue = (request.form.get("venue") or booking["venue"]).strip()
+
+    if not new_date:
+        flash("Please select a date on the calendar.", "danger")
+        return render_template("book_rebook.html", booking=booking, venues=VENUES)
+
+    if new_date < _today_iso():
+        flash("Please select a future date.", "danger")
+        return render_template("book_rebook.html", booking=booking, venues=VENUES)
+
+    # Check the new date isn't already taken
+    taken_bookings = db.list_bookings(
+        status=["confirmed", "tentative"],
+        venue=new_venue,
+        start_date=new_date,
+        end_date=new_date,
+    )
+    blackouts = db.get_blackout_dates_set(venue=new_venue, from_date=new_date)
+    if taken_bookings or new_date in blackouts:
+        flash(
+            "Sorry, that date is already taken or unavailable. Please choose another.",
+            "danger",
+        )
+        return render_template("book_rebook.html", booking=booking, venues=VENUES)
+
+    try:
+        dow = datetime.strptime(new_date, "%Y-%m-%d").strftime("%A")
+    except Exception:
+        dow = None
+
+    # Copy all meaningful fields from the original booking
+    new_data = {
+        "venue":               new_venue,
+        "event_date":          new_date,
+        "day_of_week":         dow,
+        "door_time":           None,
+        "start_time":          None,
+        "end_time":            None,
+        "status":              "inquiry",
+        "event_type":          booking["event_type"],
+        "act_name":            booking["act_name"],
+        "contact_name":        booking["contact_name"],
+        "contact_email":       booking["contact_email"],
+        "contact_phone":       booking["contact_phone"],
+        "expected_attendance": booking["expected_attendance"],
+        "description":         booking["description"],
+        "media_links":         booking["media_links"],
+        "ticketing":           None,
+        "ticket_price":        None,
+        "ticket_link":         None,
+        "door_person":         None,
+        "door_fee_required":   0,
+        "venue_fee_required":  1,
+        "announcement_date":   None,
+        "support_act":         None,
+        "promo_ok":            None,
+        "notes":               None,
+        "source":              "web",
+    }
+
+    new_bid = db.save_booking(new_data)
+    new_booking = db.get_booking(new_bid)
+
+    db.add_booking_audit(
+        new_bid, "band", "created",
+        f"Rebooked via portal — original booking #{booking['id']} "
+        f"({booking['event_date']}) was declined",
+    )
+    db.add_booking_audit(
+        booking["id"], "band", "rebooking",
+        f"Band requested new date — new inquiry #{new_bid} created for {new_date}",
+    )
+
+    # Send auto-ack for the new booking
+    try:
+        import bookings_email
+        bookings_email.send_booking_ack(new_booking, request.host_url.rstrip("/"))
+    except Exception as e:
+        print(f"[bookings] Rebook ack email failed: {e}")
+
+    flash(
+        f"Your new inquiry for {new_date} has been submitted! "
+        "We'll be in touch within 2–3 working days.",
+        "success",
+    )
+    return redirect(url_for("bookings.book_portal", token=new_booking["public_token"]))
 
 
 @bp.route("/book/<token>/attachment/<int:att_id>")

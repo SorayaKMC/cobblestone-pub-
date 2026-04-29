@@ -254,16 +254,25 @@
                 </div>
                 {% endif %}
                 <hr>
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="small">Squarespace listing</span>
-                    <form method="POST" action="/bookings/{{ booking.id }}/squarespace" class="m-0">
+                <form method="POST" action="/bookings/{{ booking.id }}/squarespace" class="m-0">
+                    <button type="submit"
+                            class="btn btn-sm w-100 text-start d-flex align-items-center gap-2
+                                   {{ 'btn-success' if booking.squarespace_published_at else 'btn-outline-secondary' }}"
+                            title="{{ 'Click to unmark' if booking.squarespace_published_at else 'Click to mark as done' }}">
                         {% if booking.squarespace_published_at %}
-                        <button class="btn btn-sm btn-success" title="Click to mark unpublished"><i class="bi bi-globe me-1"></i>Published</button>
+                            <i class="bi bi-check-square-fill fs-5"></i>
+                            <span>
+                                Squarespace event created
+                                <span class="fw-normal opacity-75" style="font-size:.75rem;">
+                                    — {{ booking.squarespace_published_at[:10] }}
+                                </span>
+                            </span>
                         {% else %}
-                        <button class="btn btn-sm btn-outline-warning">Mark Published</button>
+                            <i class="bi bi-square fs-5 opacity-50"></i>
+                            <span class="text-muted">Squarespace event not yet created</span>
                         {% endif %}
-                    </form>
-                </div>
+                    </button>
+                </form>
             </div>
         </div>
 

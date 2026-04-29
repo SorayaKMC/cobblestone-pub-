@@ -1066,6 +1066,23 @@ def add_booking_audit(booking_id, actor, action, detail=None):
     conn.close()
 
 
+def get_competing_bookings(event_date, venue, exclude_booking_id):
+    """Return active inquiry/tentative bookings for the same date+venue.
+
+    Used by confirm_booking to find bookings that need to be auto-declined.
+    Only matches same venue — a Backroom confirmation does not affect Upstairs.
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT * FROM bookings
+           WHERE event_date = ? AND venue = ? AND id != ?
+             AND status IN ('inquiry', 'tentative')""",
+        (event_date, venue, exclude_booking_id),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
 def get_booking_audit(booking_id):
     """Return audit log for a booking, newest first."""
     conn = get_db()

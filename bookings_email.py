@@ -979,3 +979,124 @@ https://cobblestonepub.ie
 """
 
     return _send(booking["contact_email"], subject, html, text)
+
+
+def send_date_taken_decline(booking, base_url=None):
+    """Notify a band that their requested date has been taken by another booking.
+
+    Sent automatically when a competing booking is confirmed for the same
+    date and venue.  Includes a one-click 'Pick a new date' rebook link so
+    the band can choose a different date without re-filling the whole form.
+
+    Returns True on success, False on failure.
+    """
+    if not booking["contact_email"]:
+        return False
+
+    base       = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
+    rebook_url = f"{base}/book/{booking['public_token']}/rebook"
+    act        = booking["act_name"]
+    name       = booking["contact_name"] or "there"
+    venue      = booking["venue"]
+
+    try:
+        from datetime import datetime as _dt
+        d = _dt.strptime(booking["event_date"], "%Y-%m-%d")
+        date_str = d.strftime("%A, %-d %B %Y")
+    except Exception:
+        date_str = booking["event_date"]
+
+    subject = f"Re: your inquiry for {date_str} — date now taken"
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#fff;border-radius:8px;overflow:hidden;
+                    box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr>
+          <td style="background:#1c1c2e;padding:28px 32px;">
+            <h2 style="margin:0;color:#fff;font-size:22px;">&#127866; Cobblestone Pub</h2>
+            <p style="margin:4px 0 0;color:#aaa;font-size:13px;">
+              Backroom &amp; Upstairs Bookings
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 16px;font-size:16px;">Hi {name},</p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333;">
+              Thanks for your interest in playing the Cobblestone Pub.
+              Unfortunately <strong>{date_str}</strong> at the <strong>{venue}</strong>
+              has just been confirmed for another event, so we're unable to accommodate
+              <strong>{act}</strong> on that date.
+            </p>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#333;">
+              We'd love to have you here — use the button below to check availability
+              and pick a new date. Your details are already saved, so you won't need
+              to fill in the form again.
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+              <tr>
+                <td style="background:#2563eb;border-radius:6px;">
+                  <a href="{rebook_url}"
+                     style="display:block;padding:14px 28px;color:#fff;
+                            text-decoration:none;font-weight:bold;font-size:15px;">
+                    Pick a new date &#8594;
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 20px;font-size:13px;color:#777;text-align:center;">
+              <a href="{rebook_url}" style="color:#2563eb;">{rebook_url}</a>
+            </p>
+            <p style="margin:0 0 8px;font-size:14px;color:#555;">
+              If you have any questions, just reply to this email or call us on
+              <a href="tel:+353894770682" style="color:#555;">+353 89 477 06 82</a>.
+            </p>
+            <p style="margin:24px 0 0;font-size:15px;color:#333;">
+              Hope to see you at the Cobblestone soon,<br>
+              <strong>The Cobblestone staff</strong>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f8f8;padding:16px 32px;
+                     border-top:1px solid #eee;font-size:12px;color:#999;">
+            77 King St N, Smithfield, Dublin 7 &nbsp;&middot;&nbsp;
+            <a href="https://cobblestonepub.ie" style="color:#999;">cobblestonepub.ie</a>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    text = f"""Hi {name},
+
+Thanks for your interest in playing the Cobblestone Pub. Unfortunately
+{date_str} at the {venue} has just been confirmed for another event,
+so we can't accommodate {act} on that date.
+
+We'd love to have you here — pick a new date using the link below.
+Your details are already saved so you won't need to fill in the form again:
+
+{rebook_url}
+
+Any questions? Just reply to this email or call us on +353 89 477 06 82.
+
+Hope to see you at the Cobblestone soon,
+The Cobblestone staff
+
+--
+77 King St N, Smithfield, Dublin 7
+https://cobblestonepub.ie
+"""
+
+    return _send(booking["contact_email"], subject, html, text)
