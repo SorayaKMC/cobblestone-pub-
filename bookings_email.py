@@ -357,7 +357,7 @@ def send_booking_confirmation(booking, base_url=None):
                 <td style="padding:20px;">
                   <p style="margin:0 0 12px;font-size:13px;font-weight:bold;
                              color:#1c1c2e;text-transform:uppercase;letter-spacing:.5px;">
-                    Good to know
+                    Reminders
                   </p>
                   <table width="100%" cellpadding="3" cellspacing="0"
                          style="font-size:13px;color:#444;">
@@ -385,12 +385,26 @@ def send_booking_confirmation(booking, base_url=None):
                       <td><strong>Access</strong> via Red Cow Lane — enter through the Cobblestone Pub. Free parking after 7pm &amp; Sundays.</td>
                     </tr>
                   </table>
-                  <p style="margin:12px 0 0;font-size:12px;color:#777;">
-                    Full details:
-                    <a href="{base}/static/docs/Cobblestone_Backroom_Info_Sheet.pdf" style="color:#2563eb;">Info Sheet</a>
-                    &nbsp;·&nbsp;
-                    <a href="{base}/static/docs/Cobblestone_Backroom_Tech_Spec.pdf" style="color:#2563eb;">Tech Spec</a>
-                  </p>
+                  <table cellpadding="0" cellspacing="0" style="margin-top:16px;">
+                    <tr>
+                      <td style="padding-right:10px;">
+                        <a href="{base}/static/docs/Cobblestone_Backroom_Info_Sheet.pdf"
+                           style="display:inline-block;background:#1c1c2e;color:#fff;
+                                  padding:10px 18px;border-radius:6px;text-decoration:none;
+                                  font-size:13px;font-weight:bold;">
+                          📄 Info Sheet
+                        </a>
+                      </td>
+                      <td>
+                        <a href="{base}/static/docs/Cobblestone_Backroom_Tech_Spec.pdf"
+                           style="display:inline-block;background:#f3f4f6;color:#1c1c2e;
+                                  border:1px solid #d1d5db;padding:10px 18px;border-radius:6px;
+                                  text-decoration:none;font-size:13px;font-weight:bold;">
+                          🎛️ Tech Spec
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
             </table>
@@ -443,21 +457,21 @@ Date:  {date_str}
 Venue: {venue}, Cobblestone Pub
 Times: {times_str}
 
-── GOOD TO KNOW ──────────────────────────────────────────────────
-⭐ Venue fee (€150) is payable to Shane on the night — includes
-   sound engineer and bartender.
+── REMINDERS ─────────────────────────────────────────────────────
+⭐ Venue fee (€150) is payable directly to Shane on the night —
+   includes use of the room, sound engineer, and staffed bar.
 ⭐ Door person (€50) payable to the Cobblestone on the night.
    Let us know at least one week in advance if you need one.
 🎤 Shane Hannigan: +353 (85) 175 8254 · onsoundie@gmail.com
    Arrange sound check, load-in & load-out directly with Shane.
-   No drum backline available.
-🎟️ Ticketing is your responsibility. We recommend Eventbrite.
-   No card machine at the door — bring your own if needed.
+   ⚠️ No drum backline available.
+🎟️ Ticketing is your responsibility. We recommend Eventbrite or
+   Ticket Tailor. No card machine at the door — bring your own.
 📍 Access via Red Cow Lane — enter through the Cobblestone Pub.
    Free parking after 7pm & Sundays.
 
-Info Sheet: {base}/static/docs/Cobblestone_Backroom_Info_Sheet.pdf
-Tech Spec:  {base}/static/docs/Cobblestone_Backroom_Tech_Spec.pdf
+📄 Info Sheet: {base}/static/docs/Cobblestone_Backroom_Info_Sheet.pdf
+🎛️ Tech Spec:  {base}/static/docs/Cobblestone_Backroom_Tech_Spec.pdf
 ──────────────────────────────────────────────────────────────────
 
 View your booking and upload your poster/bio here:
