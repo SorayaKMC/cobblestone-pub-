@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cobblestone Pub — Bookings SOP</title>
+<style>
+  /* ── Base ─────────────────────────────────────────────────────────────── */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 11pt;
+    line-height: 1.65;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 0;
+  }
+
+  .page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 52px 60px;
+  }
+
+  /* ── Cover ───────────────────────────────────────────────────────────── */
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-bottom: 3px solid #1c1c2e;
+    padding-bottom: 48px;
+    margin-bottom: 48px;
+  }
+
+  .cover-logo { font-size: 36pt; font-weight: bold; color: #1c1c2e; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .cover-sub  { font-size: 14pt; color: #555; margin-bottom: 48px; font-style: italic; }
+  .cover-title { font-size: 26pt; font-weight: bold; color: #1c1c2e; margin-bottom: 12px; line-height: 1.2; }
+  .cover-desc { font-size: 13pt; color: #444; max-width: 520px; line-height: 1.7; margin-bottom: 40px; }
+
+  .cover-meta { font-size: 10pt; color: #888; border-top: 1px solid #ddd; padding-top: 20px; margin-top: auto; }
+  .cover-meta span { margin-right: 28px; }
+
+  /* ── ToC ─────────────────────────────────────────────────────────────── */
+  .toc { margin-bottom: 48px; }
+  .toc h2 { font-size: 14pt; color: #1c1c2e; border-bottom: 2px solid #1c1c2e; padding-bottom: 6px; margin-bottom: 18px; }
+  .toc ol { margin-left: 20px; }
+  .toc li { margin-bottom: 6px; font-size: 11pt; }
+  .toc a { color: #1c1c2e; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc .toc-sub { margin-left: 20px; list-style-type: lower-alpha; color: #555; font-size: 10.5pt; margin-top: 4px; }
+
+  /* ── Sections ────────────────────────────────────────────────────────── */
+  .section { margin-bottom: 48px; page-break-inside: avoid; }
+
+  h1 { font-size: 20pt; color: #1c1c2e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #1c1c2e; }
+  h2 { font-size: 14pt; color: #1c1c2e; margin: 28px 0 12px; }
+  h3 { font-size: 12pt; color: #1c1c2e; margin: 20px 0 8px; font-style: italic; }
+
+  p  { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 14px 24px; }
+  li { margin-bottom: 6px; }
+
+  strong { color: #1c1c2e; }
+  em { color: #555; }
+
+  /* ── Callout boxes ───────────────────────────────────────────────────── */
+  .box {
+    border-radius: 5px;
+    padding: 16px 20px;
+    margin: 18px 0;
+    font-size: 10.5pt;
+  }
+  .box-info    { background: #f0f7ff; border-left: 4px solid #2563eb; }
+  .box-warn    { background: #fffbeb; border-left: 4px solid #d97706; }
+  .box-danger  { background: #fff1f1; border-left: 4px solid #dc2626; }
+  .box-success { background: #f0fdf4; border-left: 4px solid #16a34a; }
+  .box-dark    { background: #f5f5f7; border-left: 4px solid #1c1c2e; }
+  .box p:last-child { margin-bottom: 0; }
+  .box-title { font-weight: bold; display: block; margin-bottom: 6px; }
+
+  /* ── Steps ───────────────────────────────────────────────────────────── */
+  .steps { margin: 16px 0; counter-reset: step; list-style: none; padding: 0; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+  .steps li::before {
+    content: counter(step);
+    background: #1c1c2e;
+    color: #fff;
+    font-size: 9pt;
+    font-weight: bold;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Status pills ────────────────────────────────────────────────────── */
+  .pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 9.5pt;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    letter-spacing: 0.2px;
+  }
+  .pill-warning  { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+  .pill-info     { background: #e0f2fe; color: #0c4a6e; border: 1px solid #7dd3fc; }
+  .pill-success  { background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+  .pill-secondary{ background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+  .pill-dark     { background: #1c1c2e; color: #fff; border: 1px solid #1c1c2e; }
+
+  /* ── Table ───────────────────────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 10.5pt; }
+  th { background: #1c1c2e; color: #fff; padding: 8px 12px; text-align: left; font-weight: bold; }
+  td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── Cheat sheet ─────────────────────────────────────────────────────── */
+  .cheat { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .cheat-item { background: #f5f5f7; border-radius: 5px; padding: 12px 14px; }
+  .cheat-label { font-size: 9pt; color: #888; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .5px; font-family: Arial, sans-serif; }
+  .cheat-value { font-size: 10.5pt; font-family: monospace; word-break: break-all; }
+
+  /* ── Lifecycle flow ──────────────────────────────────────────────────── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 18px 0;
+    flex-wrap: wrap;
+    font-family: Arial, sans-serif;
+    font-size: 9.5pt;
+  }
+  .flow-step {
+    background: #1c1c2e;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-align: center;
+    min-width: 80px;
+  }
+  .flow-arrow {
+    color: #aaa;
+    font-size: 16pt;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .flow-step.inquiry   { background: #b45309; }
+  .flow-step.tentative { background: #0369a1; }
+  .flow-step.confirmed { background: #15803d; }
+  .flow-step.completed { background: #6b7280; }
+  .flow-step.cancelled { background: #991b1b; }
+
+  /* ── Print ───────────────────────────────────────────────────────────── */
+  @media print {
+    .page { padding: 24px 32px; }
+    .cover { min-height: auto; padding-bottom: 32px; margin-bottom: 32px; }
+    h1 { page-break-before: always; }
+    h1:first-of-type { page-break-before: avoid; }
+    .box, .steps li, table { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ── COVER ────────────────────────────────────────────────────────────── -->
+<div class="cover">
+  <div class="cover-logo">🍺 Cobblestone Pub</div>
+  <div class="cover-sub">77 King St N, Smithfield, Dublin 7</div>
+  <div class="cover-title">Backroom &amp; Upstairs Bookings<br>Standard Operating Procedure</div>
+  <div class="cover-desc">
+    A step-by-step handbook for everyone involved in managing live music bookings,
+    classes, and private hires at the Cobblestone Pub.
+    This document covers the full booking workflow — from an artist's first email
+    through to the night of the gig.
+  </div>
+  <div class="cover-meta">
+    <span>Version 1.0</span>
+    <span>April 2026</span>
+    <span>cobblestone-pub.onrender.com</span>
+  </div>
+</div>
+
+
+<!-- ── TABLE OF CONTENTS ─────────────────────────────────────────────────── -->
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#overview">Overview &amp; Key Principles</a></li>
+    <li><a href="#access">Accessing the System</a></li>
+    <li><a href="#lifecycle">The Booking Lifecycle</a></li>
+    <li><a href="#new-inquiry">Handling a New Inquiry</a>
+      <ol class="toc-sub">
+        <li><a href="#inquiry-email">Inquiry by email or phone call</a></li>
+        <li><a href="#inquiry-web">Inquiry submitted via the website form</a></li>
+      </ol>
+    </li>
+    <li><a href="#confirm">Confirming a Booking</a></li>
+    <li><a href="#comms">Communicating with Bands</a></li>
+    <li><a href="#fees">Managing Fees</a></li>
+    <li><a href="#squarespace">Publishing on Squarespace</a></li>
+    <li><a href="#reminders">Reminders &amp; Pre-Show Checklist</a></li>
+    <li><a href="#cancellations">Handling Cancellations</a></li>
+    <li><a href="#series">Recurring Bookings (Classes &amp; Series)</a></li>
+    <li><a href="#blackouts">Blackout Dates</a></li>
+    <li><a href="#contacts">Band Contact List</a></li>
+    <li><a href="#reference">Quick Reference</a></li>
+  </ol>
+</div>
+
+
+<!-- ── 1. OVERVIEW ───────────────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="overview">1. Overview &amp; Key Principles</h1>
+
+<p>
+  The Cobblestone Pub booking system is a web application that manages all
+  Backroom and Upstairs bookings in one place. It replaces the spreadsheet
+  and email back-and-forth that the team used previously.
+</p>
+
+<h2>What the system does for you automatically</h2>
+<ul>
+  <li>Sends an auto-acknowledgement email to the band the moment they submit an inquiry</li>
+  <li>Gives every booking a private portal URL the band can bookmark to check their status</li>
+  <li>Sends a full confirmation email (with a calendar invite) when you click Confirm</li>
+  <li>Adds/removes events from the Google Calendar automatically on confirm and cancel</li>
+  <li>Sends a reminder email to the band 3 days before their gig</li>
+  <li>Blocks confirmed and tentative dates on the public availability calendar so new inquiries can't land on a taken date</li>
+</ul>
+
+<h2>What you still do manually</h2>
+<ul>
+  <li>Review inquiries and decide whether to confirm, hold as tentative, or decline</li>
+  <li>Create the Squarespace event listing (the system generates the copy — you paste it in)</li>
+  <li>Tick "Published on Squarespace" once the listing is live</li>
+  <li>Mark fees as paid once money has changed hands on the night</li>
+</ul>
+
+<div class="box box-warn">
+  <span class="box-title">⚠️ Golden rule — everything goes through the system</span>
+  <p>
+    Never add a booking directly to Google Calendar. If something was booked over
+    the phone or by email, enter it in the system at
+    <strong>cobblestone-pub.onrender.com/bookings/new</strong> first.
+    Google Calendar is a display screen — the webapp is the source of truth.
+  </p>
+</div>
+</div>
+
+
+<!-- ── 2. ACCESSING THE SYSTEM ───────────────────────────────────────────── -->
+<div class="section">
+<h1 id="access">2. Accessing the System</h1>
+
+<table>
+  <tr><th>Item</th><th>Detail</th></tr>
+  <tr><td><strong>URL</strong></td><td>cobblestone-pub.onrender.com</td></tr>
+  <tr><td><strong>Username</strong></td><td>Ask your manager — set in Render environment variables</td></tr>
+  <tr><td><strong>Password</strong></td><td>Ask your manager — set in Render environment variables</td></tr>
+  <tr><td><strong>Bookings section</strong></td><td>Click <em>Bookings</em> in the top navigation bar</td></tr>
+  <tr><td><strong>Public booking form</strong></td><td>cobblestone-pub.onrender.com/book (no login needed)</td></tr>
+</table>
+
+<div class="box box-info">
+  <span class="box-title">First load is slow</span>
+  <p>
+    The app runs on Render's free tier and "sleeps" after 15 minutes of inactivity.
+    The first visit of the day may take 30–60 seconds to wake up. This is normal —
+    just wait for it to load.
+  </p>
+</div>
+</div>
+
+
+<!-- ── 3. BOOKING LIFECYCLE ──────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="lifecycle">3. The Booking Lifecycle</h1>
+
+<p>Every booking moves through the following statuses:</p>
+
+<div class="flow">
+  <div class="flow-step inquiry">Inquiry</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step tentative">Tentative</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step confirmed">Confirmed</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step completed">Completed</div>
+</div>
+<div class="flow" style="margin-top:8px;">
+  <div class="flow-step cancelled" style="min-width:200px;">Cancelled (from any active status)</div>
+</div>
+
+<br>
+
+<table>
+  <tr><th>Status</th><th>Meaning</th><th>What's been done</th></tr>
+  <tr>
+    <td><span class="pill pill-warning">Inquiry</span></td>
+    <td>New, unreviewed request</td>
+    <td>Auto-ack email sent to band. Nothing committed yet.</td>
+  </tr>
+  <tr>
+    <td><span class="pill pill-info">Tentative</span></td>
+    <td>Date is on hold — checking details</td>
+    <td>Date shows as amber on the public calendar. Not confirmed to the band yet.</td>
+  </tr>
+  <tr>
+    <td><span class="pill pill-success">Confirmed</span></td>
+    <td>Booking is locked in</td>
+    <td>Confirmation email + calendar invite sent. Date shows red (booked) on public calendar. Google Calendar event created.</td>
+  </tr>
+  <tr>
+    <td><span class="pill pill-secondary">Completed</span></td>
+    <td>The event happened</td>
+    <td>Mark this after the gig takes place. Check fees are paid before marking complete.</td>
+  </tr>
+  <tr>
+    <td><span class="pill pill-dark">Cancelled</span></td>
+    <td>Booking will not go ahead</td>
+    <td>Date freed up, Google Calendar event deleted, cancellation emails sent.</td>
+  </tr>
+</table>
+</div>
+
+
+<!-- ── 4. HANDLING A NEW INQUIRY ─────────────────────────────────────────── -->
+<div class="section">
+<h1 id="new-inquiry">4. Handling a New Inquiry</h1>
+
+<h2 id="inquiry-web">4a. Inquiry submitted via the website form</h2>
+
+<p>
+  When a band finds the booking form at <strong>cobblestonepub.ie/book</strong>
+  and fills it in, the system handles the first step for you:
+</p>
+
+<ul>
+  <li>A new booking row appears in the tracker with status <span class="pill pill-warning">Inquiry</span></li>
+  <li>The band automatically receives an acknowledgement email with their portal link</li>
+  <li>The "Inquiries to review" counter on the Bookings page goes up by one</li>
+</ul>
+
+<p>
+  You will <strong>not</strong> receive an email notification automatically —
+  make it a habit to check the Bookings tracker at the start of each day.
+</p>
+
+<h2 id="inquiry-email">4b. Inquiry by email, phone call, or walk-in</h2>
+
+<p>
+  If someone contacts the pub directly rather than using the form, you need to
+  enter the booking manually:
+</p>
+
+<ol class="steps">
+  <li>Go to <strong>Bookings → Add Booking</strong> (top right button on the bookings page).</li>
+  <li>Fill in everything you know: act name, contact details, date, event type, venue.</li>
+  <li>Set <strong>Source</strong> to <em>Manual</em> and <strong>Status</strong> to <em>Inquiry</em> or <em>Tentative</em> depending on how solid the conversation was.</li>
+  <li>Save. The band will <strong>not</strong> automatically receive an email at this stage — you entered it manually, so it's assumed you're still in conversation.</li>
+  <li>When you're ready to send them their portal link, open the booking detail page and click <strong>Send Portal Link</strong> in the sidebar. This sends a short email with their personal URL.</li>
+</ol>
+
+<h2>Reviewing an inquiry</h2>
+
+<p>Once you've reviewed the details, you have three options:</p>
+
+<table>
+  <tr><th>Decision</th><th>What to do</th></tr>
+  <tr>
+    <td>Looks good — hold the date</td>
+    <td>Open the booking, click <strong>Mark Tentative</strong>. Date turns amber on public calendar. Reply to the band to let them know you're checking details.</td>
+  </tr>
+  <tr>
+    <td>Ready to commit</td>
+    <td>Go straight to Section 5 — Confirming.</td>
+  </tr>
+  <tr>
+    <td>Date not available or doesn't suit</td>
+    <td>Click <strong>Cancel Booking</strong> on the detail page. Add a note explaining why. Email the band using the <strong>Message Band</strong> box to let them know and suggest alternatives if possible.</td>
+  </tr>
+</table>
+
+<div class="box box-info">
+  <span class="box-title">Aim to respond within 2–3 working days</span>
+  <p>
+    The auto-ack email tells bands to expect a response within 2–3 working days.
+    The "Inquiries to review" counter on the dashboard is your prompt — if it's
+    not zero, someone needs attention.
+  </p>
+</div>
+</div>
+
+
+<!-- ── 5. CONFIRMING A BOOKING ────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="confirm">5. Confirming a Booking</h1>
+
+<p>
+  Confirming is a single button click — the system does the rest.
+</p>
+
+<ol class="steps">
+  <li>Open the booking detail page (click the act name from the tracker, or the booking ID).</li>
+  <li>In the <strong>Quick Actions</strong> sidebar, review the booking details — make sure date, venue, times, and contact email are correct. Fill in door time and start time if you have them.</li>
+  <li>Click <strong>Confirm &amp; Email Band</strong>.</li>
+</ol>
+
+<p>The system then does all of this automatically:</p>
+
+<ul>
+  <li>Sets status to <span class="pill pill-success">Confirmed</span></li>
+  <li>Sends the band a full confirmation email with: booking summary, "Good to Know" info (venue fee, Shane's contact details, ticketing notes, access info), a calendar invite (.ics file), and their portal URL</li>
+  <li>Creates an event in the Google Calendar (Backroom or Upstairs calendar, depending on the venue)</li>
+  <li>Stamps the confirmation timestamp on the booking record</li>
+</ul>
+
+<div class="box box-success">
+  <span class="box-title">✓ After confirming — two things left to do</span>
+  <ol style="margin-left:18px;margin-top:6px;">
+    <li>Copy the Squarespace block and create the event listing (see Section 8).</li>
+    <li>Check whether a door person has been requested — if so, the €50 door fee should be noted.</li>
+  </ol>
+</div>
+
+<div class="box box-warn">
+  <span class="box-title">Missing times?</span>
+  <p>
+    If you confirm a booking before door/start times are finalised, the confirmation
+    email will say "TBC". That's fine — use the <strong>Message Band</strong> feature
+    later to send the final times once agreed with Shane.
+  </p>
+</div>
+</div>
+
+
+<!-- ── 6. COMMUNICATING WITH BANDS ───────────────────────────────────────── -->
+<div class="section">
+<h1 id="comms">6. Communicating with Bands</h1>
+
+<h2>Message Band — send a custom email from inside the system</h2>
+
+<p>
+  On every booking detail page, there is a <strong>Message Band</strong> card in
+  the right sidebar. Type a subject and message body and click Send — the email
+  will be sent in the Cobblestone's branded template with the band's portal link
+  automatically appended.
+</p>
+
+<p><strong>Use this for:</strong></p>
+<ul>
+  <li>Confirming final door/start times after speaking with Shane</li>
+  <li>Asking for a poster or artist bio</li>
+  <li>Updating ticket/ticketing information</li>
+  <li>Any ad-hoc queries before the event</li>
+</ul>
+
+<div class="box box-info">
+  <p>
+    Every email sent through the system is logged in the <strong>Activity</strong>
+    section at the bottom of the booking detail page — so anyone picking up the
+    booking can see what's already been communicated.
+  </p>
+</div>
+
+<h2>Send Portal Link</h2>
+
+<p>
+  Use this if a band has lost their confirmation email or asks for the link again.
+  It sends a short email with their personal portal URL — it does <em>not</em>
+  re-send the full confirmation.
+</p>
+
+<h2>What the band sees in their portal</h2>
+<p>
+  When a band visits their portal URL (<code>cobblestone-pub.onrender.com/book/[token]</code>),
+  they can:
+</p>
+<ul>
+  <li>See their booking status and all confirmed details</li>
+  <li>Upload a poster/artwork and an artist bio/press kit</li>
+  <li>Cancel their booking (sends an alert to you automatically)</li>
+</ul>
+</div>
+
+
+<!-- ── 7. FEES ────────────────────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="fees">7. Managing Fees</h1>
+
+<table>
+  <tr><th>Fee</th><th>Amount</th><th>Who pays</th><th>Who receives it</th><th>When</th></tr>
+  <tr>
+    <td><strong>Venue fee</strong></td>
+    <td>€150</td>
+    <td>The band/act</td>
+    <td>Shane Hannigan (sound engineer) directly — not the pub</td>
+    <td>On the night, in person</td>
+  </tr>
+  <tr>
+    <td><strong>Door person fee</strong></td>
+    <td>€50</td>
+    <td>The band/act</td>
+    <td>The Cobblestone Pub (cash or card)</td>
+    <td>On the night — only if the pub provides a door person</td>
+  </tr>
+</table>
+
+<h2>Marking fees as paid</h2>
+
+<ol class="steps">
+  <li>Open the booking detail page after the gig.</li>
+  <li>In the <strong>Fees &amp; Listing</strong> card, click <strong>Mark paid</strong> next to the relevant fee.</li>
+  <li>The tick on the tracker updates immediately.</li>
+</ol>
+
+<div class="box box-warn">
+  <span class="box-title">Outstanding fees filter</span>
+  <p>
+    The "Outstanding fees" counter on the Bookings dashboard counts confirmed and
+    completed bookings where a fee is still marked unpaid. Check this weekly and
+    chase anything overdue using the <strong>Message Band</strong> feature.
+  </p>
+</div>
+
+<div class="box box-dark">
+  <span class="box-title">Shane's contact details (sound engineer)</span>
+  <p>
+    📞 +353 (85) 175 8254<br>
+    ✉️ onsoundie@gmail.com<br>
+    Bands should arrange their sound check, load-in, and load-out directly with Shane.
+    No drum backline is available.
+  </p>
+</div>
+</div>
+
+
+<!-- ── 8. SQUARESPACE ─────────────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="squarespace">8. Publishing on Squarespace</h1>
+
+<p>
+  The system generates all the text you need for a Squarespace event listing.
+  You copy and paste — no retyping.
+</p>
+
+<ol class="steps">
+  <li>Open the booking detail page for a confirmed booking.</li>
+  <li>In the right sidebar, find the <strong>Squarespace Block</strong> card. It contains a pre-formatted block with the event title, date, times, description, ticket info, and tags.</li>
+  <li>Click <strong>Copy to clipboard</strong>.</li>
+  <li>Go to Squarespace, create a new Event, and paste the content into the relevant fields.</li>
+  <li>Add the poster image if the band has uploaded one (download it from the <strong>Files</strong> card on the detail page).</li>
+  <li>Publish the Squarespace event.</li>
+  <li>Back in the booking detail page, click <strong>Mark as published</strong> in the Fees &amp; Listing card. This removes the booking from the "Need website listing" counter on the dashboard.</li>
+</ol>
+
+<div class="box box-info">
+  <span class="box-title">No description yet?</span>
+  <p>
+    If the band hasn't provided a description when you confirm, the Squarespace block
+    will be missing that section. Ask the band via <strong>Message Band</strong>,
+    then update the <em>Description</em> field in the booking form and save. The
+    Squarespace block regenerates automatically.
+  </p>
+</div>
+</div>
+
+
+<!-- ── 9. REMINDERS ───────────────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="reminders">9. Reminders &amp; Pre-Show Checklist</h1>
+
+<h2>Automated 3-day reminder</h2>
+<p>
+  The system automatically sends the band a reminder email 3 days before their
+  event. It includes the date, times, and their portal link. You don't need to
+  do anything — but it's worth knowing it goes out, so you don't accidentally
+  send a duplicate.
+</p>
+
+<h2>Pre-show checklist (do a week before)</h2>
+<ul>
+  <li>☐ Door time and start time filled in on the booking</li>
+  <li>☐ Confirmation that a door person is or isn't needed — tell Shane</li>
+  <li>☐ Poster/artwork uploaded by the band (or chased if missing)</li>
+  <li>☐ Squarespace event published and ticked</li>
+  <li>☐ Ticketing link live (if Eventbrite — band manages this themselves)</li>
+</ul>
+</div>
+
+
+<!-- ── 10. CANCELLATIONS ──────────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="cancellations">10. Handling Cancellations</h1>
+
+<h2>When the band cancels</h2>
+<p>
+  Bands can cancel their own booking from their portal page. When they do:
+</p>
+<ul>
+  <li>An alert email is sent to the pub immediately with the band's reason</li>
+  <li>The booking is marked <span class="pill pill-dark">Cancelled (band)</span> in the tracker</li>
+  <li>The Google Calendar event is automatically deleted</li>
+  <li>The band receives a cancellation confirmation email</li>
+</ul>
+<p>
+  No action is required from staff, but check the date is now free and decide
+  whether to open it up again or add a blackout.
+</p>
+
+<h2>When you cancel on behalf of the pub</h2>
+
+<ol class="steps">
+  <li>Open the booking detail page.</li>
+  <li>In <strong>Quick Actions</strong>, click <strong>Cancel Booking</strong> and confirm. Add a reason in the note field.</li>
+  <li>Email the band using the <strong>Message Band</strong> feature to explain the cancellation and apologise.</li>
+</ol>
+
+<div class="box box-danger">
+  <span class="box-title">Cancelling a confirmed booking</span>
+  <p>
+    If a confirmed booking is cancelled, the Google Calendar event is automatically
+    deleted and the date frees up on the public form. Always contact the band
+    personally — cancelling in the system does <strong>not</strong> automatically
+    send them an email explaining why.
+  </p>
+</div>
+</div>
+
+
+<!-- ── 11. RECURRING SERIES ───────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="series">11. Recurring Bookings — Classes &amp; Series</h1>
+
+<p>
+  For classes, weekly sessions, or any regularly repeating booking, use the
+  <strong>Recurring Series</strong> feature rather than creating bookings one
+  by one. A series generates all the individual booking dates at once.
+</p>
+
+<h2>Creating a new series</h2>
+
+<ol class="steps">
+  <li>From the Bookings page, click <strong>Recurring Series</strong> in the top button row.</li>
+  <li>Click <strong>New Series</strong>.</li>
+  <li>Fill in the act/class name, venue, event type, contact details, recurrence (weekly / every 2 weeks / monthly), start date, and end date.</li>
+  <li>Add door time and start time if known.</li>
+  <li>Click <strong>Create Series &amp; Generate Bookings</strong>. The system creates one confirmed booking for each occurrence automatically.</li>
+</ol>
+
+<div class="box box-info">
+  <p>
+    Series bookings are set to <span class="pill pill-success">Confirmed</span>
+    with no venue fee or door fee by default — appropriate for regular classes
+    and sessions. If a specific occurrence has different terms, edit that individual
+    booking from its detail page.
+  </p>
+</div>
+
+<h2>Cancelling some or all remaining dates</h2>
+
+<p>
+  To cancel all upcoming dates in a series (e.g. a class is ending early):
+</p>
+<ol class="steps">
+  <li>Go to <strong>Recurring Series</strong> and open the series.</li>
+  <li>Click <strong>Cancel Remaining Dates</strong> in the sidebar.</li>
+  <li>This cancels all future occurrences but leaves past dates untouched.</li>
+</ol>
+
+<p>
+  To cancel a single date within a series, open that individual booking from
+  the series detail page and cancel it there.
+</p>
+</div>
+
+
+<!-- ── 12. BLACKOUT DATES ─────────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="blackouts">12. Blackout Dates</h1>
+
+<p>
+  A blackout date blocks a date on the public booking form so bands cannot
+  submit an inquiry for it. Use this for:
+</p>
+<ul>
+  <li>Bank holidays when the venue is closed</li>
+  <li>Private hires booked directly (not through the system)</li>
+  <li>Maintenance days, staff events, or any date that needs to be kept clear</li>
+</ul>
+
+<h2>Adding a blackout</h2>
+
+<ol class="steps">
+  <li>From the Bookings page, click <strong>Blackout Dates</strong>.</li>
+  <li>Choose the date, select whether it applies to Backroom only, Upstairs only, or both venues.</li>
+  <li>Add a reason (optional but helpful for future reference).</li>
+  <li>Click <strong>Add Blackout</strong>. The date immediately shows as unavailable on the public form.</li>
+</ol>
+
+<h2>Removing a blackout</h2>
+
+<p>
+  On the Blackout Dates page, click the red <strong>trash icon</strong> next to
+  the blackout. The date is freed up immediately.
+</p>
+
+<div class="box box-warn">
+  <p>
+    Blackout dates are separate from bookings — they don't appear in the bookings
+    tracker, just on the public availability calendar. If you want a full record
+    (e.g. for a private hire with contact details), create a proper booking via
+    <strong>Add Booking</strong> instead.
+  </p>
+</div>
+</div>
+
+
+<!-- ── 13. BAND CONTACTS ──────────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="contacts">13. Band Contact List</h1>
+
+<p>
+  The <strong>Band Contacts</strong> page (Bookings → Band Contacts) gives you
+  a table of every unique act that has ever submitted an inquiry or booking,
+  grouped by email address. It shows:
+</p>
+
+<ul>
+  <li>Act name and contact person</li>
+  <li>Email address and phone number</li>
+  <li>Total number of bookings and how many were confirmed</li>
+  <li>First and last booking dates</li>
+  <li>A quick "email" button that opens your email client, and a "view bookings" button to see their full history</li>
+</ul>
+
+<p>
+  This is useful for reaching out to bands you haven't heard from in a while,
+  or for quickly looking up a contact without knowing which specific booking to open.
+</p>
+</div>
+
+
+<!-- ── 14. QUICK REFERENCE ───────────────────────────────────────────────── -->
+<div class="section">
+<h1 id="reference">14. Quick Reference</h1>
+
+<h2>System URLs</h2>
+<div class="cheat">
+  <div class="cheat-item">
+    <div class="cheat-label">Bookings tracker</div>
+    <div class="cheat-value">cobblestone-pub.onrender.com/bookings</div>
+  </div>
+  <div class="cheat-item">
+    <div class="cheat-label">Add a manual booking</div>
+    <div class="cheat-value">cobblestone-pub.onrender.com/bookings/new</div>
+  </div>
+  <div class="cheat-item">
+    <div class="cheat-label">Public booking form</div>
+    <div class="cheat-value">cobblestone-pub.onrender.com/book</div>
+  </div>
+  <div class="cheat-item">
+    <div class="cheat-label">Recurring series</div>
+    <div class="cheat-value">cobblestone-pub.onrender.com/bookings/series</div>
+  </div>
+  <div class="cheat-item">
+    <div class="cheat-label">Blackout dates</div>
+    <div class="cheat-value">cobblestone-pub.onrender.com/bookings/blackouts</div>
+  </div>
+  <div class="cheat-item">
+    <div class="cheat-label">Band contacts</div>
+    <div class="cheat-value">cobblestone-pub.onrender.com/bookings/contacts</div>
+  </div>
+</div>
+
+<h2>Key contacts</h2>
+<table>
+  <tr><th>Role</th><th>Name</th><th>Contact</th></tr>
+  <tr><td>Sound engineer</td><td>Shane Hannigan</td><td>+353 (85) 175 8254 · onsoundie@gmail.com</td></tr>
+  <tr><td>Pub phone</td><td>—</td><td>01 872 1799</td></tr>
+  <tr><td>Bookings email</td><td>—</td><td>bookings@cobblestonepub.ie</td></tr>
+  <tr><td>Management</td><td>—</td><td>+353 89 477 06 82 · management@cobblestonepub.ie</td></tr>
+</table>
+
+<h2>Emails the system sends automatically</h2>
+<table>
+  <tr><th>Trigger</th><th>Email sent</th><th>Sent to</th></tr>
+  <tr><td>Band submits public inquiry form</td><td>Auto-acknowledgement + portal link</td><td>Band</td></tr>
+  <tr><td>You click Confirm</td><td>Full confirmation + venue info + calendar invite</td><td>Band</td></tr>
+  <tr><td>3 days before event date</td><td>Reminder with times and portal link</td><td>Band</td></tr>
+  <tr><td>Band cancels via their portal</td><td>Cancellation alert</td><td>Pub staff inbox</td></tr>
+  <tr><td>Band cancels via their portal</td><td>Cancellation confirmation</td><td>Band</td></tr>
+</table>
+
+<h2>Common tasks — at a glance</h2>
+<table>
+  <tr><th>Task</th><th>Where</th></tr>
+  <tr><td>Check for new inquiries</td><td>Bookings dashboard → "Inquiries to review" tile</td></tr>
+  <tr><td>Confirm a booking</td><td>Booking detail page → Quick Actions → Confirm &amp; Email Band</td></tr>
+  <tr><td>Add a note to a booking</td><td>Booking detail page → Add Note card</td></tr>
+  <tr><td>Email the band about their booking</td><td>Booking detail page → Message Band card</td></tr>
+  <tr><td>Mark a fee as paid</td><td>Booking detail page → Fees &amp; Listing card</td></tr>
+  <tr><td>Generate Squarespace copy</td><td>Booking detail page → Squarespace Block card</td></tr>
+  <tr><td>Tick "published on website"</td><td>Booking detail page → Fees &amp; Listing → Mark as published</td></tr>
+  <tr><td>Cancel a booking</td><td>Booking detail page → Quick Actions → Cancel Booking</td></tr>
+  <tr><td>Block a date</td><td>Bookings → Blackout Dates → Add Blackout</td></tr>
+  <tr><td>Create a recurring class</td><td>Bookings → Recurring Series → New Series</td></tr>
+  <tr><td>Look up a band's contact details</td><td>Bookings → Band Contacts</td></tr>
+  <tr><td>View all past gigs</td><td>Bookings → View: Past</td></tr>
+</table>
+
+<h2>End-of-week checklist</h2>
+<ul>
+  <li>☐ Inquiries to review = 0 (all responses sent)</li>
+  <li>☐ Upcoming confirmed gigs all have door/start times filled in</li>
+  <li>☐ Outstanding fees chased for any gigs from the past week</li>
+  <li>☐ All confirmed upcoming gigs have a Squarespace listing published</li>
+  <li>☐ Any cancelled bookings have had the band notified personally</li>
+</ul>
+
+</div>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+<div style="border-top:2px solid #1c1c2e;padding-top:20px;margin-top:48px;
+            font-size:10pt;color:#888;display:flex;justify-content:space-between;">
+  <span>Cobblestone Pub — Bookings SOP v1.0</span>
+  <span>cobblestone-pub.onrender.com</span>
+  <span>77 King St N, Smithfield, Dublin 7</span>
+</div>
+
+</div><!-- /page -->
+</body>
+</html>
