@@ -370,13 +370,6 @@ def send_booking_confirmation(booking, base_url=None):
                       <td><strong>Door person (€50)</strong> is payable to the Cobblestone on the night — cash or card. We provide a cash float. Please let us know at least one week in advance if you need one.</td>
                     </tr>
                     <tr>
-                      <td style="vertical-align:top;">🎤</td>
-                      <td><strong>Sound engineer — Shane Hannigan</strong><br>
-                          📞 +353 (85) 175 8254 &nbsp;·&nbsp; ✉️ onsoundie@gmail.com<br>
-                          Arrange your sound check, load-in and load-out directly with Shane.
-                          <em>No drum backline available.</em></td>
-                    </tr>
-                    <tr>
                       <td style="vertical-align:top;">🎟️</td>
                       <td><strong>Ticketing</strong> is your responsibility. We recommend Eventbrite for advance sales. We don't provide a card machine at the door — bring your own if needed.</td>
                     </tr>
@@ -405,6 +398,46 @@ def send_booking_confirmation(booking, base_url=None):
                       </td>
                     </tr>
                   </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Shane callout -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#1c1c2e;border-radius:8px;margin:0 0 24px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <p style="margin:0 0 4px;font-size:11px;font-weight:bold;
+                             color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;">
+                    Your sound engineer
+                  </p>
+                  <p style="margin:0 0 12px;font-size:18px;font-weight:bold;color:#fff;">
+                    🎤 Shane Hannigan
+                  </p>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-right:24px;">
+                        <a href="tel:+353851758254"
+                           style="color:#93c5fd;text-decoration:none;font-size:14px;">
+                          📞 +353 (85) 175 8254
+                        </a>
+                      </td>
+                      <td>
+                        <a href="mailto:onsoundie@gmail.com"
+                           style="color:#93c5fd;text-decoration:none;font-size:14px;">
+                          ✉️ onsoundie@gmail.com
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  <p style="margin:12px 0 0;font-size:13px;color:#d1d5db;line-height:1.5;">
+                    Please contact Shane directly to arrange your <strong style="color:#fff;">sound check,
+                    load-in, and load-out</strong>. He'll be there on the night and is your main
+                    point of contact for anything technical.
+                  </p>
+                  <p style="margin:8px 0 0;font-size:12px;color:#f87171;">
+                    ⚠️ No drum backline available — please arrange hire in advance if needed.
+                  </p>
                 </td>
               </tr>
             </table>
@@ -462,9 +495,15 @@ Times: {times_str}
    includes use of the room, sound engineer, and staffed bar.
 ⭐ Door person (€50) payable to the Cobblestone on the night.
    Let us know at least one week in advance if you need one.
-🎤 Shane Hannigan: +353 (85) 175 8254 · onsoundie@gmail.com
-   Arrange sound check, load-in & load-out directly with Shane.
-   ⚠️ No drum backline available.
+── YOUR SOUND ENGINEER ───────────────────────────────────────────
+🎤 Shane Hannigan
+   📞 +353 (85) 175 8254
+   ✉️ onsoundie@gmail.com
+
+   Please contact Shane directly to arrange your sound check,
+   load-in, and load-out. He is your main technical contact
+   for the night.
+   ⚠️ No drum backline available — arrange hire in advance if needed.
 🎟️ Ticketing is your responsibility. We recommend Eventbrite or
    Ticket Tailor. No card machine at the door — bring your own.
 📍 Access via Red Cow Lane — enter through the Cobblestone Pub.

@@ -172,6 +172,40 @@
         </div>
     </div>
 
+    <!-- ── Sound engineer card (confirmed bookings only) ──────────────── -->
+    {% if booking.status == 'confirmed' %}
+    <div class="card shadow-sm mb-4" style="background:#1c1c2e;border:none;">
+        <div class="card-body py-4">
+            <div class="text-uppercase mb-1" style="font-size:.7rem;letter-spacing:.08em;color:#9ca3af;">
+                Your sound engineer
+            </div>
+            <h5 class="fw-bold text-white mb-3">🎤 Shane Hannigan</h5>
+            <div class="d-flex flex-wrap gap-3 mb-3">
+                <a href="tel:+353851758254"
+                   class="text-decoration-none"
+                   style="color:#93c5fd;font-size:.9rem;">
+                    <i class="bi bi-telephone-fill me-1"></i>+353 (85) 175 8254
+                </a>
+                <a href="mailto:onsoundie@gmail.com"
+                   class="text-decoration-none"
+                   style="color:#93c5fd;font-size:.9rem;">
+                    <i class="bi bi-envelope-fill me-1"></i>onsoundie@gmail.com
+                </a>
+            </div>
+            <p class="mb-2" style="color:#d1d5db;font-size:.88rem;line-height:1.55;">
+                Please contact Shane directly to arrange your
+                <strong class="text-white">sound check, load-in, and load-out</strong>.
+                He'll be there on the night and is your main point of contact
+                for anything technical.
+            </p>
+            <p class="mb-0" style="color:#fca5a5;font-size:.82rem;">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                No drum backline available — please arrange hire in advance if needed.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ── Checklist (active bookings only) ─────────────────────────────── -->
     {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
     <div class="card shadow-sm mb-4">
