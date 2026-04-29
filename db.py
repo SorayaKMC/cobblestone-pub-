@@ -267,6 +267,8 @@ def init_db():
         cursor.execute("ALTER TABLE bookings ADD COLUMN cancelled_by TEXT")
     if "series_id" not in bk_cols:
         cursor.execute("ALTER TABLE bookings ADD COLUMN series_id INTEGER REFERENCES booking_series(id)")
+    if "door_fee_payment_link" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN door_fee_payment_link TEXT")
 
     # Seed default categories if table is empty
     count = cursor.execute("SELECT COUNT(*) FROM employee_categories").fetchone()[0]
@@ -917,7 +919,7 @@ def _new_booking_token():
 
 
 def list_bookings(status=None, venue=None, start_date=None, end_date=None,
-                  event_type=None, limit=1000):
+                  event_type=None, search=None, limit=1000):
     """Get bookings with optional filters. Returns rows ordered by event_date asc."""
     conn = get_db()
     sql = "SELECT * FROM bookings WHERE 1=1"
@@ -942,6 +944,10 @@ def list_bookings(status=None, venue=None, start_date=None, end_date=None,
     if end_date:
         sql += " AND event_date <= ?"
         params.append(end_date)
+    if search:
+        term = f"%{search}%"
+        sql += " AND (act_name LIKE ? OR contact_name LIKE ? OR contact_email LIKE ?)"
+        params.extend([term, term, term])
     sql += " ORDER BY event_date ASC, id ASC LIMIT ?"
     params.append(limit)
     rows = conn.execute(sql, params).fetchall()
@@ -1180,6 +1186,38 @@ def get_bookings_needing_door_confirmation(days_ahead=7):
     ).fetchall()
     conn.close()
     return rows
+
+
+def auto_complete_past_bookings():
+    """Mark confirmed bookings whose date has passed as 'completed'.
+
+    Called nightly by the /admin/run-reminders cron job.
+    Returns the number of bookings updated.
+    """
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    now = datetime.now().isoformat()
+    conn = get_db()
+    cur = conn.execute(
+        """UPDATE bookings SET status='completed', updated_at=?
+           WHERE status='confirmed' AND event_date <= ?""",
+        (now, yesterday),
+    )
+    count = cur.rowcount
+    conn.commit()
+    conn.close()
+    return count
+
+
+def set_door_fee_payment_link(booking_id, url):
+    """Store a Square-hosted payment link URL on a booking record.
+    Called lazily when the band portal is loaded."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE bookings SET door_fee_payment_link=?, updated_at=? WHERE id=?",
+        (url, datetime.now().isoformat(), booking_id),
+    )
+    conn.commit()
+    conn.close()
 
 
 # --- Recurring booking series ---

@@ -143,8 +143,8 @@ def create_app():
             # Allow static files and health checks without auth
             if request.endpoint in ("static", "healthz"):
                 return None
-            # Public booking form + band portal (no auth required)
-            if request.path.startswith("/book"):
+            # Public booking form + band portal + Square webhooks (no auth required)
+            if request.path.startswith("/book") or request.path.startswith("/webhooks"):
                 return None
             auth = request.authorization
             if not auth or not check_auth(auth.username, auth.password):
@@ -321,6 +321,9 @@ def create_app():
                 db.add_booking_audit(b["id"], "system", "reminder_error", str(e))
                 errors += 1
 
+        # ── Auto-complete past bookings ───────────────────────────────────
+        completed_count = db.auto_complete_past_bookings()
+
         # ── Door-person alert (7-day window) ─────────────────────────────
         door_pending = db.get_bookings_needing_door_confirmation(days_ahead=7)
         door_alert_sent = False
@@ -354,9 +357,73 @@ def create_app():
             "reminders_sent":       sent,
             "skipped":              skipped,
             "errors":               errors,
+            "auto_completed":       completed_count,
             "door_unconfirmed":     len(door_pending),
             "door_alert_sent":      door_alert_sent,
         })
+
+    # ── Square webhook ───────────────────────────────────────────────────────
+    # Receives payment.updated events from Square. When a door fee payment
+    # completes, auto-stamps door_fee_paid_at on the matching booking.
+    # Register this URL in the Square Developer dashboard:
+    #   https://cobblestone-pub.onrender.com/webhooks/square
+    # Add the resulting signature key as SQUARE_WEBHOOK_SIGNATURE_KEY in Render.
+    @app.route("/webhooks/square", methods=["POST"])
+    def square_webhook():
+        import hmac as _hmac
+        import hashlib
+        import base64
+
+        payload = request.get_data()
+        sig_header = request.headers.get("x-square-hmacsha256-signature", "")
+        sig_key = config.SQUARE_WEBHOOK_SIGNATURE_KEY
+
+        # Verify signature when a key is configured
+        if sig_key:
+            combined = request.url.encode("utf-8") + payload
+            computed = base64.b64encode(
+                _hmac.new(sig_key.encode("utf-8"), combined, hashlib.sha256).digest()
+            ).decode("utf-8")
+            if not _hmac.compare_digest(computed, sig_header):
+                print("[webhook/square] Signature mismatch — rejected")
+                return jsonify({"error": "Invalid signature"}), 403
+
+        data = request.get_json(force=True, silent=True) or {}
+        event_type = data.get("type", "")
+
+        # We only care about completed payments
+        if event_type == "payment.updated":
+            payment = data.get("data", {}).get("object", {}).get("payment", {})
+            if payment.get("status") != "COMPLETED":
+                return jsonify({"ok": True}), 200
+
+            note = payment.get("note", "")
+            booking_id = None
+            if "cobblestone_booking_id:" in note:
+                try:
+                    booking_id = int(note.split("cobblestone_booking_id:")[1].strip())
+                except (ValueError, IndexError):
+                    pass
+
+            if booking_id:
+                booking = db.get_booking(booking_id)
+                if booking and not booking["door_fee_paid_at"]:
+                    now_iso = date.today().isoformat()
+                    conn = db.get_db()
+                    conn.execute(
+                        "UPDATE bookings SET door_fee_paid_at=?, updated_at=? WHERE id=?",
+                        (now_iso, now_iso, booking_id),
+                    )
+                    conn.commit()
+                    conn.close()
+                    payment_id = payment.get("id", "")
+                    db.add_booking_audit(
+                        booking_id, "system", "door_fee_paid",
+                        f"€50 door fee paid online via Square · payment ID: {payment_id}",
+                    )
+                    print(f"[webhook/square] Door fee marked paid for booking #{booking_id}")
+
+        return jsonify({"ok": True}), 200
 
     # ── SMTP test endpoint ───────────────────────────────────────────────────
     # Hit this to verify email is working without going through a full booking.

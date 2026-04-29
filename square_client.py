@@ -332,3 +332,54 @@ def current_week():
     now = datetime.now()
     iso = now.isocalendar()
     return iso[0], iso[1]
+
+
+# --- Booking Payment Links ---
+
+def create_door_fee_payment_link(booking_id, act_name, event_date, redirect_url=None):
+    """Create a per-booking Square-hosted payment link for the €50 door person fee.
+
+    The booking ID is embedded in the payment note so the /webhooks/square
+    endpoint can match the payment back to the booking automatically.
+
+    Returns (url, payment_link_id) on success, or (None, None) on failure
+    / misconfiguration.  Idempotent: repeating the call with the same
+    booking_id returns the same link (Square deduplicates on idempotency_key).
+    """
+    if not config.SQUARE_ACCESS_TOKEN:
+        print("[square] SQUARE_ACCESS_TOKEN not set — payment links disabled")
+        return None, None
+    if not config.SQUARE_LOCATION_ID:
+        print("[square] SQUARE_LOCATION_ID not set — payment links disabled")
+        return None, None
+
+    body = {
+        "idempotency_key": f"cobblestone-door-{booking_id}",
+        "quick_pay": {
+            "name": f"Door person fee — {act_name} ({event_date})",
+            "price_money": {
+                "amount": 5000,   # €50 in cents
+                "currency": "EUR",
+            },
+            "location_id": config.SQUARE_LOCATION_ID,
+        },
+        "payment_note": f"cobblestone_booking_id:{booking_id}",
+    }
+    if redirect_url:
+        body["checkout_options"] = {"redirect_url": redirect_url}
+
+    try:
+        resp = requests.post(
+            f"{config.SQUARE_BASE_URL}/online-checkout/payment-links",
+            headers=_headers(),
+            json=body,
+        )
+        resp.raise_for_status()
+        link = resp.json().get("payment_link", {})
+        url = link.get("url")
+        lid = link.get("id")
+        print(f"[square] Created payment link {lid!r} for booking #{booking_id}")
+        return url, lid
+    except Exception as e:
+        print(f"[square] Failed to create payment link for booking #{booking_id}: {e}")
+        return None, None

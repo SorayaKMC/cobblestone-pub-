@@ -121,12 +121,15 @@ def bookings_list():
         elif view == "past":
             effective_end = today
 
+    search = request.args.get("search", "").strip()
+
     bookings = db.list_bookings(
         status=status or None,
         venue=venue or None,
         event_type=evtype or None,
         start_date=effective_start,
         end_date=effective_end,
+        search=search or None,
     )
 
     counts = db.booking_counts()
@@ -154,6 +157,7 @@ def bookings_list():
         view=view,
         today=today,
         door_warning_ids=door_warning_ids,
+        search=search,
     )
 
 
@@ -605,6 +609,30 @@ def book_portal(token):
             status_labels=STATUS_LABELS,
             status_badges=STATUS_BADGES,
         ), 404
+
+    # Lazy-create a per-booking Square payment link for the €50 door fee when
+    # all conditions are met and no link has been generated yet.
+    if (
+        booking["status"] == "confirmed"
+        and booking["door_fee_required"]
+        and not booking["door_fee_paid_at"]
+        and booking["door_person"] == "pub"
+        and not booking["door_fee_payment_link"]
+    ):
+        try:
+            import square_client
+            portal_url = f"{request.host_url.rstrip('/')}/book/{token}"
+            url, _ = square_client.create_door_fee_payment_link(
+                booking["id"],
+                booking["act_name"],
+                booking["event_date"],
+                portal_url,
+            )
+            if url:
+                db.set_door_fee_payment_link(booking["id"], url)
+                booking = db.get_booking(token)   # re-fetch with updated link
+        except Exception as e:
+            print(f"[portal] Payment link generation failed for #{booking['id']}: {e}")
 
     return render_template(
         "book_portal.html",

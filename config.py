@@ -6,6 +6,10 @@ load_dotenv(override=True)
 
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "")
 SQUARE_BASE_URL = "https://connect.squareup.com/v2"
+# Square location ID used when creating payment links (set to the backroom location)
+SQUARE_LOCATION_ID = os.getenv("SQUARE_LOCATION_ID", "LVTMD7JYHNV9E")
+# Webhook signature key from Square Developer dashboard (used to verify /webhooks/square)
+SQUARE_WEBHOOK_SIGNATURE_KEY = os.getenv("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
 
 # HTTP Basic Auth credentials (set in environment / Render dashboard)
 AUTH_USERNAME = os.getenv("AUTH_USERNAME", "")

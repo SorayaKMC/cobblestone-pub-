@@ -131,7 +131,16 @@
                 <label class="form-label small mb-1">To</label>
                 <input type="date" name="end_date" value="{{ filter_end }}" class="form-control form-control-sm">
             </div>
-            <div class="col-12">
+            <div class="col-md-4">
+                <label class="form-label small mb-1">Search</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="{{ search }}"
+                           class="form-control form-control-sm"
+                           placeholder="Act, contact name or email…">
+                </div>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
                 <button type="submit" class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
@@ -140,6 +149,15 @@
         </form>
     </div>
 </div>
+
+{% if search %}
+<div class="alert alert-info py-2 mb-2" style="font-size:.875rem;">
+    <i class="bi bi-search me-1"></i>
+    Showing results for <strong>"{{ search }}"</strong> —
+    {{ bookings | length }} booking{{ 's' if bookings | length != 1 else '' }} found.
+    <a href="/bookings" class="ms-2">Clear search</a>
+</div>
+{% endif %}
 
 <!-- Table -->
 <div class="card">
