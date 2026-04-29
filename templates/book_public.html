@@ -38,19 +38,37 @@
             border-radius: 8px; padding: 12px 16px;
         }
         #date-banner.has-date { background: #ecfdf5; border-color: #6ee7b7; }
+
+        /* ── Info section ──────────────────────────────────────────── */
+        .info-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 18px 20px;
+            height: 100%;
+            box-shadow: 0 1px 4px rgba(0,0,0,.07);
+        }
+        .info-card .icon { font-size: 1.5rem; margin-bottom: 8px; }
+        .info-card h6 { font-size: .9rem; font-weight: 700; margin-bottom: 6px; }
+        .info-card p { font-size: .84rem; color: #555; margin-bottom: 0; line-height: 1.55; }
+
+        .section-divider {
+            border: none;
+            border-top: 2px solid #e5e7eb;
+            margin: 2.5rem 0;
+        }
     </style>
 </head>
 <body>
 
 <!-- Nav -->
 <nav class="navbar navbar-dark bg-dark py-3">
-    <div class="container">
+    <div class="container-lg">
         <span class="navbar-brand fw-bold fs-5">🍺 Cobblestone Pub</span>
         <span class="text-secondary small">Backroom &amp; Upstairs Bookings</span>
     </div>
 </nav>
 
-<div class="container py-4 py-lg-5">
+<div class="container-lg py-4 py-lg-5">
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -62,15 +80,180 @@
     {% endfor %}{% endif %}
     {% endwith %}
 
-    <!-- Intro -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- VENUE INFO SECTION                                             -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+
+    <!-- Welcome -->
     <div class="mb-4">
-        <h2 class="fw-bold mb-1">Book the Backroom</h2>
-        <p class="text-muted mb-0">
-            Check availability, pick a date, and send us your inquiry.
-            Tomás will get back to you within 2–3 working days.
+        <h2 class="fw-bold mb-2">Book the Cobblestone Backroom</h2>
+        <p class="text-muted" style="max-width:680px;">
+            Hi there — thanks for getting in touch! Before you fill in the form below,
+            here's everything you need to know about the Backroom. Have a read through,
+            then pick a date and send us your inquiry. The Cobblestone staff will get
+            back to you within 2–3 working days.
         </p>
+
+        <!-- General pub notes -->
+        <div class="d-flex flex-wrap gap-2 mb-2">
+            <span class="badge bg-light text-dark border" style="font-size:.8rem; padding:6px 10px;">
+                <i class="bi bi-music-note-beamed me-1"></i>Music every day of the week
+            </span>
+            <span class="badge bg-light text-dark border" style="font-size:.8rem; padding:6px 10px;">
+                <i class="bi bi-x-circle me-1"></i>We do not serve food
+            </span>
+            <span class="badge bg-light text-dark border" style="font-size:.8rem; padding:6px 10px;">
+                <i class="bi bi-x-circle me-1"></i>No table reservations
+            </span>
+            <span class="badge bg-light text-dark border" style="font-size:.8rem; padding:6px 10px;">
+                <i class="bi bi-moon me-1"></i>Under-18s must leave by 9pm
+            </span>
+        </div>
     </div>
 
+    <!-- Key info cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="info-card">
+                <div class="icon">⭐</div>
+                <h6>Venue Fee — €150</h6>
+                <p>Includes our house sound engineer (Shane Hannigan) and a bartender for the night. Payable directly to Shane on the night.</p>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="info-card">
+                <div class="icon">⭐</div>
+                <h6>Door Person — €50</h6>
+                <p>We can provide a door person for €50, payable to the Cobblestone on the night (cash or card). Or bring your own — no charge. We provide a cash float.</p>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="info-card">
+                <div class="icon">👥</div>
+                <h6>Capacity — 75</h6>
+                <p>Max 75 admissions. Normally set up as ~50 seated / 25 standing with a mix of tables, chairs, and high benches. Layout can be adjusted on request.</p>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="info-card">
+                <div class="icon">🕙</div>
+                <h6>End Times</h6>
+                <p>
+                    Mon–Thu: last music by <strong>11:30pm</strong><br>
+                    Fri–Sat: last music by <strong>12:30am</strong><br>
+                    Sunday: last music by <strong>11pm</strong><br>
+                    <span class="text-muted" style="font-size:.8rem;">Gigs typically wrap 30 min before last orders.</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Door times + Ticketing row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="info-card">
+                <h6><i class="bi bi-door-open me-1 text-muted"></i>Door Times</h6>
+                <p>We recommend doors at <strong>6:30–7:30pm</strong> with music starting 30–60 minutes after. This is entirely up to you, though.</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="info-card">
+                <h6><i class="bi bi-ticket me-1 text-muted"></i>Ticketing</h6>
+                <p>Ticketing is the responsibility of the act. We recommend
+                <a href="https://www.eventbrite.ie" target="_blank" rel="noopener">Eventbrite</a>
+                for advance ticket sales. We <strong>do not</strong> provide a card machine at the door
+                — please bring your own if charging on the night.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sound engineer row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-8">
+            <div class="info-card">
+                <h6><i class="bi bi-soundwave me-1 text-muted"></i>Sound Engineer — Shane Hannigan</h6>
+                <div class="row g-2">
+                    <div class="col-sm-6">
+                        <p class="mb-1">
+                            <i class="bi bi-telephone me-1"></i>
+                            <a href="tel:+353851758254">+353 (85) 175 8254</a>
+                        </p>
+                        <p class="mb-0">
+                            <i class="bi bi-envelope me-1"></i>
+                            <a href="mailto:onsoundie@gmail.com">onsoundie@gmail.com</a>
+                        </p>
+                    </div>
+                    <div class="col-sm-6">
+                        <p class="mb-1">Arrange your sound check, load-in, and load-out directly with Shane.</p>
+                        <p class="mb-0 text-danger fw-semibold" style="font-size:.84rem;">
+                            ⚠️ No drum backline available. Backline hire: smdrental.com · soundhire.ie · littonlane.ie
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="info-card">
+                <h6><i class="bi bi-geo-alt me-1 text-muted"></i>Location &amp; Access</h6>
+                <p class="mb-1">77 King St North, Dublin 7, D07 TP22</p>
+                <p class="mb-1">Access via <strong>Red Cow Lane</strong> — enter through the Cobblestone Pub.</p>
+                <p class="mb-0" style="font-size:.8rem; color:#777;">Parking: free after 7pm &amp; Sundays on Red Zone. Payzone app accepted.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Downloads -->
+    <div class="d-flex gap-3 flex-wrap mb-4">
+        <a href="/static/docs/Cobblestone_Backroom_Info_Sheet.pdf" target="_blank"
+           class="btn btn-dark btn-sm px-4 py-2">
+            <i class="bi bi-file-earmark-pdf me-2"></i>Download Info Sheet
+        </a>
+        <a href="/static/docs/Cobblestone_Backroom_Tech_Spec.pdf" target="_blank"
+           class="btn btn-outline-dark btn-sm px-4 py-2">
+            <i class="bi bi-file-earmark-pdf me-2"></i>Download Tech Spec
+        </a>
+    </div>
+
+    <!-- Upstairs warning -->
+    <div class="alert alert-warning d-flex gap-3 align-items-start mb-4" id="upstairs-note" style="display:none!important;">
+        <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0 mt-1"></i>
+        <div>
+            <strong>Booking the Upstairs space?</strong>
+            The Upstairs room is <strong>not suitable for gigs or large events</strong>.
+            It has a smaller capacity, and sound from the downstairs bar carries
+            through — making it unsuitable for amplified music or performances.
+            It works well for classes, rehearsals, small private events, and filming.
+            Please only select Upstairs for those types of events.
+        </div>
+    </div>
+
+    <!-- Contacts -->
+    <div class="card border-0 shadow-sm mb-2" style="background:#fff;">
+        <div class="card-body py-3">
+            <div class="row g-2 align-items-center" style="font-size:.85rem;">
+                <div class="col-12 col-md-auto fw-semibold text-muted text-uppercase"
+                     style="font-size:.75rem; letter-spacing:.05em;">Contacts</div>
+                <div class="col-sm-4 col-md-auto">
+                    <i class="bi bi-telephone me-1 text-muted"></i>General: <a href="tel:018721799">01 872 1799</a>
+                </div>
+                <div class="col-sm-4 col-md-auto">
+                    <i class="bi bi-telephone me-1 text-muted"></i>Booking enquiries:
+                    <a href="tel:+353894770682">+353 89 477 06 82</a>
+                </div>
+                <div class="col-sm-4 col-md-auto">
+                    <i class="bi bi-envelope me-1 text-muted"></i>
+                    <a href="mailto:management@cobblestonepub.ie">management@cobblestonepub.ie</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="section-divider">
+    <h4 class="fw-bold text-center mb-4">Check Availability &amp; Send an Inquiry</h4>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- AVAILABILITY CALENDAR + BOOKING FORM                          -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div class="row g-4 align-items-start">
 
         <!-- ── Left: availability calendar ─────────────────────────── -->
@@ -167,7 +350,9 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small mb-1">Event Type</label>
-                                <select name="event_type" class="form-select form-select-sm">
+                                <select name="event_type" id="event_type_select"
+                                        class="form-select form-select-sm"
+                                        onchange="checkUpstairsWarning()">
                                     {% for t in event_types %}
                                     <option value="{{ t }}"
                                         {% if form_data.get('event_type') == t %}selected{% endif %}>
@@ -203,7 +388,7 @@
                             <div class="col-md-6">
                                 <label class="form-label small mb-1">Venue preference</label>
                                 <select name="venue" id="venue-form" class="form-select form-select-sm"
-                                        onchange="syncVenueFromForm()">
+                                        onchange="syncVenueFromForm(); checkUpstairsWarning();">
                                     {% for v in venues %}
                                     <option value="{{ v }}"
                                         {% if form_data.get('venue') == v %}selected{% endif %}>
@@ -211,6 +396,16 @@
                                     </option>
                                     {% endfor %}
                                 </select>
+                            </div>
+
+                            <!-- Upstairs inline warning -->
+                            <div class="col-12" id="upstairs-form-warn" style="display:none;">
+                                <div class="alert alert-warning py-2 mb-0" style="font-size:.82rem;">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    <strong>Upstairs is not suitable for gigs or large events.</strong>
+                                    Sound from the downstairs bar carries through. Please select
+                                    Backroom if you're booking a gig.
+                                </div>
                             </div>
 
                             <div class="col-12">
@@ -251,8 +446,8 @@
         <a href="https://cobblestonepub.ie" class="text-muted text-decoration-none">cobblestonepub.ie</a>
         &nbsp;·&nbsp; 77 King St N, Smithfield, Dublin 7
         &nbsp;·&nbsp;
-        <a href="mailto:bookings@cobblestonepub.ie" class="text-muted text-decoration-none">
-            bookings@cobblestonepub.ie
+        <a href="mailto:management@cobblestonepub.ie" class="text-muted text-decoration-none">
+            management@cobblestonepub.ie
         </a>
     </div>
 </div>
@@ -260,7 +455,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // ── State ────────────────────────────────────────────────────────────────────
-var avail        = {};          // { "2026-05-15": "booked"|"tentative" }
+var avail        = {};
 var calYear, calMonth;
 var selectedDate = "{{ form_data.get('event_date', '') }}" || null;
 var currentVenue = "Backroom";
@@ -269,9 +464,20 @@ var currentVenue = "Backroom";
 (function init() {
     var today = new Date();
     calYear  = today.getFullYear();
-    calMonth = today.getMonth();       // 0-indexed
+    calMonth = today.getMonth();
     fetchAvail();
+    checkUpstairsWarning();
 })();
+
+// ── Upstairs warning ─────────────────────────────────────────────────────────
+function checkUpstairsWarning() {
+    var venue     = document.getElementById("venue-form").value;
+    var eventType = document.getElementById("event_type_select").value;
+    var isUpstairs = venue === "Upstairs";
+    var isGig      = eventType === "Gig" || eventType === "Private Hire";
+    var warn = document.getElementById("upstairs-form-warn");
+    warn.style.display = (isUpstairs && isGig) ? "block" : "none";
+}
 
 // ── Venue toggle ─────────────────────────────────────────────────────────────
 function setVenue(v) {
@@ -281,11 +487,18 @@ function setVenue(v) {
     document.getElementById("vbtn-upstairs").className =
         "btn btn-sm w-50 " + (v === "Upstairs" ? "btn-dark" : "btn-outline-secondary");
     document.getElementById("venue-form").value = v;
+    checkUpstairsWarning();
     fetchAvail();
 }
 
 function syncVenueFromForm() {
-    setVenue(document.getElementById("venue-form").value);
+    var v = document.getElementById("venue-form").value;
+    currentVenue = v;
+    document.getElementById("vbtn-backroom").className =
+        "btn btn-sm w-50 " + (v === "Backroom" ? "btn-dark" : "btn-outline-secondary");
+    document.getElementById("vbtn-upstairs").className =
+        "btn btn-sm w-50 " + (v === "Upstairs" ? "btn-dark" : "btn-outline-secondary");
+    fetchAvail();
 }
 
 // ── Availability fetch ────────────────────────────────────────────────────────
@@ -308,7 +521,7 @@ function renderCal() {
 
     var today = new Date(); today.setHours(0,0,0,0);
     var first     = new Date(calYear, calMonth, 1);
-    var startDay  = (first.getDay() + 6) % 7;           // Mon = 0
+    var startDay  = (first.getDay() + 6) % 7;
     var daysInMon = new Date(calYear, calMonth + 1, 0).getDate();
 
     var html = '<table class="cal-table"><thead><tr>';

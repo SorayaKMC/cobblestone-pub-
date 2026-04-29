@@ -202,7 +202,7 @@ def send_booking_ack(booking, base_url=None):
               <strong>{event_date}</strong>.
             </p>
             <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#333;">
-              Tomás will review and get back to you within 2–3 working days.
+              The Cobblestone staff will review and get back to you within 2–3 working days.
               In the meantime you can check your booking status at any time:
             </p>
             <!-- CTA button -->
@@ -249,7 +249,7 @@ def send_booking_ack(booking, base_url=None):
 Thanks for reaching out — we've received your booking inquiry for {act} at the
 Cobblestone Pub ({venue}) on {event_date}.
 
-Tomás will review and get back to you within 2–3 working days.
+The Cobblestone staff will review and get back to you within 2–3 working days.
 
 Check your booking status here:
 {portal_url}
@@ -268,7 +268,7 @@ https://cobblestonepub.ie
 
 
 def send_booking_confirmation(booking, base_url=None):
-    """Send confirmation email to the band when Tomás confirms the booking.
+    """Send confirmation email to the band when a booking is confirmed.
 
     booking  — sqlite3.Row returned by db.get_booking()
     base_url — optional override; falls back to config.PUBLIC_BASE_URL
@@ -349,9 +349,55 @@ def send_booking_confirmation(booking, base_url=None):
                 </td>
               </tr>
             </table>
+            <!-- Useful info box -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#f8f8f8;border:1px solid #e5e7eb;
+                          border-radius:8px;margin:0 0 24px;">
+              <tr>
+                <td style="padding:20px;">
+                  <p style="margin:0 0 12px;font-size:13px;font-weight:bold;
+                             color:#1c1c2e;text-transform:uppercase;letter-spacing:.5px;">
+                    Good to know
+                  </p>
+                  <table width="100%" cellpadding="3" cellspacing="0"
+                         style="font-size:13px;color:#444;">
+                    <tr>
+                      <td style="width:16px;vertical-align:top;">⭐</td>
+                      <td><strong>Venue fee (€150)</strong> is payable directly to our sound engineer Shane on the night. This includes Shane's services and a bartender.</td>
+                    </tr>
+                    <tr>
+                      <td style="vertical-align:top;">⭐</td>
+                      <td><strong>Door person (€50)</strong> is payable to the Cobblestone on the night — cash or card. We provide a cash float. Please let us know at least one week in advance if you need one.</td>
+                    </tr>
+                    <tr>
+                      <td style="vertical-align:top;">🎤</td>
+                      <td><strong>Sound engineer — Shane Hannigan</strong><br>
+                          📞 +353 (85) 175 8254 &nbsp;·&nbsp; ✉️ onsoundie@gmail.com<br>
+                          Arrange your sound check, load-in and load-out directly with Shane.
+                          <em>No drum backline available.</em></td>
+                    </tr>
+                    <tr>
+                      <td style="vertical-align:top;">🎟️</td>
+                      <td><strong>Ticketing</strong> is your responsibility. We recommend Eventbrite for advance sales. We don't provide a card machine at the door — bring your own if needed.</td>
+                    </tr>
+                    <tr>
+                      <td style="vertical-align:top;">📍</td>
+                      <td><strong>Access</strong> via Red Cow Lane — enter through the Cobblestone Pub. Free parking after 7pm &amp; Sundays.</td>
+                    </tr>
+                  </table>
+                  <p style="margin:12px 0 0;font-size:12px;color:#777;">
+                    Full details:
+                    <a href="{base}/static/docs/Cobblestone_Backroom_Info_Sheet.pdf" style="color:#2563eb;">Info Sheet</a>
+                    &nbsp;·&nbsp;
+                    <a href="{base}/static/docs/Cobblestone_Backroom_Tech_Spec.pdf" style="color:#2563eb;">Tech Spec</a>
+                  </p>
+                </td>
+              </tr>
+            </table>
+
             <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333;">
-              You can view your booking details and upload any remaining files
-              (poster, artist bio) via your booking portal:
+              You can view your booking, upload your poster or artist bio, and
+              check all the details via your booking portal:
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
               <tr>
@@ -365,11 +411,12 @@ def send_booking_confirmation(booking, base_url=None):
               </tr>
             </table>
             <p style="margin:0 0 8px;font-size:14px;color:#555;">
-              If you have any questions, just reply to this email.
+              If you have any questions, just reply to this email or call us on
+              <a href="tel:+353894770682" style="color:#555;">+353 89 477 06 82</a>.
             </p>
             <p style="margin:24px 0 0;font-size:15px;color:#333;">
               Looking forward to it!<br>
-              <strong>The Cobblestone Pub team</strong>
+              <strong>The Cobblestone staff</strong>
             </p>
           </td>
         </tr>
@@ -396,7 +443,24 @@ Date:  {date_str}
 Venue: {venue}, Cobblestone Pub
 Times: {times_str}
 
-View your booking and upload files (poster, bio) here:
+── GOOD TO KNOW ──────────────────────────────────────────────────
+⭐ Venue fee (€150) is payable to Shane on the night — includes
+   sound engineer and bartender.
+⭐ Door person (€50) payable to the Cobblestone on the night.
+   Let us know at least one week in advance if you need one.
+🎤 Shane Hannigan: +353 (85) 175 8254 · onsoundie@gmail.com
+   Arrange sound check, load-in & load-out directly with Shane.
+   No drum backline available.
+🎟️ Ticketing is your responsibility. We recommend Eventbrite.
+   No card machine at the door — bring your own if needed.
+📍 Access via Red Cow Lane — enter through the Cobblestone Pub.
+   Free parking after 7pm & Sundays.
+
+Info Sheet: {base}/static/docs/Cobblestone_Backroom_Info_Sheet.pdf
+Tech Spec:  {base}/static/docs/Cobblestone_Backroom_Tech_Spec.pdf
+──────────────────────────────────────────────────────────────────
+
+View your booking and upload your poster/bio here:
 {portal_url}
 
 If you have any questions, reply to this email.
@@ -639,7 +703,7 @@ https://cobblestonepub.ie
 def send_cancellation_alert_to_pub(booking, base_url=None, cancelled_by="band", reason=""):
     """Alert the pub's inbox when a band cancels their own booking.
 
-    Sent to BOOKING_FROM (the staff inbox) so Tomás / Soraya see it immediately.
+    Sent to BOOKING_FROM (the staff inbox) so the Cobblestone staff see it immediately.
     """
     staff_email = config.BOOKING_FROM or config.SMTP_USERNAME
     if not staff_email:
