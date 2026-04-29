@@ -189,7 +189,7 @@
     through to the night of the gig.
   </div>
   <div class="cover-meta">
-    <span>Version 1.0</span>
+    <span>Version 1.2</span>
     <span>April 2026</span>
     <span>cobblestone-pub.onrender.com</span>
   </div>
@@ -215,7 +215,11 @@
         <li><a href="#notify-shane">Communicating with Shane (Sound Engineer)</a></li>
       </ol>
     </li>
-    <li><a href="#fees">Managing Fees</a></li>
+    <li><a href="#fees">Managing Fees</a>
+      <ol class="toc-sub">
+        <li><a href="#door-person-decision">Setting the door person arrangement</a></li>
+      </ol>
+    </li>
     <li><a href="#squarespace">Publishing on Squarespace</a></li>
     <li><a href="#reminders">Reminders &amp; Pre-Show Checklist</a></li>
     <li><a href="#cancellations">Handling Cancellations</a></li>
@@ -242,8 +246,10 @@
   <li>Sends an auto-acknowledgement email to the band the moment they submit an inquiry</li>
   <li>Gives every booking a private portal URL the band can bookmark to check their status</li>
   <li>Sends a full confirmation email (with a calendar invite) when you click Confirm</li>
-  <li>Adds/removes events from the Google Calendar automatically on confirm and cancel</li>
+  <li>Creates a detailed Google Calendar event (times, contacts, door person info) on confirmation; deletes it on cancellation</li>
+  <li>Automatically declines any other inquiries for the same date and venue when you confirm one — and emails those bands a "date now taken" message with a link to pick a different date</li>
   <li>Sends a reminder email to the band 3 days before their gig</li>
+  <li>Sends a daily alert to the staff inbox if any confirmed gig within 7 days has no door person decision on record</li>
   <li>Blocks confirmed and tentative dates on the public availability calendar so new inquiries can't land on a taken date</li>
 </ul>
 
@@ -435,11 +441,27 @@
 </ul>
 
 <div class="box box-success">
-  <span class="box-title">✓ After confirming — two things left to do</span>
+  <span class="box-title">✓ After confirming — your remaining to-dos</span>
   <ol style="margin-left:18px;margin-top:6px;">
+    <li>Click <strong>Notify Shane</strong> in the sidebar to send him the event briefing.</li>
+    <li>Decide on the door person arrangement (pub provides / band provides / not needed) and set it on the booking — ideally the same day, and no later than a week before the gig.</li>
     <li>Copy the Squarespace block and create the event listing (see Section 8).</li>
-    <li>Check whether a door person has been requested — if so, the €50 door fee should be noted.</li>
   </ol>
+</div>
+
+<div class="box box-info">
+  <span class="box-title">Competing inquiries are auto-declined</span>
+  <p>
+    If there are other open inquiries or tentative bookings for the <strong>same date and venue</strong>
+    when you confirm, the system automatically cancels them and emails each of those bands a
+    "date now taken" message. That email includes a personal link they can use to
+    <strong>pick a new date without refilling the whole form</strong> — their original details
+    are pre-filled and they just choose a different available date.
+  </p>
+  <p>
+    You will see a flash message after confirming that tells you how many competing
+    inquiries were auto-declined. No manual follow-up is needed for those bands.
+  </p>
 </div>
 
 <div class="box box-warn">
@@ -574,15 +596,69 @@
     <td><strong>Door person fee</strong></td>
     <td>€50</td>
     <td>The band/act</td>
-    <td>The Cobblestone Pub (cash or card)</td>
-    <td>On the night — only if the pub provides a door person</td>
+    <td>The Cobblestone Pub</td>
+    <td>Online in advance via the band portal, or on the night — only if the pub provides a door person</td>
   </tr>
 </table>
+
+<h2 id="door-person-decision">Setting the door person arrangement</h2>
+
+<p>
+  The door person decision must be made and recorded on the booking
+  <strong>at least 7 days before the gig</strong> so the staff roster can be planned.
+  Open the booking detail page and set the <strong>Door person</strong> field to one of:
+</p>
+
+<table>
+  <tr><th>Option</th><th>Meaning</th><th>Fee applies?</th></tr>
+  <tr>
+    <td><strong>Pub provides</strong></td>
+    <td>We supply a door person — band pays €50</td>
+    <td>Yes — €50 door fee charged to band</td>
+  </tr>
+  <tr>
+    <td><strong>Band provides own</strong></td>
+    <td>Band brings their own door person</td>
+    <td>No</td>
+  </tr>
+  <tr>
+    <td><strong>Not required</strong></td>
+    <td>No door person needed (e.g. free entry, low attendance expected)</td>
+    <td>No</td>
+  </tr>
+</table>
+
+<div class="box box-warn">
+  <span class="box-title">⚠️ Door person TBC alert</span>
+  <p>
+    The bookings tracker shows a <strong>"Door person TBC"</strong> tile in the top bar
+    that counts confirmed gigs within the next 7 days where the door person field is not set.
+    If this number is above zero, act on it today — the daily staff email will also flag it
+    every morning until it's resolved.
+  </p>
+  <p>
+    Affected rows in the tracker are highlighted yellow with a <em>Door person TBC</em>
+    badge next to the act name so you can spot them at a glance.
+  </p>
+</div>
+
+<h2>Online payment — €50 door fee</h2>
+
+<p>
+  Once a booking is confirmed and the door person is set to <strong>Pub provides</strong>,
+  a <strong>Pay €50 now</strong> button appears automatically in the band's portal.
+  The band can pay online before the gig using a Square-hosted checkout link.
+</p>
+<ul>
+  <li>If they pay online, the booking detail page updates to show the fee as paid</li>
+  <li>If they haven't paid before arriving, collect cash or card on the night as normal</li>
+  <li>Once paid (either way), click <strong>Mark paid</strong> on the booking detail page to record it</li>
+</ul>
 
 <h2>Marking fees as paid</h2>
 
 <ol class="steps">
-  <li>Open the booking detail page after the gig.</li>
+  <li>Open the booking detail page after the gig (or once payment is confirmed).</li>
   <li>In the <strong>Fees &amp; Listing</strong> card, click <strong>Mark paid</strong> next to the relevant fee.</li>
   <li>The tick on the tracker updates immediately.</li>
 </ol>
@@ -643,12 +719,25 @@
 <div class="section">
 <h1 id="reminders">9. Reminders &amp; Pre-Show Checklist</h1>
 
-<h2>Automated 3-day reminder</h2>
+<h2>Automated 3-day reminder (to the band)</h2>
 <p>
   The system automatically sends the band a reminder email 3 days before their
   event. It includes the date, times, and their portal link. You don't need to
   do anything — but it's worth knowing it goes out, so you don't accidentally
   send a duplicate.
+</p>
+
+<h2>Daily door person alert (to staff)</h2>
+<p>
+  Each morning the system checks for confirmed bookings within the next 7 days
+  where the door person field has not been set. If any are found, a digest email
+  is sent to the pub's bookings inbox listing each affected gig with a direct
+  link to the booking. Once you set the door person on a booking, it disappears
+  from future alerts automatically.
+</p>
+<p>
+  The same count is visible as the <strong>"Door person TBC"</strong> tile on
+  the Bookings dashboard — yellow rows in the tracker identify the specific gigs.
 </p>
 
 <h2>Pre-show checklist (do a week before)</h2>
@@ -697,6 +786,31 @@
     deleted and the date frees up on the public form. Always contact the band
     personally — cancelling in the system does <strong>not</strong> automatically
     send them an email explaining why.
+  </p>
+</div>
+
+<h2>Auto-declined competing inquiries</h2>
+
+<p>
+  When you confirm a booking, the system automatically cancels any other
+  <span class="pill pill-warning">Inquiry</span> or <span class="pill pill-info">Tentative</span>
+  bookings for the <strong>same date and the same venue</strong>. Each of those bands
+  receives an automated email saying the date is no longer available.
+</p>
+<p>
+  That email includes a personal <strong>rebook link</strong>. When the band clicks it,
+  they land on a page showing their original booking details pre-filled — they just
+  pick a new available date from the calendar and submit. No need to fill out
+  the whole form again.
+</p>
+
+<div class="box box-info">
+  <p>
+    You will see how many competing inquiries were auto-declined in the flash message
+    shown after you click Confirm. No further action is needed for those bands —
+    they've been notified and given a way to rebook.
+    If you want to check, their cancelled bookings remain in the tracker
+    with status <span class="pill pill-dark">Cancelled (pub)</span>.
   </p>
 </div>
 </div>
@@ -860,17 +974,23 @@
 <table>
   <tr><th>Trigger</th><th>Email sent</th><th>Sent to</th></tr>
   <tr><td>Band submits public inquiry form</td><td>Auto-acknowledgement + portal link</td><td>Band</td></tr>
-  <tr><td>You click Confirm</td><td>Full confirmation + venue info + calendar invite</td><td>Band</td></tr>
+  <tr><td>You click Confirm</td><td>Full confirmation + venue info + calendar invite (.ics)</td><td>Band</td></tr>
+  <tr><td>You click Confirm (competing inquiries exist)</td><td>"Date now taken" + rebook link</td><td>Each competing band</td></tr>
   <tr><td>3 days before event date</td><td>Reminder with times and portal link</td><td>Band</td></tr>
-  <tr><td>Band cancels via their portal</td><td>Cancellation alert</td><td>Pub staff inbox</td></tr>
+  <tr><td>Daily (morning) — if any confirmed gig ≤7 days has door person unset</td><td>Door person unconfirmed alert — lists affected bookings with links</td><td>Staff inbox</td></tr>
+  <tr><td>Band cancels via their portal</td><td>Cancellation alert</td><td>Staff inbox</td></tr>
   <tr><td>Band cancels via their portal</td><td>Cancellation confirmation</td><td>Band</td></tr>
+  <tr><td>Staff clicks "Notify Shane" on a confirmed booking</td><td>Event briefing (times, contacts, door person)</td><td>Shane Hannigan</td></tr>
 </table>
 
 <h2>Common tasks — at a glance</h2>
 <table>
   <tr><th>Task</th><th>Where</th></tr>
   <tr><td>Check for new inquiries</td><td>Bookings dashboard → "Inquiries to review" tile</td></tr>
+  <tr><td>Check door person decisions needed</td><td>Bookings dashboard → "Door person TBC" tile (yellow rows in tracker)</td></tr>
   <tr><td>Confirm a booking</td><td>Booking detail page → Quick Actions → Confirm &amp; Email Band</td></tr>
+  <tr><td>Set door person arrangement</td><td>Booking detail page → edit the Door Person field → Save</td></tr>
+  <tr><td>Notify Shane of a confirmed booking</td><td>Booking detail page → Notify Shane card (sidebar)</td></tr>
   <tr><td>Add a note to a booking</td><td>Booking detail page → Add Note card</td></tr>
   <tr><td>Email the band about their booking</td><td>Booking detail page → Message Band card</td></tr>
   <tr><td>Mark a fee as paid</td><td>Booking detail page → Fees &amp; Listing card</td></tr>
@@ -885,8 +1005,10 @@
 
 <h2>End-of-week checklist</h2>
 <ul>
-  <li>☐ Inquiries to review = 0 (all responses sent)</li>
-  <li>☐ Upcoming confirmed gigs all have door/start times filled in</li>
+  <li>☐ Inquiries to review = 0 (all responses sent within 2–3 working days)</li>
+  <li>☐ Door person TBC tile = 0 (all confirmed gigs in the next 7 days have a door person set)</li>
+  <li>☐ Shane notified for all confirmed gigs within the next 2 weeks</li>
+  <li>☐ Upcoming confirmed gigs all have door and start times filled in</li>
   <li>☐ Outstanding fees chased for any gigs from the past week</li>
   <li>☐ All confirmed upcoming gigs have a Squarespace listing published</li>
   <li>☐ Any cancelled bookings have had the band notified personally</li>
