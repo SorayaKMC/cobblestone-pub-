@@ -146,6 +146,9 @@ def create_app():
             # Public booking form + band portal + Square webhooks (no auth required)
             if request.path.startswith("/book") or request.path.startswith("/webhooks"):
                 return None
+            # Cron endpoints — protected by their own key check, not Basic Auth
+            if request.path == "/admin/run-reminders":
+                return None
             auth = request.authorization
             if not auth or not check_auth(auth.username, auth.password):
                 return Response(
