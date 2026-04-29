@@ -244,6 +244,43 @@
                 {% endif %}
             </div>
 
+            {% if booking.status == 'confirmed' %}
+            <div class="checklist-item">
+                {% if booking.info_sheet_read_at %}
+                <i class="bi bi-check-circle-fill text-success mt-1 flex-shrink-0 fs-5"></i>
+                <div>
+                    <div class="fw-semibold small">Info sheet &amp; tech spec read</div>
+                    <div class="text-muted" style="font-size:.82rem;">
+                        Acknowledged {{ booking.info_sheet_read_at[:10] }}
+                    </div>
+                </div>
+                {% else %}
+                <i class="bi bi-exclamation-circle text-warning mt-1 flex-shrink-0 fs-5"></i>
+                <div>
+                    <div class="fw-semibold small mb-1">Read the info sheet &amp; tech spec</div>
+                    <p class="text-muted mb-2" style="font-size:.82rem;line-height:1.45;">
+                        Please read through the venue info sheet and tech spec before your event.
+                        Everything you need to know about load-in, sound check, and the stage is in there.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
+                        <a href="https://drive.google.com/file/d/1pD4y1wnA1rJZ7vl8rXdXFJIFQ6D8XEfN/view"
+                           target="_blank"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-file-earmark-text me-1"></i>Open Info Sheet
+                        </a>
+                        <form method="POST"
+                              action="/book/{{ booking.public_token }}/ack-info-sheet"
+                              class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i class="bi bi-check2 me-1"></i>I've read it — mark as done
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
             {% set has_poster = attachments | selectattr('kind', 'equalto', 'poster') | list %}
             <div class="checklist-item">
                 {% if has_poster %}

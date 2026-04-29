@@ -269,6 +269,8 @@ def init_db():
         cursor.execute("ALTER TABLE bookings ADD COLUMN series_id INTEGER REFERENCES booking_series(id)")
     if "door_fee_payment_link" not in bk_cols:
         cursor.execute("ALTER TABLE bookings ADD COLUMN door_fee_payment_link TEXT")
+    if "info_sheet_read_at" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN info_sheet_read_at TIMESTAMP")
 
     # Seed default categories if table is empty
     count = cursor.execute("SELECT COUNT(*) FROM employee_categories").fetchone()[0]
@@ -1206,6 +1208,17 @@ def auto_complete_past_bookings():
     conn.commit()
     conn.close()
     return count
+
+
+def set_info_sheet_read(booking_id):
+    """Stamp info_sheet_read_at on a booking when the band acknowledges reading it."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE bookings SET info_sheet_read_at=?, updated_at=? WHERE id=?",
+        (datetime.now().isoformat(), datetime.now().isoformat(), booking_id),
+    )
+    conn.commit()
+    conn.close()
 
 
 def set_door_fee_payment_link(booking_id, url):

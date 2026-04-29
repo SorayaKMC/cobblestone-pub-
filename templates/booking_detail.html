@@ -273,6 +273,21 @@
                         {% endif %}
                     </button>
                 </form>
+                <hr>
+                <div class="d-flex align-items-center gap-2 py-1">
+                    {% if booking.info_sheet_read_at %}
+                        <i class="bi bi-check-circle-fill text-success fs-5 flex-shrink-0"></i>
+                        <span class="small">
+                            Info sheet read by band
+                            <span class="text-muted" style="font-size:.75rem;">
+                                — {{ booking.info_sheet_read_at[:10] }}
+                            </span>
+                        </span>
+                    {% else %}
+                        <i class="bi bi-circle text-muted fs-5 flex-shrink-0"></i>
+                        <span class="small text-muted">Info sheet not yet acknowledged</span>
+                    {% endif %}
+                </div>
             </div>
         </div>
 

@@ -681,6 +681,25 @@ def book_upload(token):
     return redirect(url_for("bookings.book_portal", token=token))
 
 
+@bp.route("/book/<token>/ack-info-sheet", methods=["POST"])
+def ack_info_sheet(token):
+    """Band acknowledges they have read the info sheet / tech spec."""
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+    if booking["status"] != "confirmed":
+        flash("This action is only available for confirmed bookings.", "warning")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    if not booking["info_sheet_read_at"]:
+        db.set_info_sheet_read(booking["id"])
+        db.add_booking_audit(booking["id"], "band", "ack_info_sheet",
+                             "Band confirmed they have read the info sheet")
+
+    flash("Thanks — info sheet marked as read. ✓", "success")
+    return redirect(url_for("bookings.book_portal", token=token))
+
+
 @bp.route("/bookings/<int:booking_id>/notify-shane", methods=["POST"])
 def notify_shane(booking_id):
     """Email Shane Hannigan a briefing sheet for this booking."""
