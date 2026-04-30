@@ -40,6 +40,16 @@ def bookkeeping_page():
     today = date.today()
     monthly = db.monthly_vat_totals(today.year)
 
+    # Drive watcher status panel
+    try:
+        import drive_watcher
+        drive_status = drive_watcher.status_snapshot()
+    except Exception as e:
+        drive_status = {"configured": False, "error": str(e),
+                        "pending_count": None, "root_url": None,
+                        "processed_url": None}
+    drive_last_run, _ = db.get_cache("drive_watcher_last_run")
+
     return render_template(
         "bookkeeping.html",
         invoices=invoices,
@@ -56,7 +66,46 @@ def bookkeeping_page():
         filter_category=category,
         filter_status=status,
         today=today.isoformat(),
+        drive_status=drive_status,
+        drive_last_run=drive_last_run,
     )
+
+
+@bp.route("/bookkeeping/drive-scan", methods=["POST"])
+def drive_scan_now():
+    """Trigger an immediate Drive folder scan."""
+    try:
+        import drive_watcher
+        results = drive_watcher.import_pending()
+    except Exception as e:
+        flash(f"Drive scan failed: {e}", "danger")
+        return redirect(url_for("bookkeeping.bookkeeping_page"))
+
+    imported = sum(1 for r in results if r.get("invoice_id"))
+    skipped = sum(1 for r in results if r.get("skipped"))
+    errored = sum(1 for r in results if r.get("error"))
+
+    db.set_cache("drive_watcher_last_run", {
+        "ts": datetime.now().isoformat(),
+        "imported": imported,
+        "errored": errored,
+        "skipped": skipped,
+        "total": len(results),
+        "results": results[-10:],
+    })
+
+    bits = []
+    if imported:
+        bits.append(f"{imported} imported")
+    if skipped:
+        bits.append(f"{skipped} already-imported tidied up")
+    if errored:
+        bits.append(f"{errored} errored")
+    if not bits:
+        bits.append("nothing pending")
+    flash("Drive scan: " + ", ".join(bits) + ".",
+          "warning" if errored else "success")
+    return redirect(url_for("bookkeeping.bookkeeping_page"))
 
 
 @bp.route("/bookkeeping/new", methods=["GET", "POST"])

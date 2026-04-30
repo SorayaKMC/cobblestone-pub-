@@ -49,6 +49,43 @@ def _gmail_poll_loop():
         time.sleep(config.GMAIL_POLL_INTERVAL)
 
 
+def _drive_watch_loop():
+    """Background thread: scan the invoices Drive folder every 30 minutes."""
+    import time
+    if not config.GOOGLE_SERVICE_ACCOUNT_JSON:
+        print("[drive] GOOGLE_SERVICE_ACCOUNT_JSON not set — Drive watcher disabled")
+        return
+    if not config.GOOGLE_DRIVE_INVOICES_FOLDER_ID:
+        print("[drive] GOOGLE_DRIVE_INVOICES_FOLDER_ID not set — Drive watcher disabled")
+        return
+    # Stagger first run so we don't fight the gmail poller at boot
+    time.sleep(60)
+    print(f"[drive] Folder watcher active (every {config.GMAIL_POLL_INTERVAL}s)")
+    while True:
+        try:
+            from drive_watcher import import_pending
+            results = import_pending()
+            imported = sum(1 for r in results if r.get("invoice_id"))
+            errored = sum(1 for r in results if r.get("error"))
+            if imported or errored:
+                print(f"[drive] Imported {imported}, errors: {errored}, "
+                      f"total scanned: {len(results)}")
+            db.set_cache("drive_watcher_last_run", {
+                "ts": __import__("datetime").datetime.now().isoformat(),
+                "imported": imported,
+                "errored": errored,
+                "total": len(results),
+                "results": results[-10:],  # keep last 10 for display
+            })
+        except Exception as e:
+            print(f"[drive] Scan error: {e}")
+            db.set_cache("drive_watcher_last_run", {
+                "ts": __import__("datetime").datetime.now().isoformat(),
+                "error": str(e),
+            })
+        time.sleep(config.GMAIL_POLL_INTERVAL)
+
+
 def _warmup_cache():
     """Pre-populate dashboard cache in a background thread at startup.
 
@@ -135,6 +172,9 @@ def create_app():
 
     # Background Gmail polling - checks invoice inbox every 30 minutes
     threading.Thread(target=_gmail_poll_loop, daemon=True).start()
+
+    # Background Drive watcher - scans the invoices folder for human-uploaded PDFs
+    threading.Thread(target=_drive_watch_loop, daemon=True).start()
 
     # Apply HTTP Basic Auth globally (if enabled via env vars)
     if config.AUTH_ENABLED:

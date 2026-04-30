@@ -54,6 +54,76 @@
     </div>
 </div>
 
+<!-- Drive watcher status -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="small">
+                <strong><i class="bi bi-google me-1"></i>Drive watcher:</strong>
+                {% if not drive_status.configured %}
+                    <span class="text-danger">{{ drive_status.error or 'not configured' }}</span>
+                {% else %}
+                    {% if drive_status.error %}
+                        <span class="text-danger">{{ drive_status.error }}</span>
+                    {% else %}
+                        {% if drive_status.pending_count and drive_status.pending_count > 0 %}
+                            <span class="badge bg-warning text-dark">{{ drive_status.pending_count }} pending</span>
+                            in
+                        {% else %}
+                            <span class="text-success">root folder clear</span>
+                            ·
+                        {% endif %}
+                        <a href="{{ drive_status.root_url }}" target="_blank">Drive folder</a>
+                        {% if drive_status.processed_url %}
+                          · <a href="{{ drive_status.processed_url }}" target="_blank">Processed</a>
+                        {% endif %}
+                    {% endif %}
+                    {% if drive_last_run and drive_last_run.ts %}
+                        · <span class="text-muted">last scan {{ drive_last_run.ts[:16].replace('T', ' ') }}</span>
+                        {% if drive_last_run.imported %}
+                            · <span class="text-success">{{ drive_last_run.imported }} imported</span>
+                        {% endif %}
+                        {% if drive_last_run.errored %}
+                            · <span class="text-danger">{{ drive_last_run.errored }} errored</span>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            </div>
+            <form method="POST" action="/bookkeeping/drive-scan" class="d-inline">
+                <button type="submit" class="btn btn-outline-success btn-sm"
+                    {% if not drive_status.configured %}disabled{% endif %}>
+                    <i class="bi bi-arrow-clockwise me-1"></i>Scan Drive Now
+                </button>
+            </form>
+        </div>
+        {% if drive_last_run and drive_last_run.results %}
+        <details class="mt-2">
+            <summary class="small text-muted">Last scan details ({{ drive_last_run.total }} file{{ '' if drive_last_run.total == 1 else 's' }})</summary>
+            <table class="table table-sm mt-2 mb-0">
+                <tbody>
+                {% for r in drive_last_run.results %}
+                <tr>
+                    <td class="small">{{ r.filename }}</td>
+                    <td class="small">
+                        {% if r.invoice_id %}
+                            <span class="badge bg-success">imported</span>
+                            <a href="/bookkeeping/{{ r.invoice_id }}/edit" class="ms-1">view</a>
+                        {% elif r.skipped %}
+                            <span class="badge bg-secondary">duplicate · tidied</span>
+                        {% elif r.error %}
+                            <span class="badge bg-danger">error</span>
+                            <small class="text-muted">{{ r.error }}</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </details>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Monthly VAT summary -->
 <div class="card mb-4">
     <div class="card-body">
