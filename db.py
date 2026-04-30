@@ -467,7 +467,7 @@ def get_pto_summary():
             SELECT team_member_id, SUM(adjustment_days) as total_adj
             FROM pto_manual_adjustments GROUP BY team_member_id
         ) adj ON ec.team_member_id = adj.team_member_id
-        ORDER BY ec.family_name
+        ORDER BY ec.is_active DESC, ec.family_name
     """).fetchall()
     conn.close()
 
