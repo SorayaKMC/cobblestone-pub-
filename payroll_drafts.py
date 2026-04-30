@@ -121,6 +121,36 @@ def _create_draft(service, mime_msg):
     return result.get("id")
 
 
+def create_test_draft():
+    """Create a self-addressed test draft to verify Gmail auth.
+
+    Returns (draft_id, None) on success, (None, error_message) on failure.
+    The draft is addressed to info@ itself so it cannot accidentally email an
+    employee, and is clearly marked as a test in the subject and body.
+    """
+    try:
+        service = _gmail_service()
+    except Exception as e:
+        return None, f"Auth setup failed: {e}"
+
+    msg = MIMEMultipart()
+    msg["To"] = GMAIL_USER
+    msg["From"] = GMAIL_USER
+    msg["Subject"] = "Cobblestone payroll - Gmail draft test"
+    msg.attach(MIMEText(
+        "This is a test draft created by the Cobblestone payroll app to verify "
+        f"that drafts can be created in {GMAIL_USER}.\n\n"
+        "Safe to delete.",
+        "plain",
+    ))
+
+    try:
+        draft_id = _create_draft(service, msg)
+        return draft_id, None
+    except Exception as e:
+        return None, str(e)
+
+
 def _pto_data_for_employee(tm_id, period_end_iso, summary_balances):
     """Returns (accrued_hrs, avg_shift, balance_days) or (None, None, None) on failure."""
     try:

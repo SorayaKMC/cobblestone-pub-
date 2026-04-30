@@ -137,13 +137,22 @@
             (staff &amp; management only — upper management gets a payslip-only message).
         </p>
 
-        <form method="POST" action="/payroll/accountant/generate-drafts">
-            <input type="hidden" name="pay_period_id" value="{{ period.id }}">
-            <button type="submit" class="btn btn-primary btn-sm"
-                {% if not all_resolved %}disabled title="Resolve all mappings first"{% endif %}>
-                <i class="bi bi-envelope-plus me-1"></i>Generate Drafts
-            </button>
-        </form>
+        <div class="d-flex gap-2 flex-wrap">
+            <form method="POST" action="/payroll/accountant/generate-drafts" class="d-inline">
+                <input type="hidden" name="pay_period_id" value="{{ period.id }}">
+                <button type="submit" class="btn btn-primary btn-sm"
+                    {% if not all_resolved %}disabled title="Resolve all mappings first"{% endif %}>
+                    <i class="bi bi-envelope-plus me-1"></i>Generate Drafts
+                </button>
+            </form>
+            <form method="POST" action="/payroll/accountant/test-gmail" class="d-inline">
+                <input type="hidden" name="iso_week" value="{{ iso_week }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm"
+                    title="Creates a self-addressed test draft to verify Gmail auth before a real run.">
+                    <i class="bi bi-shield-check me-1"></i>Test Gmail Connection
+                </button>
+            </form>
+        </div>
 
         {% set drafts_done = rows | selectattr("draft_status", "equalto", "created") | list %}
         {% set drafts_failed = rows | selectattr("draft_status", "equalto", "failed") | list %}

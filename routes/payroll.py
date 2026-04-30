@@ -585,6 +585,28 @@ def accountant_save():
     return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
 
 
+@bp.route("/payroll/accountant/test-gmail", methods=["POST"])
+def accountant_test_gmail():
+    """Create a self-addressed test draft to verify the Gmail integration."""
+    fallback_iso = request.form.get("iso_week") or _get_week_params()[5]
+    try:
+        import payroll_drafts
+        draft_id, err = payroll_drafts.create_test_draft()
+    except Exception as e:
+        flash(f"Gmail test failed: {e}", "danger")
+        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+
+    if err:
+        flash(f"Gmail test failed: {err}", "danger")
+    else:
+        flash(
+            "Gmail test draft created in info@cobblestonepub.ie. "
+            "Open Gmail Drafts to confirm — safe to delete.",
+            "success",
+        )
+    return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+
+
 @bp.route("/payroll/accountant/generate-drafts", methods=["POST"])
 def accountant_generate_drafts():
     period_id = int(request.form.get("pay_period_id", 0) or 0)
