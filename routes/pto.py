@@ -49,12 +49,18 @@ def pto_page():
         {"id": r["team_member_id"], "name": f"{r['given_name']} {r['family_name']}"}
         for r in categories if r["is_active"]
     ]
+    # All employees (incl. inactive) for resolving names in the leave log
+    names_by_id = {
+        r["team_member_id"]: f"{r['given_name']} {r['family_name']}"
+        for r in categories
+    }
 
     taken_log = db.get_pto_taken_log()
 
     return render_template("pto.html",
         summary=summary,
         employees=active_employees,
+        names_by_id=names_by_id,
         taken_log=taken_log,
         today=date.today().isoformat(),
     )

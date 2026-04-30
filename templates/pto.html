@@ -168,7 +168,7 @@
                 {% for log in taken_log[:20] %}
                 <tr>
                     <td>{{ log.date }}</td>
-                    <td>{{ log.team_member_id[-6:] }}</td>
+                    <td>{{ names_by_id.get(log.team_member_id, log.team_member_id[-6:]) }}</td>
                     <td class="text-end">{{ log.days_taken }}</td>
                     <td class="text-end">{{ "%.1f"|format(log.hours_equivalent) }}</td>
                     <td>{{ log.reason or '-' }}</td>

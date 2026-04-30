@@ -75,18 +75,17 @@ html, body{overflow-x:hidden;max-width:100vw}
 </div>
 
 <div class="sec">
-  <div class="sec-lbl">Daily sales vs 2026 average — select any week to explore</div>
+  <div class="sec-lbl">Daily sales vs 2025 same week — select any week to explore</div>
   <div class="box">
     <div class="wbtns" id="cva-btns"></div>
-    <div class="ct" id="cva-title">{{ current_week_label }} ({{ current_week_dates }}) vs 2026 avg &amp; 2025</div>
+    <div class="ct" id="cva-title">{{ current_week_label }} ({{ current_week_dates }}) vs 2025</div>
     <canvas id="c-current-vs-avg" height="200"></canvas>
     <div class="lgnd">
       <span><span class="ldot" style="background:#c8bfb0"></span>2025 same week</span>
-      <span><span class="ldot" style="background:#93c5fd"></span>2026 avg (other weeks)</span>
-      <span><span class="ldot" style="background:#16a34a"></span>Selected week (≥ avg)</span>
-      <span><span class="ldot" style="background:#ef4444"></span>Selected week (&lt; avg)</span>
+      <span><span class="ldot" style="background:#16a34a"></span>Selected week (≥ 2025)</span>
+      <span><span class="ldot" style="background:#ef4444"></span>Selected week (&lt; 2025)</span>
     </div>
-    <div class="note">Average excludes the selected week itself and the current partial week.</div>
+    <div class="note">% delta is selected week vs the same day in 2025.</div>
   </div>
 </div>
 
@@ -434,7 +433,7 @@ function buildCvaUI(){
   if(titleEl){
     var wkInfo = WKS.filter(function(w){return w.wk===cvaActiveWk;})[0];
     var dates = wkInfo ? " ("+wkInfo.dates+")" : "";
-    titleEl.textContent = cvaActiveWk+dates+" vs 2026 avg & 2025";
+    titleEl.textContent = cvaActiveWk+dates+" vs 2025";
   }
 }
 
@@ -456,7 +455,7 @@ function drawCvaChart(){
   var n=data.length;
 
   var allVals=[];
-  data.forEach(function(d){allVals.push(d.current,d.avg,d.n25);});
+  data.forEach(function(d){allVals.push(d.current,d.n25);});
   var maxVal=Math.max.apply(null,allVals.filter(function(v){return v>0;}));
   if(!maxVal||maxVal<=0) maxVal=1000;
   var yMax=Math.ceil(maxVal/1000)*1000+1000;
@@ -465,9 +464,9 @@ function drawCvaChart(){
   drawXLabels(ctx,data.map(function(d){return d.d;}),pad,W,H);
 
   var groupW=CW/n;
-  var bw=Math.min(14,groupW*0.22);
-  var gap=2;
-  var totalBarsW=3*bw+2*gap;
+  var bw=Math.min(16,groupW*0.28);
+  var gap=3;
+  var totalBarsW=2*bw+gap;
 
   data.forEach(function(d,i){
     var groupCx=pad.l+(i+0.5)*groupW;
@@ -477,25 +476,21 @@ function drawCvaChart(){
     var bh25=d.n25>0?Math.max(2,(d.n25/yMax)*CH):0;
     if(bh25>0){ctx.fillStyle="#c8bfb0";rrect(ctx,x0,pad.t+CH-bh25,bw,bh25,2);ctx.fill();}
 
-    // Bar 2 — 2026 avg (light blue)
-    var bhAvg=d.avg>0?Math.max(2,(d.avg/yMax)*CH):0;
-    if(bhAvg>0){ctx.fillStyle="#93c5fd";rrect(ctx,x0+bw+gap,pad.t+CH-bhAvg,bw,bhAvg,2);ctx.fill();}
-
-    // Bar 3 — selected week actual (green/red/ghost)
+    // Bar 2 — selected week actual (green/red/ghost) vs 2025
     var bhCur=d.current>0?Math.max(2,(d.current/yMax)*CH):2;
-    var curCol=d.current===0?"#e5e5e5":(d.current>=d.avg?"#16a34a":"#ef4444");
+    var curCol=d.current===0?"#e5e5e5":(d.current>=d.n25?"#16a34a":"#ef4444");
     ctx.fillStyle=curCol;
-    rrect(ctx,x0+2*(bw+gap),pad.t+CH-bhCur,bw,bhCur,2);ctx.fill();
+    rrect(ctx,x0+bw+gap,pad.t+CH-bhCur,bw,bhCur,2);ctx.fill();
 
-    // % label above bar 3
-    if(d.avg>0&&d.current>0){
-      var pct=Math.round((d.current-d.avg)/d.avg*100);
+    // % label above bar 2 — vs 2025 same day
+    if(d.n25>0&&d.current>0){
+      var pct=Math.round((d.current-d.n25)/d.n25*100);
       var pctStr=(pct>=0?"+":"")+pct+"%";
       var labelY=Math.max(pad.t-1,pad.t+CH-bhCur-4);
       ctx.font="bold 9px Georgia";
       ctx.textAlign="center";
-      ctx.fillStyle=d.current>=d.avg?"#16a34a":"#ef4444";
-      ctx.fillText(pctStr,x0+2*(bw+gap)+bw/2,labelY);
+      ctx.fillStyle=d.current>=d.n25?"#16a34a":"#ef4444";
+      ctx.fillText(pctStr,x0+bw+gap+bw/2,labelY);
     }
   });
 }
