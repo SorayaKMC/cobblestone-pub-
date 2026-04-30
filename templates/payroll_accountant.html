@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Accountant Files - {{ week_label }} - Cobblestone Pub{% endblock %}
+{% block page_title %}Accountant Files — {{ week_label }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <a href="/payroll?week={{ iso_week }}" class="text-decoration-none">
+            <i class="bi bi-arrow-left me-1"></i>Back to Payroll
+        </a>
+    </div>
+    <div class="text-muted small">
+        After Peter sends back the gross-to-net summary &amp; combined payslips,
+        upload them here to populate Net Pay and create Gmail drafts for each employee.
+    </div>
+</div>
+
+<!-- Upload form -->
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <strong>1. Upload Peter's PDFs</strong>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/payroll/accountant/upload" enctype="multipart/form-data">
+            <input type="hidden" name="iso_week" value="{{ iso_week }}">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Gross-to-Net (Short) PDF</label>
+                    <input type="file" name="gross_to_net" accept="application/pdf"
+                           class="form-control form-control-sm" required>
+                    <div class="form-text">The summary sheet — one row per employee with totals.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Combined Payslips PDF</label>
+                    <input type="file" name="payslips" accept="application/pdf"
+                           class="form-control form-control-sm" required>
+                    <div class="form-text">One page per employee. Will be split into individual PDFs.</div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-upload me-1"></i>Upload &amp; Parse
+                </button>
+                {% if period %}
+                <small class="text-muted ms-3">
+                    Re-uploading will replace the existing data for this period.
+                </small>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if period %}
+<!-- Confirm mappings -->
+<form method="POST" action="/payroll/accountant/save">
+<input type="hidden" name="pay_period_id" value="{{ period.id }}">
+<div class="card mb-4">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <strong>2. Confirm Employee Mappings</strong>
+        <span class="text-muted small">
+            Period: {{ period.period_label }}
+            · pay date {{ period.pay_date }}
+            · ending {{ period.period_end }}
+        </span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-cobblestone mb-0">
+            <thead>
+                <tr>
+                    <th style="width:60px">Ref</th>
+                    <th>Name on Payslip</th>
+                    <th>Cobblestone Employee</th>
+                    <th class="text-end">Gross</th>
+                    <th class="text-end">Net</th>
+                    <th style="width:110px">Payslip</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr {% if not r.team_member_id %}class="table-warning"{% endif %}>
+                    <td>{{ r.ref }}</td>
+                    <td>{{ r.raw_name }}</td>
+                    <td>
+                        <select name="map_{{ r.ref }}" class="form-select form-select-sm">
+                            <option value="">— unmapped —</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}"
+                                {% if emp.id == r.team_member_id %}selected{% endif %}>
+                                {{ emp.name }} ({{ emp.category }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="text-end">&euro;{{ "%.2f"|format(r.gross_pay|float) }}</td>
+                    <td class="text-end"><strong>&euro;{{ "%.2f"|format(r.net_pay|float) }}</strong></td>
+                    <td>
+                        {% if r.has_payslip %}
+                        <a href="/payroll/accountant/payslip/{{ period.id }}/{{ r.ref }}"
+                           target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-file-pdf"></i> View
+                        </a>
+                        {% else %}
+                        <span class="text-muted small">no slip</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <small class="text-muted">
+            {% if all_resolved %}
+            <i class="bi bi-check-circle text-success"></i> All {{ rows|length }} rows mapped.
+            {% else %}
+            <i class="bi bi-exclamation-triangle text-warning"></i>
+            Resolve any unmapped rows before generating drafts.
+            {% endif %}
+        </small>
+        <button type="submit" class="btn btn-success btn-sm">
+            <i class="bi bi-save me-1"></i>Save Mappings
+        </button>
+    </div>
+</div>
+</form>
+
+<!-- Generate drafts -->
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <strong>3. Generate Email Drafts</strong>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-3">
+            Creates one Gmail draft per employee in <code>info@cobblestonepub.ie</code>,
+            with their payslip attached and a personalised message including PTO summary
+            (staff &amp; management only — upper management gets a payslip-only message).
+        </p>
+
+        <form method="POST" action="/payroll/accountant/generate-drafts">
+            <input type="hidden" name="pay_period_id" value="{{ period.id }}">
+            <button type="submit" class="btn btn-primary btn-sm"
+                {% if not all_resolved %}disabled title="Resolve all mappings first"{% endif %}>
+                <i class="bi bi-envelope-plus me-1"></i>Generate Drafts
+            </button>
+        </form>
+
+        {% set drafts_done = rows | selectattr("draft_status", "equalto", "created") | list %}
+        {% set drafts_failed = rows | selectattr("draft_status", "equalto", "failed") | list %}
+        {% set drafts_skipped = rows | selectattr("draft_status", "equalto", "skipped") | list %}
+
+        {% if drafts_done or drafts_failed or drafts_skipped %}
+        <hr>
+        <div class="row text-center">
+            <div class="col">
+                <div class="kpi-label">Created</div>
+                <div class="h4 text-success">{{ drafts_done|length }}</div>
+            </div>
+            <div class="col">
+                <div class="kpi-label">Skipped (no email)</div>
+                <div class="h4 text-muted">{{ drafts_skipped|length }}</div>
+            </div>
+            <div class="col">
+                <div class="kpi-label">Failed</div>
+                <div class="h4 {% if drafts_failed %}text-danger{% else %}text-muted{% endif %}">{{ drafts_failed|length }}</div>
+            </div>
+        </div>
+
+        <table class="table table-sm mt-3">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows if r.draft_status %}
+                <tr>
+                    <td>{{ r.raw_name }}</td>
+                    <td><small class="text-muted">{{ r.draft_email or '—' }}</small></td>
+                    <td>
+                        {% if r.draft_status == 'created' %}
+                            <span class="badge bg-success">Draft created</span>
+                        {% elif r.draft_status == 'skipped' %}
+                            <span class="badge bg-secondary">Skipped</span>
+                        {% else %}
+                            <span class="badge bg-danger">{{ r.draft_status }}</span>
+                        {% endif %}
+                    </td>
+                    <td><small class="text-muted">{{ r.draft_error or '' }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p class="small text-muted mb-0">
+            <i class="bi bi-info-circle"></i>
+            Open <a href="https://mail.google.com/mail/u/0/#drafts" target="_blank">Gmail Drafts</a>
+            to review and send. Drafts will appear in <code>info@cobblestonepub.ie</code>.
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -24,6 +24,7 @@ def save_categories():
             pay_type = request.form.get(f"paytype_{tm_id}", "hourly")
             weekly_salary = float(request.form.get(f"salary_{tm_id}", 0) or 0)
             is_active = 0 if request.form.get(f"former_{tm_id}") else 1
+            email = (request.form.get(f"email_{tm_id}", "") or "").strip() or None
             updates.append({
                 "team_member_id": tm_id,
                 "given_name": first,
@@ -32,6 +33,7 @@ def save_categories():
                 "cleaning_amount": cleaning,
                 "pay_type": pay_type,
                 "weekly_salary": weekly_salary,
+                "email": email,
                 "is_active": is_active,
             })
     if updates:

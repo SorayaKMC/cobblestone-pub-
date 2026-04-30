@@ -20,6 +20,10 @@
         </a>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        <a href="/payroll/accountant?week={{ iso_week }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-file-earmark-arrow-up me-1"></i>Accountant Files
+            {% if has_accountant_data %}<span class="badge bg-success ms-1">uploaded</span>{% endif %}
+        </a>
         <a href="/payroll/download/peter?week={{ iso_week }}" class="btn btn-primary btn-sm">
             <i class="bi bi-file-earmark-excel me-1"></i>Download for Peter
         </a>
@@ -73,6 +77,9 @@
                     <th class="text-end">Total</th>
                     <th>Category</th>
                     <th class="text-end">Labor Cost</th>
+                    <th class="text-end" title="Net pay from Peter's gross-to-net PDF. Read-only.">
+                        Net (accountant) <small class="text-muted">(read-only)</small>
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -143,6 +150,13 @@
                         {% endif %}
                     </td>
                     <td class="text-end">&euro;{{ "%.2f"|format(emp.total_for_labor|float) }}</td>
+                    <td class="text-end">
+                        {% if emp.net_pay_accountant is not none %}
+                            <span class="text-success fw-semibold">&euro;{{ "%.2f"|format(emp.net_pay_accountant|float) }}</span>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -163,6 +177,13 @@
                     <td class="text-end"><strong>&euro;{{ "%.2f"|format(grand_total|float) }}</strong></td>
                     <td></td>
                     <td class="text-end"><strong>&euro;{{ "%.2f"|format(total_labor|float) }}</strong></td>
+                    <td class="text-end">
+                        {% if has_accountant_data %}
+                            <strong class="text-success">&euro;{{ "%.2f"|format(net_total_accountant|float) }}</strong>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
                 </tr>
             </tfoot>
         </table>

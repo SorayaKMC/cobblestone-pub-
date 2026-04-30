@@ -1,12 +1,17 @@
 from flask import Blueprint, render_template, request, send_file, flash, redirect, url_for
 from decimal import Decimal
 from datetime import date
+import io
+import os
+import re
 import secrets
+import tempfile
 import square_client
 import db
 import excel_export
 import config
 import tips_historical_import
+import payslip_extractor
 
 bp = Blueprint("payroll", __name__)
 
@@ -172,6 +177,15 @@ def payroll_page():
             p["holiday_hours"] = pto.get("hours", 0.0)
             p["holiday_days"] = pto.get("days", 0.0)
 
+        # Net pay (from accountant's gross-to-net upload, if any)
+        net_pays = db.get_net_pays_by_employee(iso_week)
+        net_total_accountant = 0.0
+        for p in payroll:
+            v = net_pays.get(p["team_member_id"])
+            p["net_pay_accountant"] = v
+            if v is not None:
+                net_total_accountant += float(v)
+
         # Totals
         total_hours = sum(p["hours"] for p in payroll)
         total_gross = sum(p["gross"] for p in payroll)
@@ -191,6 +205,7 @@ def payroll_page():
         next_week = f"{year}-W{week+1:02d}" if week < 52 else f"{year+1}-W01"
 
         is_finalized = db.is_week_finalized(iso_week)
+        has_accountant_data = db.get_pay_period(iso_week) is not None
         error = None
     except Exception as e:
         payroll = []
@@ -199,6 +214,8 @@ def payroll_page():
         um_total = mgmt_total = staff_total = Decimal("0")
         prev_week = next_week = iso_week
         is_finalized = False
+        has_accountant_data = False
+        net_total_accountant = 0.0
         error = str(e)
 
     return render_template("payroll.html",
@@ -221,6 +238,8 @@ def payroll_page():
         prev_week=prev_week,
         next_week=next_week,
         is_finalized=is_finalized,
+        has_accountant_data=has_accountant_data,
+        net_total_accountant=net_total_accountant,
         error=error,
     )
 
@@ -338,6 +357,283 @@ def download_peter():
     except Exception as e:
         flash(f"Export failed: {str(e)}", "danger")
         return payroll_page()
+
+
+# ---------------------------------------------------------------------------
+# Accountant uploads (Peter's gross-to-net + payslips PDFs)
+# ---------------------------------------------------------------------------
+
+_TITLES = {"mr", "ms", "mrs", "dr", "miss"}
+
+
+def _strip_titles(parts):
+    return [p for p in parts if p.lower().strip(".") not in _TITLES]
+
+
+def _fuzzy_name_match(raw_name, active_employees):
+    """Best-effort match of a payslip name to an employee. Returns tm_id or None.
+
+    The accountant's PDFs format names inconsistently: 'Mr Thomas Mulligan',
+    'Mc Mahon Soraya' (surname-first), 'Carlos Manuel Dia Soto' (multi-token).
+    """
+    if not raw_name:
+        return None
+    raw_parts = _strip_titles(raw_name.replace("-", " ").split())
+    raw_tokens = set(p.lower() for p in raw_parts)
+    norm_raw = " ".join(p.lower() for p in raw_parts)
+
+    for emp in active_employees:
+        first_last = f"{emp['given_name']} {emp['family_name']}".lower()
+        last_first = f"{emp['family_name']} {emp['given_name']}".lower()
+        if norm_raw == first_last or norm_raw == last_first:
+            return emp["team_member_id"]
+
+    for emp in active_employees:
+        emp_tokens = set()
+        for field in (emp["given_name"], emp["family_name"]):
+            for tok in field.replace("-", " ").split():
+                emp_tokens.add(tok.lower())
+        if raw_tokens and (raw_tokens == emp_tokens or
+                           raw_tokens.issubset(emp_tokens) or
+                           emp_tokens.issubset(raw_tokens)):
+            return emp["team_member_id"]
+    return None
+
+
+def _build_accountant_view_model(period):
+    """Assemble the data needed to render payroll_accountant.html."""
+    if not period:
+        return {"period": None, "rows": [], "all_resolved": False}
+
+    nets = db.get_pay_period_nets(period["id"])
+    payslips = db.get_pay_period_payslips(period["id"])
+    payslip_refs = {p["ref_no"] for p in payslips}
+
+    active_employees = [r for r in db.get_employee_categories() if r["is_active"]]
+    employees_options = sorted(
+        [{"id": e["team_member_id"], "name": f"{e['given_name']} {e['family_name']}", "category": e["category"]}
+         for e in active_employees],
+        key=lambda x: x["name"],
+    )
+
+    rows = []
+    for n in nets:
+        rows.append({
+            "ref": n["ref_no"],
+            "raw_name": n["raw_name"],
+            "team_member_id": n["team_member_id"],
+            "gross_pay": n["gross_pay"],
+            "net_pay": n["net_pay"],
+            "has_payslip": n["ref_no"] in payslip_refs,
+        })
+
+    all_resolved = all(r["team_member_id"] for r in rows) and bool(rows)
+    return {
+        "period": period,
+        "rows": rows,
+        "employees": employees_options,
+        "all_resolved": all_resolved,
+    }
+
+
+@bp.route("/payroll/accountant", methods=["GET"])
+def accountant_page():
+    year, week, start_date, end_date, label, iso_week = _get_week_params()
+    period = db.get_pay_period(iso_week)
+    vm = _build_accountant_view_model(period)
+
+    drafts = db.get_email_drafts(period["id"]) if period else []
+    drafts_by_tm = {d["team_member_id"]: d for d in drafts}
+    for r in vm["rows"]:
+        d = drafts_by_tm.get(r["team_member_id"])
+        r["draft_status"] = d["status"] if d else None
+        r["draft_id"] = d["gmail_draft_id"] if d else None
+        r["draft_email"] = d["email"] if d else None
+        r["draft_error"] = d["error"] if d else None
+
+    return render_template("payroll_accountant.html",
+        iso_week=iso_week,
+        week_label=label,
+        **vm,
+    )
+
+
+@bp.route("/payroll/accountant/upload", methods=["POST"])
+def accountant_upload():
+    gtn_file = request.files.get("gross_to_net")
+    payslips_file = request.files.get("payslips")
+
+    fallback_iso = request.form.get("iso_week") or _get_week_params()[5]
+
+    if not gtn_file or not gtn_file.filename:
+        flash("Please upload the Gross-to-Net PDF.", "danger")
+        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+    if not payslips_file or not payslips_file.filename:
+        flash("Please upload the combined payslips PDF.", "danger")
+        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as gf:
+        gtn_file.save(gf.name)
+        gtn_path = gf.name
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as pf:
+        payslips_file.save(pf.name)
+        slips_path = pf.name
+
+    try:
+        gtn = payslip_extractor.parse_gross_to_net(gtn_path)
+        slips = payslip_extractor.split_payslips(slips_path)
+    except Exception as e:
+        flash(f"Could not parse PDFs: {e}", "danger")
+        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+    finally:
+        try: os.unlink(gtn_path)
+        except OSError: pass
+        try: os.unlink(slips_path)
+        except OSError: pass
+
+    if not gtn["rows"]:
+        flash("No employee rows found in the gross-to-net PDF.", "danger")
+        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+
+    week_num, pay_date, year_parsed = payslip_extractor.parse_period_label(gtn["period_label"])
+    if not pay_date:
+        flash("Could not read the pay period from the gross-to-net PDF.", "danger")
+        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+
+    iso_week_actual = f"{year_parsed}-W{week_num:02d}"
+    try:
+        _, period_end = square_client.week_dates(year_parsed, week_num)
+    except Exception:
+        period_end = payslip_extractor.period_end_from_pay_date(pay_date)
+
+    saved_map = db.get_ref_mappings()
+    active_employees = [r for r in db.get_employee_categories() if r["is_active"]]
+
+    auto_count = 0
+    for row in gtn["rows"]:
+        ref = row["ref"]
+        tm_id = saved_map.get(ref)
+        if not tm_id:
+            tm_id = _fuzzy_name_match(row["raw_name"], active_employees)
+        row["team_member_id"] = tm_id
+        if tm_id:
+            auto_count += 1
+
+    slip_by_ref = {s["ref"]: s for s in slips}
+    for ref, tm_id in [(r["ref"], r["team_member_id"]) for r in gtn["rows"]]:
+        if ref in slip_by_ref:
+            slip_by_ref[ref]["team_member_id"] = tm_id
+
+    period_id = db.upsert_pay_period(
+        iso_week_actual, week_num, year_parsed, pay_date, period_end, gtn["period_label"]
+    )
+    db.replace_pay_period_nets(period_id, gtn["rows"])
+    db.replace_pay_period_payslips(period_id, list(slip_by_ref.values()))
+
+    total = len(gtn["rows"])
+    if auto_count == total:
+        flash(f"Uploaded {total} employees for {iso_week_actual} — all auto-mapped.", "success")
+    else:
+        flash(
+            f"Uploaded {total} employees for {iso_week_actual}. "
+            f"{auto_count} auto-mapped, {total - auto_count} need review below.",
+            "warning",
+        )
+    return redirect(url_for("payroll.accountant_page", week=iso_week_actual))
+
+
+@bp.route("/payroll/accountant/save", methods=["POST"])
+def accountant_save():
+    period_id = int(request.form.get("pay_period_id", 0) or 0)
+    if not period_id:
+        flash("Missing pay period.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+
+    period = db.get_pay_period_by_id(period_id)
+    if not period:
+        flash("Pay period not found.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+
+    mappings = {}
+    nets_existing = db.get_pay_period_nets(period_id)
+    raw_by_ref = {n["ref_no"]: n["raw_name"] for n in nets_existing}
+
+    for key, value in request.form.items():
+        if key.startswith("map_"):
+            ref = key.replace("map_", "")
+            tm_id = (value or "").strip() or None
+            mappings[ref] = (tm_id, raw_by_ref.get(ref))
+
+    persistent = {ref: pair for ref, pair in mappings.items() if pair[0]}
+    if persistent:
+        db.save_ref_mappings(persistent)
+
+    conn = db.get_db()
+    for ref, (tm_id, _) in mappings.items():
+        conn.execute(
+            "UPDATE pay_period_nets SET team_member_id=? WHERE pay_period_id=? AND ref_no=?",
+            (tm_id, period_id, ref),
+        )
+        conn.execute(
+            "UPDATE pay_period_payslips SET team_member_id=? WHERE pay_period_id=? AND ref_no=?",
+            (tm_id, period_id, ref),
+        )
+    conn.commit()
+    conn.close()
+
+    flash("Mappings saved.", "success")
+    return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
+
+
+@bp.route("/payroll/accountant/generate-drafts", methods=["POST"])
+def accountant_generate_drafts():
+    period_id = int(request.form.get("pay_period_id", 0) or 0)
+    if not period_id:
+        flash("Missing pay period.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+    period = db.get_pay_period_by_id(period_id)
+    if not period:
+        flash("Pay period not found.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+
+    try:
+        import payroll_drafts
+        result = payroll_drafts.generate_drafts_for_period(period_id)
+    except Exception as e:
+        flash(f"Could not create drafts: {e}", "danger")
+        return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
+
+    summary_bits = []
+    if result["created"]:
+        summary_bits.append(f"{result['created']} draft(s) created")
+    if result["skipped"]:
+        summary_bits.append(f"{result['skipped']} skipped")
+    if result["failed"]:
+        summary_bits.append(f"{result['failed']} failed")
+    flash(
+        ("Drafts generated for " + period["iso_week"] + ": "
+         + ", ".join(summary_bits)
+         + ". Open Gmail Drafts to review."),
+        "success" if not result["failed"] else "warning",
+    )
+    return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
+
+
+@bp.route("/payroll/accountant/payslip/<int:period_id>/<ref>")
+def accountant_payslip(period_id, ref):
+    row = db.get_payslip_blob_by_ref(period_id, ref)
+    if not row:
+        flash("Payslip not found.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+    period = db.get_pay_period_by_id(period_id)
+    safe_name = re.sub(r"[^\w-]", "_", row["raw_name"])
+    filename = f"Payslip_{safe_name}_W{period['week_num']:02d}_{period['year']}.pdf"
+    return send_file(
+        io.BytesIO(row["pdf_blob"]),
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=filename,
+    )
 
 
 @bp.route("/payroll/download/raw")

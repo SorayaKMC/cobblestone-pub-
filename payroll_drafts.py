@@ -1,0 +1,246 @@
+"""Generate Gmail drafts for each employee with their payslip + PTO summary.
+
+Drafts are created in info@cobblestonepub.ie via the existing Google service
+account with domain-wide delegation (same pattern as gmail_poller.py).
+"""
+
+import base64
+import json
+import mimetypes
+from datetime import datetime
+from decimal import Decimal
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+
+import config
+import db
+import payslip_extractor
+import pto_engine
+import square_client
+
+
+GMAIL_USER = "info@cobblestonepub.ie"
+GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.modify",
+]
+
+
+def _credentials():
+    from google.oauth2 import service_account
+
+    sa_json = config.GOOGLE_SERVICE_ACCOUNT_JSON
+    if not sa_json:
+        raise RuntimeError(
+            "GOOGLE_SERVICE_ACCOUNT_JSON is not set. "
+            "Add it in your environment variables."
+        )
+    sa_info = json.loads(sa_json)
+    return (
+        service_account.Credentials
+        .from_service_account_info(sa_info, scopes=GMAIL_SCOPES)
+        .with_subject(GMAIL_USER)
+    )
+
+
+def _gmail_service():
+    from googleapiclient.discovery import build
+    return build("gmail", "v1", credentials=_credentials())
+
+
+def _format_date_dmy(iso_date):
+    """'2026-04-26' -> '26/04/2026'."""
+    d = datetime.strptime(iso_date, "%Y-%m-%d").date()
+    return d.strftime("%d/%m/%Y")
+
+
+def build_subject(week_num, period_end_iso):
+    return f"Cobblestone Pub - Payslip Week {week_num}, period ending {_format_date_dmy(period_end_iso)}"
+
+
+def build_body(period_end_iso, accrued_hrs=None, avg_shift=None, balance_days=None):
+    """Build the email body. Pass None for the PTO fields to omit the leave summary
+    (used for upper management, who don't accrue PTO)."""
+    period = _format_date_dmy(period_end_iso)
+
+    parts = [
+        "Hi,",
+        "",
+        f"Please find your payslip for the period ending {period}.",
+        "",
+        "Please review the details carefully, including hours worked, rate of pay, and tips, and any deductions. "
+        "If you believe there are any discrepancies, please notify management in writing within 48 hours so we can review and resolve promptly.",
+        "",
+        "If you have any questions regarding your pay, tax, PRSI, or statutory deductions, please let us know.",
+        "",
+    ]
+
+    if accrued_hrs is not None and avg_shift is not None and balance_days is not None:
+        parts.extend([
+            "Annual Leave Summary:",
+            "",
+            f"You accrued {accrued_hrs:.1f} hrs this week. Your 13-week average shift is {avg_shift:.2f} hrs.",
+            "",
+            f"Your current annual leave accrual total is: {balance_days:.2f} days.",
+            "",
+        ])
+
+    parts.extend([
+        "Thank you for your continued work and professionalism.",
+        "",
+        "Kind regards,",
+        "Soraya",
+        "The Cobblestone Pub",
+    ])
+
+    return "\n".join(parts)
+
+
+def _build_mime(to_email, subject, body, attachment_bytes, attachment_filename):
+    msg = MIMEMultipart()
+    msg["To"] = to_email
+    msg["From"] = GMAIL_USER
+    msg["Subject"] = subject
+
+    msg.attach(MIMEText(body, "plain"))
+
+    mime_type, _ = mimetypes.guess_type(attachment_filename)
+    if not mime_type:
+        mime_type = "application/pdf"
+    main, sub = mime_type.split("/", 1)
+    part = MIMEApplication(attachment_bytes, _subtype=sub)
+    part.add_header("Content-Disposition", "attachment", filename=attachment_filename)
+    msg.attach(part)
+    return msg
+
+
+def _create_draft(service, mime_msg):
+    raw = base64.urlsafe_b64encode(mime_msg.as_bytes()).decode("utf-8")
+    body = {"message": {"raw": raw}}
+    result = service.users().drafts().create(userId="me", body=body).execute()
+    return result.get("id")
+
+
+def _pto_data_for_employee(tm_id, period_end_iso, summary_balances):
+    """Returns (accrued_hrs, avg_shift, balance_days) or (None, None, None) on failure."""
+    try:
+        from datetime import timedelta
+        period_end = datetime.strptime(period_end_iso, "%Y-%m-%d").date()
+        period_start = period_end - timedelta(days=6)
+
+        accrual = db.get_pto_accrual_for_week(tm_id, period_start.isoformat())
+        days_accrued = float(accrual["days_accrued"]) if accrual else 0.0
+
+        avg_shift_dec = pto_engine.calculate_13_week_avg_shift(tm_id, period_end_iso)
+        avg_shift = float(avg_shift_dec) if avg_shift_dec else 8.0
+
+        accrued_hrs = days_accrued * avg_shift
+        balance_days = float(summary_balances.get(tm_id, 0.0))
+        return accrued_hrs, avg_shift, balance_days
+    except Exception:
+        return None, None, None
+
+
+def generate_drafts_for_period(pay_period_id):
+    """Create one Gmail draft per employee with a mapped row + email + payslip.
+
+    Returns a dict with counts and per-employee outcomes.
+    """
+    period = db.get_pay_period_by_id(pay_period_id)
+    if not period:
+        raise ValueError("Pay period not found")
+
+    nets = db.get_pay_period_nets(pay_period_id)
+    payslips_meta = db.get_pay_period_payslips(pay_period_id)
+    payslip_refs = {p["ref_no"] for p in payslips_meta}
+
+    employees = {r["team_member_id"]: r for r in db.get_employee_categories()}
+
+    # Cumulative balance from the PTO summary (capped at 21).
+    summary = db.get_pto_summary()
+    summary_balances = {s["team_member_id"]: s["balance"] for s in summary}
+
+    subject = build_subject(period["week_num"], period["period_end"])
+
+    service = _gmail_service()
+
+    created = skipped = failed = 0
+    results = []
+
+    for n in nets:
+        tm_id = n["team_member_id"]
+        ref = n["ref_no"]
+        raw_name = n["raw_name"]
+
+        if not tm_id:
+            db.record_email_draft(pay_period_id, f"unmapped_{ref}", "",
+                                  None, "skipped", "Unmapped row")
+            results.append({"ref": ref, "raw_name": raw_name, "status": "skipped",
+                            "reason": "Unmapped row"})
+            skipped += 1
+            continue
+
+        emp = employees.get(tm_id)
+        if not emp:
+            db.record_email_draft(pay_period_id, tm_id, "",
+                                  None, "skipped", "Employee record missing")
+            results.append({"ref": ref, "raw_name": raw_name, "status": "skipped",
+                            "reason": "Employee record missing"})
+            skipped += 1
+            continue
+
+        email = (emp["email"] or "").strip() if "email" in emp.keys() else ""
+        if not email:
+            db.record_email_draft(pay_period_id, tm_id, "",
+                                  None, "skipped", "No email on file")
+            results.append({"ref": ref, "raw_name": raw_name, "status": "skipped",
+                            "reason": "No email on file"})
+            skipped += 1
+            continue
+
+        if ref not in payslip_refs:
+            db.record_email_draft(pay_period_id, tm_id, email,
+                                  None, "failed", "No payslip PDF for this ref")
+            results.append({"ref": ref, "raw_name": raw_name, "status": "failed",
+                            "reason": "No payslip PDF for this ref"})
+            failed += 1
+            continue
+
+        slip_row = db.get_payslip_blob_by_ref(pay_period_id, ref)
+        pdf_bytes = slip_row["pdf_blob"]
+
+        if emp["category"] == "Upper Management":
+            body = build_body(period["period_end"])
+        else:
+            accrued_hrs, avg_shift, balance_days = _pto_data_for_employee(
+                tm_id, period["period_end"], summary_balances
+            )
+            if accrued_hrs is None:
+                # Fall back to a no-PTO email rather than failing the whole draft.
+                body = build_body(period["period_end"])
+            else:
+                body = build_body(period["period_end"], accrued_hrs, avg_shift, balance_days)
+
+        full_name = f"{emp['given_name']} {emp['family_name']}".replace("/", "_")
+        attachment_filename = f"Payslip_{full_name}_W{period['week_num']:02d}_{period['year']}.pdf"
+
+        try:
+            mime = _build_mime(email, subject, body, pdf_bytes, attachment_filename)
+            draft_id = _create_draft(service, mime)
+            db.record_email_draft(pay_period_id, tm_id, email, draft_id, "created", None)
+            results.append({"ref": ref, "raw_name": raw_name, "status": "created",
+                            "email": email})
+            created += 1
+        except Exception as e:
+            db.record_email_draft(pay_period_id, tm_id, email, None, "failed", str(e))
+            results.append({"ref": ref, "raw_name": raw_name, "status": "failed",
+                            "reason": str(e)})
+            failed += 1
+
+    return {
+        "created": created,
+        "skipped": skipped,
+        "failed": failed,
+        "total": len(nets),
+        "results": results,
+    }

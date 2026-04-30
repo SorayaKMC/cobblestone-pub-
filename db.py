@@ -111,6 +111,66 @@ def init_db():
             UNIQUE(team_member_id, iso_week)
         );
 
+        -- Accountant pay-period uploads (Peter's gross-to-net + payslips)
+        CREATE TABLE IF NOT EXISTS pay_periods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            iso_week TEXT NOT NULL UNIQUE,
+            week_num INTEGER NOT NULL,
+            year INTEGER NOT NULL,
+            pay_date DATE NOT NULL,
+            period_end DATE NOT NULL,
+            period_label TEXT,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS pay_period_nets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pay_period_id INTEGER NOT NULL,
+            ref_no TEXT NOT NULL,
+            team_member_id TEXT,
+            raw_name TEXT NOT NULL,
+            gross_pay REAL NOT NULL DEFAULT 0,
+            employee_pension REAL NOT NULL DEFAULT 0,
+            tax_due REAL NOT NULL DEFAULT 0,
+            employee_prsi REAL NOT NULL DEFAULT 0,
+            usc_due REAL NOT NULL DEFAULT 0,
+            net_pay REAL NOT NULL DEFAULT 0,
+            employer_prsi REAL NOT NULL DEFAULT 0,
+            FOREIGN KEY (pay_period_id) REFERENCES pay_periods(id),
+            UNIQUE(pay_period_id, ref_no)
+        );
+
+        CREATE TABLE IF NOT EXISTS pay_period_payslips (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pay_period_id INTEGER NOT NULL,
+            ref_no TEXT NOT NULL,
+            team_member_id TEXT,
+            raw_name TEXT NOT NULL,
+            pdf_blob BLOB NOT NULL,
+            FOREIGN KEY (pay_period_id) REFERENCES pay_periods(id),
+            UNIQUE(pay_period_id, ref_no)
+        );
+
+        CREATE TABLE IF NOT EXISTS payslip_ref_mappings (
+            ref_no TEXT PRIMARY KEY,
+            team_member_id TEXT NOT NULL,
+            raw_name TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS payroll_email_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pay_period_id INTEGER NOT NULL,
+            team_member_id TEXT NOT NULL,
+            email TEXT NOT NULL,
+            gmail_draft_id TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            error TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pay_period_id) REFERENCES pay_periods(id),
+            UNIQUE(pay_period_id, team_member_id)
+        );
+
         -- Bookkeeping: suppliers + invoices
         CREATE TABLE IF NOT EXISTS suppliers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -255,6 +315,8 @@ def init_db():
         cursor.execute("ALTER TABLE employee_categories ADD COLUMN pay_type TEXT NOT NULL DEFAULT 'hourly'")
     if "is_active" not in columns:
         cursor.execute("ALTER TABLE employee_categories ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+    if "email" not in columns:
+        cursor.execute("ALTER TABLE employee_categories ADD COLUMN email TEXT")
 
     # Migration: add source column to pto_accruals (tracks where accrual came from)
     acc_cols = [row[1] for row in cursor.execute("PRAGMA table_info(pto_accruals)").fetchall()]
@@ -329,12 +391,12 @@ def get_employee_category(team_member_id):
     return row
 
 
-def update_employee_category(team_member_id, given_name, family_name, category, cleaning_amount=0, weekly_salary=0, pay_type="hourly"):
+def update_employee_category(team_member_id, given_name, family_name, category, cleaning_amount=0, weekly_salary=0, pay_type="hourly", email=None):
     """Update or insert an employee category. Does NOT overwrite is_active (preserves former-employee flag)."""
     conn = get_db()
     conn.execute(
-        """INSERT INTO employee_categories (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, is_active, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+        """INSERT INTO employee_categories (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, email, is_active, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
            ON CONFLICT(team_member_id) DO UPDATE SET
                given_name=excluded.given_name,
                family_name=excluded.family_name,
@@ -342,8 +404,9 @@ def update_employee_category(team_member_id, given_name, family_name, category, 
                cleaning_amount=excluded.cleaning_amount,
                weekly_salary=excluded.weekly_salary,
                pay_type=excluded.pay_type,
+               email=COALESCE(excluded.email, employee_categories.email),
                updated_at=excluded.updated_at""",
-        (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, datetime.now().isoformat()),
+        (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, email, datetime.now().isoformat()),
     )
     conn.commit()
     conn.close()
@@ -354,8 +417,8 @@ def bulk_update_categories(updates):
     conn = get_db()
     for u in updates:
         conn.execute(
-            """INSERT INTO employee_categories (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, is_active, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """INSERT INTO employee_categories (team_member_id, given_name, family_name, category, cleaning_amount, weekly_salary, pay_type, email, is_active, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(team_member_id) DO UPDATE SET
                    given_name=excluded.given_name,
                    family_name=excluded.family_name,
@@ -363,11 +426,12 @@ def bulk_update_categories(updates):
                    cleaning_amount=excluded.cleaning_amount,
                    weekly_salary=excluded.weekly_salary,
                    pay_type=excluded.pay_type,
+                   email=excluded.email,
                    is_active=excluded.is_active,
                    updated_at=excluded.updated_at""",
             (u["team_member_id"], u["given_name"], u["family_name"], u["category"],
              u.get("cleaning_amount", 0), u.get("weekly_salary", 0), u.get("pay_type", "hourly"),
-             u.get("is_active", 1), datetime.now().isoformat()),
+             u.get("email"), u.get("is_active", 1), datetime.now().isoformat()),
         )
     conn.commit()
     conn.close()
@@ -464,6 +528,17 @@ def add_pto_accrual(team_member_id, period_start, period_end, hours_worked, accr
     conn.commit()
     conn.close()
     return True
+
+
+def get_pto_accrual_for_week(team_member_id, period_start):
+    """Return the accrual row for an employee + week, or None."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT days_accrued, hours_worked FROM pto_accruals WHERE team_member_id=? AND period_start=?",
+        (team_member_id, period_start),
+    ).fetchone()
+    conn.close()
+    return row
 
 
 def is_pto_accrual_protected(team_member_id, period_start):
@@ -687,6 +762,190 @@ def get_finalized_weeks():
     conn = get_db()
     rows = conn.execute(
         "SELECT iso_week, finalized_at, finalized_by FROM finalized_weeks ORDER BY iso_week DESC"
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+# --- Accountant pay-period uploads ---
+
+def upsert_pay_period(iso_week, week_num, year, pay_date, period_end, period_label):
+    """Create or update a pay period. Returns the pay_period id."""
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO pay_periods (iso_week, week_num, year, pay_date, period_end, period_label)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(iso_week) DO UPDATE SET
+               pay_date=excluded.pay_date,
+               period_end=excluded.period_end,
+               period_label=excluded.period_label,
+               uploaded_at=CURRENT_TIMESTAMP""",
+        (iso_week, week_num, year, pay_date, period_end, period_label),
+    )
+    row = conn.execute("SELECT id FROM pay_periods WHERE iso_week = ?", (iso_week,)).fetchone()
+    conn.commit()
+    conn.close()
+    return row["id"]
+
+
+def get_pay_period(iso_week):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM pay_periods WHERE iso_week = ?", (iso_week,)).fetchone()
+    conn.close()
+    return row
+
+
+def get_pay_period_by_id(pay_period_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM pay_periods WHERE id = ?", (pay_period_id,)).fetchone()
+    conn.close()
+    return row
+
+
+def get_ref_mappings():
+    """Return {ref_no: team_member_id} from saved mappings."""
+    conn = get_db()
+    rows = conn.execute("SELECT ref_no, team_member_id FROM payslip_ref_mappings").fetchall()
+    conn.close()
+    return {r["ref_no"]: r["team_member_id"] for r in rows}
+
+
+def save_ref_mappings(mappings):
+    """Save ref→team_member_id mappings. mappings is {ref_no: (team_member_id, raw_name)}."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    for ref, value in mappings.items():
+        if isinstance(value, (list, tuple)):
+            tm_id, raw_name = value[0], value[1] if len(value) > 1 else None
+        else:
+            tm_id, raw_name = value, None
+        if not tm_id:
+            continue
+        conn.execute(
+            """INSERT INTO payslip_ref_mappings (ref_no, team_member_id, raw_name, updated_at)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(ref_no) DO UPDATE SET
+                   team_member_id=excluded.team_member_id,
+                   raw_name=excluded.raw_name,
+                   updated_at=excluded.updated_at""",
+            (ref, tm_id, raw_name, now),
+        )
+    conn.commit()
+    conn.close()
+
+
+def replace_pay_period_nets(pay_period_id, rows):
+    """Replace all net-pay rows for a period. Each row is a dict from the parser
+    with optional 'team_member_id' resolved by mapping."""
+    conn = get_db()
+    conn.execute("DELETE FROM pay_period_nets WHERE pay_period_id = ?", (pay_period_id,))
+    for r in rows:
+        conn.execute(
+            """INSERT INTO pay_period_nets
+               (pay_period_id, ref_no, team_member_id, raw_name,
+                gross_pay, employee_pension, tax_due, employee_prsi, usc_due,
+                net_pay, employer_prsi)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (pay_period_id, r["ref"], r.get("team_member_id"), r["raw_name"],
+             r["gross_pay"], r["employee_pension"], r["tax_due"], r["employee_prsi"],
+             r["usc_due"], r["net_pay"], r["employer_prsi"]),
+        )
+    conn.commit()
+    conn.close()
+
+
+def replace_pay_period_payslips(pay_period_id, slips):
+    """Replace all payslip blobs for a period. Each slip is a dict with
+    'ref', 'raw_name', 'pdf_bytes', and optional 'team_member_id'."""
+    conn = get_db()
+    conn.execute("DELETE FROM pay_period_payslips WHERE pay_period_id = ?", (pay_period_id,))
+    for s in slips:
+        conn.execute(
+            """INSERT INTO pay_period_payslips
+               (pay_period_id, ref_no, team_member_id, raw_name, pdf_blob)
+               VALUES (?, ?, ?, ?, ?)""",
+            (pay_period_id, s["ref"], s.get("team_member_id"), s["raw_name"], s["pdf_bytes"]),
+        )
+    conn.commit()
+    conn.close()
+
+
+def get_pay_period_nets(pay_period_id):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM pay_period_nets WHERE pay_period_id = ? ORDER BY CAST(ref_no AS INTEGER)",
+        (pay_period_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def get_net_pays_by_employee(iso_week):
+    """Return {team_member_id: net_pay} for the period matching iso_week."""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT n.team_member_id, n.net_pay
+           FROM pay_period_nets n
+           JOIN pay_periods p ON p.id = n.pay_period_id
+           WHERE p.iso_week = ? AND n.team_member_id IS NOT NULL""",
+        (iso_week,),
+    ).fetchall()
+    conn.close()
+    return {r["team_member_id"]: r["net_pay"] for r in rows}
+
+
+def get_pay_period_payslips(pay_period_id):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, ref_no, team_member_id, raw_name FROM pay_period_payslips WHERE pay_period_id = ? ORDER BY CAST(ref_no AS INTEGER)",
+        (pay_period_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def get_payslip_blob(pay_period_id, team_member_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT raw_name, pdf_blob FROM pay_period_payslips WHERE pay_period_id = ? AND team_member_id = ?",
+        (pay_period_id, team_member_id),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def get_payslip_blob_by_ref(pay_period_id, ref_no):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT raw_name, pdf_blob, team_member_id FROM pay_period_payslips WHERE pay_period_id = ? AND ref_no = ?",
+        (pay_period_id, ref_no),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def record_email_draft(pay_period_id, team_member_id, email, gmail_draft_id, status, error=None):
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO payroll_email_drafts (pay_period_id, team_member_id, email, gmail_draft_id, status, error)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(pay_period_id, team_member_id) DO UPDATE SET
+               email=excluded.email,
+               gmail_draft_id=excluded.gmail_draft_id,
+               status=excluded.status,
+               error=excluded.error,
+               created_at=CURRENT_TIMESTAMP""",
+        (pay_period_id, team_member_id, email, gmail_draft_id, status, error),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_email_drafts(pay_period_id):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM payroll_email_drafts WHERE pay_period_id = ?",
+        (pay_period_id,),
     ).fetchall()
     conn.close()
     return rows
