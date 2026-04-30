@@ -35,7 +35,23 @@ def _credentials():
             "GOOGLE_SERVICE_ACCOUNT_JSON is not set. "
             "Add it in your environment variables."
         )
-    sa_info = json.loads(sa_json)
+    try:
+        sa_info = json.loads(sa_json)
+    except json.JSONDecodeError as e:
+        # Surface enough context to diagnose without leaking the secret.
+        head = sa_json.lstrip()[:20].replace("\n", "\\n")
+        length = len(sa_json)
+        raise RuntimeError(
+            f"GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON ({e.msg} at char {e.pos}). "
+            f"Length={length}, starts with: {head!r}. "
+            "Expected the value to start with '{' and be the entire service-account "
+            "JSON file content (no wrapping quotes, no prefix)."
+        ) from e
+    if not isinstance(sa_info, dict) or sa_info.get("type") != "service_account":
+        raise RuntimeError(
+            "GOOGLE_SERVICE_ACCOUNT_JSON parsed but does not look like a service "
+            "account key (expected an object with \"type\":\"service_account\")."
+        )
     return (
         service_account.Credentials
         .from_service_account_info(sa_info, scopes=GMAIL_SCOPES)
