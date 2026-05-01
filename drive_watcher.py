@@ -333,16 +333,21 @@ def _process_drive_pdf(service, f, source_kind, invoices_processed, statements_p
     return result
 
 
-def deep_scan_year(year):
-    """Recursively walk the entire invoices Drive folder tree (including
-    every subfolder, e.g. month-organised archives) and import any PDFs
-    we don't already have in the bookkeeping DB by hash.
+def deep_scan_year(year, folder_id=None):
+    """Recursively walk a Drive folder tree (including every subfolder)
+    and import any PDFs we don't already have in the bookkeeping DB by
+    hash.
 
     Designed for one-time historical recovery — the regular Drive watcher
     only scans the root of the invoices folder. This sweeps everything.
 
     Files are NOT moved or renamed (these are historical archives; we
     leave the user's organisation alone). Only new ones get imported.
+
+    Args:
+        year:       informational only (recorded in progress)
+        folder_id:  Drive folder ID to start from. Defaults to the
+                    configured GOOGLE_DRIVE_INVOICES_FOLDER_ID.
 
     Sets cache key 'drive_deep_scan_progress' so the audit page can show
     progress + final summary.
@@ -351,14 +356,15 @@ def deep_scan_year(year):
     import statement_detector
     from datetime import datetime as _dt
 
-    root_id = config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
+    root_id = folder_id or config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
     if not root_id:
-        raise RuntimeError("GOOGLE_DRIVE_INVOICES_FOLDER_ID is not set.")
+        raise RuntimeError("No folder ID provided and GOOGLE_DRIVE_INVOICES_FOLDER_ID is not set.")
 
     db.set_cache("drive_deep_scan_progress", {
         "started_at": _dt.now().isoformat(),
         "status": "scanning",
         "year": year,
+        "folder_id": root_id,
         "scanned": 0,
         "imported_invoices": 0,
         "imported_statements": 0,
@@ -420,7 +426,7 @@ def deep_scan_year(year):
         counts["scanned"] += 1
         # Update progress every 10 files so the user can see movement
         if counts["scanned"] % 10 == 0:
-            _update_deep_scan_progress(counts, "processing", year, len(pdfs))
+            _update_deep_scan_progress(counts, "processing", year, len(pdfs), folder_id=root_id)
 
         file_id = f["id"]
         original_name = f.get("name", f"drive_{file_id[:8]}.pdf")
@@ -501,11 +507,11 @@ def deep_scan_year(year):
             counts["errors"] += 1
             print(f"[deep-scan] extract/save failed {original_name}: {e}")
 
-    _update_deep_scan_progress(counts, "completed", year, len(pdfs))
+    _update_deep_scan_progress(counts, "completed", year, len(pdfs), folder_id=root_id)
     return counts
 
 
-def _update_deep_scan_progress(counts, status, year, total):
+def _update_deep_scan_progress(counts, status, year, total, folder_id=None):
     from datetime import datetime as _dt
     payload = dict(counts)
     payload.update({
@@ -514,6 +520,8 @@ def _update_deep_scan_progress(counts, status, year, total):
         "found_pdfs": total,
         "ts": _dt.now().isoformat(),
     })
+    if folder_id:
+        payload["folder_id"] = folder_id
     db.set_cache("drive_deep_scan_progress", payload)
 
 

@@ -35,8 +35,13 @@
                         <i class="bi bi-envelope-arrow-down me-1"></i>Sweep info@ for {{ year }}
                     </button>
                 </form>
-                <form method="POST" action="/bookkeeping/audit/deep-scan-drive" class="d-inline">
+                <form method="POST" action="/bookkeeping/audit/deep-scan-drive"
+                      class="d-flex gap-1 align-items-center">
                     <input type="hidden" name="year" value="{{ year }}">
+                    <input type="text" name="folder" class="form-control form-control-sm"
+                           placeholder="Drive folder URL or ID (blank = default invoices folder)"
+                           style="min-width:280px"
+                           {% if deep_scan_progress and deep_scan_progress.status in ('scanning', 'processing') %}disabled{% endif %}>
                     <button type="submit" class="btn btn-outline-warning btn-sm"
                         {% if deep_scan_progress and deep_scan_progress.status in ('scanning', 'processing') %}disabled{% endif %}>
                         <i class="bi bi-google me-1"></i>Deep-scan Drive
@@ -87,6 +92,9 @@
             {% elif deep_scan_progress.status == 'failed' %}
                 <span class="badge bg-danger">failed</span>
                 {{ deep_scan_progress.error }}
+            {% endif %}
+            {% if deep_scan_progress.folder_id %}
+            · <a href="https://drive.google.com/drive/folders/{{ deep_scan_progress.folder_id }}" target="_blank" class="text-muted">scanned folder</a>
             {% endif %}
         </div>
         {% endif %}

@@ -381,10 +381,31 @@ def audit_sweep_info():
     return redirect(url_for("bookkeeping.audit_year", year=year))
 
 
+def _extract_drive_folder_id(url_or_id):
+    """Accept either a bare folder ID (28+ chars) or any Drive URL form
+    and return the folder ID. Returns None if no ID detected."""
+    if not url_or_id:
+        return None
+    s = url_or_id.strip()
+    # URLs look like
+    #   https://drive.google.com/drive/folders/<ID>?...
+    #   https://drive.google.com/drive/u/0/folders/<ID>
+    m = re.search(r"/folders/([A-Za-z0-9_-]{20,})", s)
+    if m:
+        return m.group(1)
+    # Bare ID (no URL)
+    if re.match(r"^[A-Za-z0-9_-]{20,}$", s):
+        return s
+    return None
+
+
 @bp.route("/bookkeeping/audit/deep-scan-drive", methods=["POST"])
 def audit_deep_scan_drive():
-    """Trigger a background recursive scan of the entire invoices Drive
-    folder tree (including all month-organised subfolders)."""
+    """Trigger a background recursive scan of a Drive folder tree.
+
+    Accepts an optional ?folder= URL/ID — defaults to the configured
+    invoices folder. Lets the user point the scan at archive folders
+    held elsewhere in Drive without changing the env var."""
     import threading
     import drive_watcher
 
@@ -393,18 +414,28 @@ def audit_deep_scan_drive():
     except ValueError:
         year = date.today().year - 1
 
+    raw_folder = request.form.get("folder", "").strip()
+    folder_id = _extract_drive_folder_id(raw_folder) if raw_folder else None
+
+    if raw_folder and not folder_id:
+        flash("Could not parse a Drive folder ID from that input. Paste a "
+              "folder URL or the bare ID.", "danger")
+        return redirect(url_for("bookkeeping.audit_year", year=year))
+
     def _run():
         try:
-            drive_watcher.deep_scan_year(year)
+            drive_watcher.deep_scan_year(year, folder_id=folder_id)
         except Exception as e:
             db.set_cache("drive_deep_scan_progress", {
                 "status": "failed",
                 "year": year,
+                "folder_id": folder_id,
                 "error": str(e),
             })
 
     threading.Thread(target=_run, daemon=True).start()
-    flash(f"Deep scan of Drive folder started for {year}. "
+    target_label = (folder_id or "configured invoices folder")
+    flash(f"Deep scan of {target_label} started for {year}. "
           "Refresh this page to watch progress.", "info")
     return redirect(url_for("bookkeeping.audit_year", year=year))
 
