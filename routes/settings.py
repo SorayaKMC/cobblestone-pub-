@@ -48,25 +48,38 @@ def sync_team():
         members = square_client.get_team_members()
         existing = {r["team_member_id"]: r for r in db.get_employee_categories()}
 
-        count = 0
+        added = 0
+        emails_pulled = 0
         for m in members:
+            email = m.get("email_address") or None
+            if email:
+                emails_pulled += 1
             if m["id"] not in existing:
                 db.update_employee_category(
-                    m["id"], m["given_name"], m["family_name"], "Staff", 0
+                    m["id"], m["given_name"], m["family_name"], "Staff",
+                    cleaning_amount=0, email=email,
                 )
-                count += 1
+                added += 1
             else:
-                # Update names from Square but keep local category
                 row = existing[m["id"]]
+                # Square is source of truth for names + email; preserve local
+                # category, cleaning, salary, pay type so manual edits aren't lost.
                 db.update_employee_category(
                     m["id"], m["given_name"], m["family_name"],
-                    row["category"], row["cleaning_amount"]
+                    row["category"],
+                    cleaning_amount=row["cleaning_amount"],
+                    weekly_salary=row["weekly_salary"] if "weekly_salary" in row.keys() else 0,
+                    pay_type=row["pay_type"] if "pay_type" in row.keys() else "hourly",
+                    email=email,
                 )
 
-        if count > 0:
-            flash(f"Synced from Square. {count} new employee(s) added as Staff.", "success")
-        else:
-            flash("All employees up to date.", "info")
+        msg_bits = []
+        if added:
+            msg_bits.append(f"{added} new employee(s) added as Staff")
+        msg_bits.append(f"{emails_pulled} email(s) synced from Square")
+        if not added:
+            msg_bits.insert(0, "All employees up to date")
+        flash("Synced from Square. " + ". ".join(msg_bits) + ".", "success")
     except Exception as e:
         flash(f"Sync failed: {str(e)}", "danger")
 

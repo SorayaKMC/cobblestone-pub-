@@ -72,8 +72,9 @@ def get_team_members():
     """Fetch all active team members with wage data.
 
     Returns list of dicts:
-        id, given_name, family_name, status, job_title, pay_type,
-        hourly_rate (Decimal), annual_rate (Decimal), weekly_hours, is_owner
+        id, given_name, family_name, email_address, status, job_title,
+        pay_type, hourly_rate (Decimal), annual_rate (Decimal),
+        weekly_hours, is_owner
     """
     body = {
         "query": {
@@ -103,6 +104,7 @@ def get_team_members():
             "id": m["id"],
             "given_name": m.get("given_name", ""),
             "family_name": m.get("family_name", ""),
+            "email_address": (m.get("email_address") or "").strip(),
             "status": m.get("status", "ACTIVE"),
             "job_title": primary_job.get("job_title", ""),
             "pay_type": pay_type,
