@@ -14,6 +14,8 @@ section, open its brief. They're numbered:
 5. [Bookkeeping & Invoices](05-bookkeeping.md)
 6. [Backroom Bookings](06-bookings.md)
 7. [Settings](07-settings.md)
+8. [New Manager Onboarding](08-new-manager-guide.md)
+9. [Year-End Checklist](09-year-end-checklist.md)
 
 ---
 

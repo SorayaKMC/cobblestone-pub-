@@ -28,6 +28,13 @@ questions, what to do when something breaks.
 7. **[07-settings.md](07-settings.md)** — Employee directory, sync
    from Square, categories
 
+## Specialised guides
+
+8. **[08-new-manager-guide.md](08-new-manager-guide.md)** — Onboarding
+   sequence for someone new taking over operations
+9. **[09-year-end-checklist.md](09-year-end-checklist.md)** —
+   Last-fortnight-of-December tasks plus January opening
+
 ## Other docs
 
 - **`DEPLOY.md`** — deployment notes for Render
