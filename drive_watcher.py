@@ -170,7 +170,7 @@ def import_pending():
     today_str = date.today().isoformat()
 
     invoice_extractor.ensure_invoices_dir()
-    existing_hashes = {inv["file_hash"] for inv in db.list_invoices() if inv.get("file_hash")}
+    existing_hashes = {inv["file_hash"] for inv in db.list_invoices() if inv["file_hash"]}
 
     for f in pending:
         file_id = f["id"]
