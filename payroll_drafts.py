@@ -6,12 +6,12 @@ account with domain-wide delegation (same pattern as gmail_poller.py).
 
 import base64
 import json
-import mimetypes
 from datetime import datetime
 from decimal import Decimal
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
+from email.mime.base import MIMEBase
+from email import encoders
 
 import config
 import db
@@ -74,13 +74,17 @@ def build_subject(week_num, period_end_iso):
     return f"Cobblestone Pub - Payslip Week {week_num}, period ending {_format_date_dmy(period_end_iso)}"
 
 
-def build_body(period_end_iso, accrued_hrs=None, avg_shift=None, balance_days=None):
+def build_body(period_end_iso, first_name=None, accrued_hrs=None, avg_shift=None, balance_days=None):
     """Build the email body. Pass None for the PTO fields to omit the leave summary
-    (used for upper management, who don't accrue PTO)."""
+    (used for upper management, who don't accrue PTO).
+
+    first_name: optional employee first name for the greeting line.
+    """
     period = _format_date_dmy(period_end_iso)
+    greeting = f"Hi {first_name}," if first_name else "Hi,"
 
     parts = [
-        "Hi,",
+        greeting,
         "",
         f"Please find your payslip for the period ending {period}.",
         "",
@@ -113,19 +117,32 @@ def build_body(period_end_iso, accrued_hrs=None, avg_shift=None, balance_days=No
 
 
 def _build_mime(to_email, subject, body, attachment_bytes, attachment_filename):
-    msg = MIMEMultipart()
+    """Build a multipart/mixed MIME message with a PDF attachment.
+
+    Uses MIMEBase + explicit base64 encoding (rather than MIMEApplication's
+    auto-encoding) because Gmail is strict about Content-Transfer-Encoding
+    headers being present on attachment parts. The previous MIMEApplication
+    pattern produced drafts where attachments silently failed to render.
+    """
+    msg = MIMEMultipart("mixed")
     msg["To"] = to_email
     msg["From"] = GMAIL_USER
     msg["Subject"] = subject
 
-    msg.attach(MIMEText(body, "plain"))
+    msg.attach(MIMEText(body, "plain", "utf-8"))
 
-    mime_type, _ = mimetypes.guess_type(attachment_filename)
-    if not mime_type:
-        mime_type = "application/pdf"
-    main, sub = mime_type.split("/", 1)
-    part = MIMEApplication(attachment_bytes, _subtype=sub)
-    part.add_header("Content-Disposition", "attachment", filename=attachment_filename)
+    # Force bytes — sqlite3 sometimes returns memoryview for BLOB columns
+    # and the MIME encoders only accept bytes-like proper.
+    pdf_bytes = bytes(attachment_bytes)
+
+    part = MIMEBase("application", "pdf")
+    part.set_payload(pdf_bytes)
+    encoders.encode_base64(part)
+    part.add_header(
+        "Content-Disposition",
+        f'attachment; filename="{attachment_filename}"',
+    )
+    part.add_header("Content-Type", f'application/pdf; name="{attachment_filename}"')
     msg.attach(part)
     return msg
 
@@ -210,6 +227,24 @@ def generate_drafts_for_period(pay_period_id):
 
     service = _gmail_service()
 
+    # Re-running Generate Drafts: delete any existing Gmail drafts for this
+    # pay period first so we don't end up with duplicates (one with an
+    # attachment, one without — common when an earlier run had a bug).
+    existing_drafts = db.get_email_drafts(pay_period_id)
+    deleted_count = 0
+    for d in existing_drafts:
+        old_id = d["gmail_draft_id"]
+        if not old_id:
+            continue
+        try:
+            service.users().drafts().delete(userId="me", id=old_id).execute()
+            deleted_count += 1
+        except Exception:
+            # If the user already deleted the draft from Gmail, no problem.
+            pass
+    if deleted_count:
+        print(f"[payroll-drafts] Cleaned up {deleted_count} existing draft(s) before regenerating")
+
     created = skipped = failed = 0
     results = []
 
@@ -254,18 +289,21 @@ def generate_drafts_for_period(pay_period_id):
 
         slip_row = db.get_payslip_blob_by_ref(pay_period_id, ref)
         pdf_bytes = slip_row["pdf_blob"]
+        first_name = (emp["given_name"] or "").strip() or None
 
         if emp["category"] == "Upper Management":
-            body = build_body(period["period_end"])
+            body = build_body(period["period_end"], first_name=first_name)
         else:
             accrued_hrs, avg_shift, balance_days = _pto_data_for_employee(
                 tm_id, period["period_end"], summary_balances
             )
             if accrued_hrs is None:
                 # Fall back to a no-PTO email rather than failing the whole draft.
-                body = build_body(period["period_end"])
+                body = build_body(period["period_end"], first_name=first_name)
             else:
-                body = build_body(period["period_end"], accrued_hrs, avg_shift, balance_days)
+                body = build_body(period["period_end"], first_name=first_name,
+                                  accrued_hrs=accrued_hrs, avg_shift=avg_shift,
+                                  balance_days=balance_days)
 
         full_name = f"{emp['given_name']} {emp['family_name']}".replace("/", "_")
         attachment_filename = f"Payslip_{full_name}_W{period['week_num']:02d}_{period['year']}.pdf"
