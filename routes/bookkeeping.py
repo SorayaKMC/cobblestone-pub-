@@ -1,11 +1,20 @@
 """Bookkeeping routes - invoice tracking + supplier management."""
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+import re
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, abort
 from datetime import date, datetime
 import os
 import db
 import config
 import invoice_extractor
+
+
+def _drive_url_from_notes(notes):
+    """Extract a Drive URL from a free-text notes field, if present."""
+    if not notes:
+        return None
+    m = re.search(r"https?://drive\.google\.com/\S+", notes)
+    return m.group(0) if m else None
 
 bp = Blueprint("bookkeeping", __name__)
 
@@ -284,12 +293,16 @@ def edit_invoice(invoice_id):
 
     if request.method == "GET":
         suppliers = db.list_suppliers()
+        drive_url = _drive_url_from_notes(invoice["notes"])
+        local_pdf_available = bool(invoice["pdf_path"]) and os.path.exists(invoice["pdf_path"])
         return render_template(
             "invoice_form.html",
             invoice=invoice,
             suppliers=suppliers,
             categories=config.INVOICE_CATEGORIES,
             today=date.today().isoformat(),
+            drive_url=drive_url,
+            local_pdf_available=local_pdf_available,
         )
 
     try:
@@ -301,6 +314,36 @@ def edit_invoice(invoice_id):
     except Exception as e:
         flash(f"Could not update invoice: {e}", "danger")
     return redirect(url_for("bookkeeping.bookkeeping_page"))
+
+
+@bp.route("/bookkeeping/<int:invoice_id>/pdf")
+def view_invoice_pdf(invoice_id):
+    """Serve the local PDF for an invoice. Inline-displays so the browser
+    opens it in a tab rather than forcing download."""
+    invoice = db.get_invoice(invoice_id)
+    if not invoice or not invoice["pdf_path"]:
+        abort(404)
+    pdf_path = invoice["pdf_path"]
+    if not os.path.exists(pdf_path):
+        abort(404)
+    safe_name = re.sub(r"[^\w.-]", "_", invoice["supplier_name"] or "invoice")
+    download_name = f"Invoice_{invoice['id']}_{safe_name}.pdf"
+    return send_file(pdf_path, mimetype="application/pdf",
+                     as_attachment=False, download_name=download_name)
+
+
+@bp.route("/bookkeeping/statements/<int:statement_id>/pdf")
+def view_statement_pdf(statement_id):
+    stmt = db.get_statement(statement_id)
+    if not stmt or not stmt["pdf_path"]:
+        abort(404)
+    pdf_path = stmt["pdf_path"]
+    if not os.path.exists(pdf_path):
+        abort(404)
+    safe_name = re.sub(r"[^\w.-]", "_", stmt["supplier_name"] or "statement")
+    download_name = f"Statement_{stmt['id']}_{safe_name}.pdf"
+    return send_file(pdf_path, mimetype="application/pdf",
+                     as_attachment=False, download_name=download_name)
 
 
 @bp.route("/bookkeeping/<int:invoice_id>/delete", methods=["POST"])

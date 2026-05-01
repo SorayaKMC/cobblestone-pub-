@@ -259,12 +259,21 @@
                         {% endif %}
                     </td>
                     <td class="text-end">
-                        <a href="/bookkeeping/{{ inv.id }}/edit" class="btn btn-outline-secondary btn-sm py-0 px-2">
+                        {% if inv.pdf_path %}
+                        <a href="/bookkeeping/{{ inv.id }}/pdf" target="_blank"
+                           class="btn btn-outline-info btn-sm py-0 px-2"
+                           title="View source PDF">
+                            <i class="bi bi-file-pdf"></i>
+                        </a>
+                        {% endif %}
+                        <a href="/bookkeeping/{{ inv.id }}/edit" class="btn btn-outline-secondary btn-sm py-0 px-2"
+                           title="Edit / approve">
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form method="POST" action="/bookkeeping/{{ inv.id }}/delete" class="d-inline"
                               onsubmit="return confirm('Delete this invoice?');">
-                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2">
+                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"
+                                    title="Delete">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>

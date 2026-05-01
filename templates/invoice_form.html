@@ -3,6 +3,29 @@
 {% block page_title %}{{ 'Edit' if invoice else 'Add' }} Invoice{% endblock %}
 
 {% block content %}
+{% if invoice and (local_pdf_available or drive_url) %}
+<div class="card mb-3 border-info">
+    <div class="card-body py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="small">
+            <i class="bi bi-file-pdf text-info me-1"></i>
+            <strong>Source PDF</strong> — open the original invoice to verify details before approving.
+        </div>
+        <div class="d-flex gap-2">
+            {% if local_pdf_available %}
+            <a href="/bookkeeping/{{ invoice.id }}/pdf" target="_blank" class="btn btn-info btn-sm">
+                <i class="bi bi-eye me-1"></i>View PDF
+            </a>
+            {% endif %}
+            {% if drive_url %}
+            <a href="{{ drive_url }}" target="_blank" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-google me-1"></i>Open in Drive
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-body">
         <form method="POST">

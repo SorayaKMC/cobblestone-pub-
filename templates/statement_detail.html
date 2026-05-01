@@ -8,9 +8,14 @@
         <i class="bi bi-arrow-left me-1"></i>Back to Statements
     </a>
     <div class="d-flex gap-2">
+        {% if statement.pdf_path %}
+        <a href="/bookkeeping/statements/{{ statement.id }}/pdf" target="_blank" class="btn btn-info btn-sm">
+            <i class="bi bi-eye me-1"></i>View PDF
+        </a>
+        {% endif %}
         {% if statement.drive_url %}
-        <a href="{{ statement.drive_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-file-pdf me-1"></i>Open PDF in Drive
+        <a href="{{ statement.drive_url }}" target="_blank" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-google me-1"></i>Open in Drive
         </a>
         {% endif %}
         <form method="POST" class="d-inline">
