@@ -49,6 +49,83 @@ def _gmail_poll_loop():
         time.sleep(config.GMAIL_POLL_INTERVAL)
 
 
+def _pto_weekly_recalc_loop():
+    """Background thread: weekly PTO recalculation, Sunday 23:00 Dublin time.
+
+    Recalculates the past 4 ISO weeks for every employee so any backdated
+    Square timecard edits get picked up. Side-effect: refreshes the 13-week
+    avg shift used in the accrual formula. Idempotent — safe if it runs
+    twice within the same window.
+    """
+    import time
+    from datetime import datetime, timedelta
+    try:
+        from zoneinfo import ZoneInfo
+        DUBLIN = ZoneInfo("Europe/Dublin")
+    except Exception:
+        DUBLIN = None
+
+    def _now_dublin():
+        return datetime.now(DUBLIN) if DUBLIN else datetime.now()
+
+    def _most_recent_sunday_2300(now):
+        """Most recent Sunday 23:00 that has already occurred."""
+        days_back = (now.weekday() - 6) % 7  # Mon=0 .. Sun=6
+        sun = (now - timedelta(days=days_back)).replace(
+            hour=23, minute=0, second=0, microsecond=0
+        )
+        if sun > now:
+            sun -= timedelta(days=7)
+        return sun
+
+    print("[pto-weekly] Auto-recalc thread active (checks every hour for Sunday 23:00 Dublin)")
+    while True:
+        try:
+            now = _now_dublin()
+            trigger = _most_recent_sunday_2300(now)
+            last, _ = db.get_cache("pto_weekly_recalc_last_run")
+            should_run = True
+            if last and "ts" in last:
+                try:
+                    last_ts = datetime.fromisoformat(last["ts"])
+                    if last_ts.tzinfo is None and DUBLIN:
+                        last_ts = last_ts.replace(tzinfo=DUBLIN)
+                    if last_ts >= trigger:
+                        should_run = False
+                except Exception:
+                    pass
+
+            if should_run:
+                print(f"[pto-weekly] Triggering recalc (trigger={trigger.isoformat()}, now={now.isoformat()})")
+                from_date = (now - timedelta(weeks=4)).date().isoformat()
+                to_date = now.date().isoformat()
+                try:
+                    import pto_engine
+                    import square_client
+                    team_members = square_client.get_team_members()
+                    categories = db.get_employee_categories()
+                    count = 0
+                    for cat in categories:
+                        try:
+                            pto_engine.recalculate_pto(
+                                cat["team_member_id"], from_date, to_date, team_members
+                            )
+                            count += 1
+                        except Exception as e:
+                            print(f"[pto-weekly] {cat['family_name']}: {e}")
+                    db.set_cache("pto_weekly_recalc_last_run", {
+                        "ts": now.isoformat(),
+                        "from": from_date, "to": to_date,
+                        "employees": count,
+                    })
+                    print(f"[pto-weekly] Recalculated {count} employees ({from_date} to {to_date})")
+                except Exception as e:
+                    print(f"[pto-weekly] Recalc failed: {e}")
+        except Exception as e:
+            print(f"[pto-weekly] Loop error: {e}")
+        time.sleep(3600)  # check every hour
+
+
 def _drive_watch_loop():
     """Background thread: scan the invoices Drive folder every 30 minutes."""
     import time
@@ -175,6 +252,9 @@ def create_app():
 
     # Background Drive watcher - scans the invoices folder for human-uploaded PDFs
     threading.Thread(target=_drive_watch_loop, daemon=True).start()
+
+    # Background weekly PTO recalc - runs every Sunday 23:00 Dublin time
+    threading.Thread(target=_pto_weekly_recalc_loop, daemon=True).start()
 
     # Apply HTTP Basic Auth globally (if enabled via env vars)
     if config.AUTH_ENABLED:

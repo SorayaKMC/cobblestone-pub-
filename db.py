@@ -473,7 +473,8 @@ def get_pto_summary():
 
     results = []
     for r in rows:
-        balance = min(r["total_accrued"] + r["total_adjustments"] - r["total_taken"], 21)
+        raw = r["total_accrued"] + r["total_adjustments"] - r["total_taken"]
+        balance = min(raw, 21)
         results.append({
             "team_member_id": r["team_member_id"],
             "given_name": r["given_name"],
@@ -483,6 +484,8 @@ def get_pto_summary():
             "total_taken": round(r["total_taken"], 2),
             "total_adjustments": round(r["total_adjustments"], 2),
             "balance": round(max(balance, 0), 2),
+            "raw_balance": round(max(raw, 0), 2),
+            "over_cap": round(max(raw - 21, 0), 2),
         })
     return results
 

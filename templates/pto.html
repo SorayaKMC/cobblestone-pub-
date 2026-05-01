@@ -61,7 +61,12 @@
                             -
                         {% endif %}
                     </td>
-                    <td class="text-end"><strong>{{ "%.2f"|format(emp.balance) }}</strong></td>
+                    <td class="text-end">
+                        <strong>{{ "%.2f"|format(emp.balance) }}</strong>
+                        {% if emp.over_cap and emp.over_cap > 0 %}
+                            <br><small class="text-warning" title="Cap is 21 days; surplus is preserved and replenishes the balance as leave is taken.">+{{ "%.2f"|format(emp.over_cap) }} over cap</small>
+                        {% endif %}
+                    </td>
                     <td class="text-center">
                         {% if not emp.is_active %}
                             <span class="badge bg-secondary">—</span>
