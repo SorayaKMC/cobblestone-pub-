@@ -134,16 +134,40 @@
         }
 
         .nav-card:hover {
-            background: rgba(255,255,255,0.12);
-            border-color: rgba(255,255,255,0.25);
-            color: #ffffff;
             transform: translateY(-2px);
             text-decoration: none;
+            color: #ffffff;
         }
+
+        /* Each module its own colour. Subtle tints so they read on the
+           dark green background; saturate on hover. */
+        .nav-card.card-dashboard    { background: rgba(59, 130, 246, 0.18); border-color: rgba(59, 130, 246, 0.4); }
+        .nav-card.card-dashboard:hover    { background: rgba(59, 130, 246, 0.32); border-color: rgba(59, 130, 246, 0.7); }
+        .nav-card.card-dashboard .nav-card-icon { color: #93c5fd; }
+
+        .nav-card.card-payroll      { background: rgba(245, 158, 11, 0.18); border-color: rgba(245, 158, 11, 0.4); }
+        .nav-card.card-payroll:hover      { background: rgba(245, 158, 11, 0.32); border-color: rgba(245, 158, 11, 0.7); }
+        .nav-card.card-payroll .nav-card-icon { color: #fcd34d; }
+
+        .nav-card.card-pto          { background: rgba(34, 197, 94, 0.18); border-color: rgba(34, 197, 94, 0.4); }
+        .nav-card.card-pto:hover          { background: rgba(34, 197, 94, 0.32); border-color: rgba(34, 197, 94, 0.7); }
+        .nav-card.card-pto .nav-card-icon { color: #86efac; }
+
+        .nav-card.card-bookkeeping  { background: rgba(168, 85, 247, 0.18); border-color: rgba(168, 85, 247, 0.4); }
+        .nav-card.card-bookkeeping:hover  { background: rgba(168, 85, 247, 0.32); border-color: rgba(168, 85, 247, 0.7); }
+        .nav-card.card-bookkeeping .nav-card-icon { color: #d8b4fe; }
+
+        .nav-card.card-bookings     { background: rgba(239, 68, 68, 0.18); border-color: rgba(239, 68, 68, 0.4); }
+        .nav-card.card-bookings:hover     { background: rgba(239, 68, 68, 0.32); border-color: rgba(239, 68, 68, 0.7); }
+        .nav-card.card-bookings .nav-card-icon { color: #fca5a5; }
+
+        .nav-card.card-settings     { background: rgba(148, 163, 184, 0.18); border-color: rgba(148, 163, 184, 0.4); }
+        .nav-card.card-settings:hover     { background: rgba(148, 163, 184, 0.32); border-color: rgba(148, 163, 184, 0.7); }
+        .nav-card.card-settings .nav-card-icon { color: #cbd5e1; }
 
         .nav-card-icon {
             font-size: 1.8rem;
-            opacity: 0.85;
+            opacity: 0.95;
         }
 
         .nav-card-label {
@@ -202,32 +226,32 @@
 
         <!-- Navigation cards -->
         <div class="nav-grid">
-            <a href="/dashboard" class="nav-card">
+            <a href="/dashboard" class="nav-card card-dashboard">
                 <div class="nav-card-icon"><i class="bi bi-speedometer2"></i></div>
                 <div class="nav-card-label">Dashboard</div>
                 <div class="nav-card-desc">Weekly KPIs, sales & labour</div>
             </a>
-            <a href="/payroll" class="nav-card">
+            <a href="/payroll" class="nav-card card-payroll">
                 <div class="nav-card-icon"><i class="bi bi-cash-stack"></i></div>
                 <div class="nav-card-label">Payroll</div>
                 <div class="nav-card-desc">Timecards & Peter's report</div>
             </a>
-            <a href="/pto" class="nav-card">
+            <a href="/pto" class="nav-card card-pto">
                 <div class="nav-card-icon"><i class="bi bi-calendar-check"></i></div>
                 <div class="nav-card-label">PTO Tracker</div>
                 <div class="nav-card-desc">Annual leave balances</div>
             </a>
-            <a href="/bookkeeping" class="nav-card">
+            <a href="/bookkeeping" class="nav-card card-bookkeeping">
                 <div class="nav-card-icon"><i class="bi bi-journal-text"></i></div>
                 <div class="nav-card-label">Bookkeeping</div>
                 <div class="nav-card-desc">Invoices & VAT</div>
             </a>
-            <a href="/bookings" class="nav-card">
+            <a href="/bookings" class="nav-card card-bookings">
                 <div class="nav-card-icon"><i class="bi bi-music-note-list"></i></div>
                 <div class="nav-card-label">Bookings</div>
                 <div class="nav-card-desc">Backroom gigs & calendar</div>
             </a>
-            <a href="/settings" class="nav-card">
+            <a href="/settings" class="nav-card card-settings">
                 <div class="nav-card-icon"><i class="bi bi-gear"></i></div>
                 <div class="nav-card-label">Settings</div>
                 <div class="nav-card-desc">Employees & directories</div>
