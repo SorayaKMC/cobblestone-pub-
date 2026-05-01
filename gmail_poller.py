@@ -362,6 +362,189 @@ def _process_as_statement(local_path, fhash, filename, pdf_bytes,
         result["extract_error"] = f"Save statement failed: {e}"
 
 
+def sweep_inbox_for_year(impersonate_user, year):
+    """Historical sweep: find every email in `impersonate_user`'s inbox
+    that has a PDF attachment within the given year, and import any PDFs
+    we don't already have (by hash dedupe).
+
+    Designed for one-time recovery — used to find 2025 invoices that
+    were sent to info@ instead of invoice@. Does NOT mutate the source
+    inbox (no archiving, no labelling) since the user reads their own
+    info@ for non-invoice mail too.
+
+    Sets cache key 'inbox_sweep_progress' so the audit page can show
+    progress + final summary.
+    """
+    from datetime import datetime as _dt
+    import db
+    import invoice_extractor
+    import statement_detector
+
+    db.set_cache("inbox_sweep_progress", {
+        "started_at": _dt.now().isoformat(),
+        "user": impersonate_user,
+        "year": year,
+        "status": "scanning",
+        "scanned": 0,
+        "imported_invoices": 0,
+        "imported_statements": 0,
+        "skipped_dupes": 0,
+        "errors": 0,
+    })
+
+    # Build a service impersonating the requested user (info@ is different
+    # from the gmail_poller's default invoice@)
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+
+    sa_info = json.loads(config.GOOGLE_SERVICE_ACCOUNT_JSON)
+    creds = (
+        service_account.Credentials
+        .from_service_account_info(sa_info, scopes=GMAIL_SCOPES)
+        .with_subject(impersonate_user)
+    )
+    service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+
+    query = f"after:{year}/1/1 before:{year+1}/1/1 has:attachment filename:pdf"
+
+    counts = {"scanned": 0, "imported_invoices": 0, "imported_statements": 0,
+              "skipped_dupes": 0, "errors": 0}
+    page_token = None
+    total_msgs = 0
+
+    while True:
+        try:
+            resp = service.users().messages().list(
+                userId="me", q=query, pageToken=page_token, maxResults=100,
+            ).execute()
+        except Exception as e:
+            print(f"[inbox-sweep] list failed: {e}")
+            break
+
+        msgs = resp.get("messages", [])
+        total_msgs += len(msgs)
+
+        for meta in msgs:
+            counts["scanned"] += 1
+            if counts["scanned"] % 10 == 0:
+                _update_sweep_progress(counts, "processing", impersonate_user, year, total_msgs)
+
+            msg_id = meta["id"]
+            try:
+                msg = service.users().messages().get(
+                    userId="me", id=msg_id, format="full",
+                ).execute()
+            except Exception as e:
+                counts["errors"] += 1
+                continue
+
+            subject = _email_subject(msg)
+            pdf_parts = _pdf_parts(msg.get("payload", {}))
+            if not pdf_parts:
+                continue
+
+            for part in pdf_parts:
+                filename = part.get("filename") or f"info_{msg_id[:8]}.pdf"
+                if not filename.lower().endswith(".pdf"):
+                    filename += ".pdf"
+                try:
+                    pdf_bytes = _download_part(service, msg_id, part)
+                    invoice_extractor.ensure_invoices_dir()
+                    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    safe = re.sub(r"[^\w.-]", "_", filename)
+                    local_path = os.path.join(config.INVOICES_DIR, f"sweep_{stamp}_{safe}")
+                    with open(local_path, "wb") as fh:
+                        fh.write(pdf_bytes)
+                    fhash = invoice_extractor.file_hash(local_path)
+                except Exception as e:
+                    counts["errors"] += 1
+                    continue
+
+                # Hash dedupe
+                if any(inv["file_hash"] == fhash for inv in db.list_invoices() if inv["file_hash"]):
+                    try: os.remove(local_path)
+                    except OSError: pass
+                    counts["skipped_dupes"] += 1
+                    continue
+                if db.get_statement_by_hash(fhash):
+                    try: os.remove(local_path)
+                    except OSError: pass
+                    counts["skipped_dupes"] += 1
+                    continue
+
+                try:
+                    classification = statement_detector.classify(
+                        local_path, filename=filename, email_subject=subject,
+                    )
+                except Exception:
+                    classification = {"kind": "invoice", "confidence": "low",
+                                      "signals": [], "extracted": {}}
+
+                try:
+                    if classification["kind"] == "statement":
+                        extracted = classification.get("extracted") or {}
+                        db.save_statement({
+                            "supplier_id": None,
+                            "supplier_name": extracted.get("supplier_name") or "Unknown",
+                            "statement_date": extracted.get("statement_date"),
+                            "total_balance": extracted.get("total_balance"),
+                            "pdf_path": local_path,
+                            "file_hash": fhash,
+                            "drive_url": None,
+                            "source": f"sweep:{impersonate_user}",
+                            "status": "pending",
+                            "detection_signals": "; ".join(classification.get("signals", [])),
+                            "notes": f"Imported via {year} sweep of {impersonate_user}.",
+                        })
+                        counts["imported_statements"] += 1
+                    else:
+                        data = invoice_extractor.extract_invoice(local_path)
+                        db.save_invoice({
+                            "supplier_id":   data.get("supplier_id"),
+                            "supplier_name": (data.get("supplier_name_canonical")
+                                              or data.get("supplier_name") or "Unknown"),
+                            "invoice_date":  data.get("invoice_date") or "",
+                            "invoice_number": data.get("invoice_number"),
+                            "net_amount":    float(data.get("net_amount") or 0),
+                            "vat_amount":    float(data.get("vat_amount") or 0),
+                            "total_amount":  float(data.get("total_amount") or 0),
+                            "vat_rate":      float(data.get("vat_rate") or 23),
+                            "category":      data.get("category"),
+                            "source":        f"sweep:{impersonate_user}",
+                            "pdf_path":      local_path,
+                            "file_hash":     fhash,
+                            "status":        "pending",
+                            "notes":         (f"Imported via {year} sweep of "
+                                              f"{impersonate_user}. AI confidence: "
+                                              f"{data.get('confidence','unknown')}."),
+                        })
+                        counts["imported_invoices"] += 1
+                except Exception as e:
+                    counts["errors"] += 1
+                    print(f"[inbox-sweep] save failed {filename}: {e}")
+
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+
+    _update_sweep_progress(counts, "completed", impersonate_user, year, total_msgs)
+    return counts
+
+
+def _update_sweep_progress(counts, status, user, year, total):
+    from datetime import datetime as _dt
+    import db
+    payload = dict(counts)
+    payload.update({
+        "status": status,
+        "user": user,
+        "year": year,
+        "total_messages": total,
+        "ts": _dt.now().isoformat(),
+    })
+    db.set_cache("inbox_sweep_progress", payload)
+
+
 def _archive(service, msg_id, processed_label_id):
     """Move a message to Processed and mark as read."""
     try:

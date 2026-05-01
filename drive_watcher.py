@@ -333,6 +333,190 @@ def _process_drive_pdf(service, f, source_kind, invoices_processed, statements_p
     return result
 
 
+def deep_scan_year(year):
+    """Recursively walk the entire invoices Drive folder tree (including
+    every subfolder, e.g. month-organised archives) and import any PDFs
+    we don't already have in the bookkeeping DB by hash.
+
+    Designed for one-time historical recovery — the regular Drive watcher
+    only scans the root of the invoices folder. This sweeps everything.
+
+    Files are NOT moved or renamed (these are historical archives; we
+    leave the user's organisation alone). Only new ones get imported.
+
+    Sets cache key 'drive_deep_scan_progress' so the audit page can show
+    progress + final summary.
+    """
+    import invoice_extractor
+    import statement_detector
+    from datetime import datetime as _dt
+
+    root_id = config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
+    if not root_id:
+        raise RuntimeError("GOOGLE_DRIVE_INVOICES_FOLDER_ID is not set.")
+
+    db.set_cache("drive_deep_scan_progress", {
+        "started_at": _dt.now().isoformat(),
+        "status": "scanning",
+        "year": year,
+        "scanned": 0,
+        "imported_invoices": 0,
+        "imported_statements": 0,
+        "skipped_dupes": 0,
+        "errors": 0,
+    })
+
+    service = _drive_service()
+
+    # Walk the tree to enumerate all PDFs
+    pdfs = []
+    folders_to_visit = [root_id]
+    visited = set()
+    while folders_to_visit:
+        current = folders_to_visit.pop()
+        if current in visited:
+            continue
+        visited.add(current)
+        page_token = None
+        while True:
+            try:
+                resp = service.files().list(
+                    q=f"'{current}' in parents and trashed = false",
+                    fields="nextPageToken, files(id,name,mimeType,parents,createdTime,webViewLink)",
+                    pageSize=100,
+                    pageToken=page_token,
+                ).execute()
+            except Exception as e:
+                print(f"[deep-scan] folder {current} listing failed: {e}")
+                break
+            for f in resp.get("files", []):
+                if f["mimeType"] == "application/vnd.google-apps.folder":
+                    folders_to_visit.append(f["id"])
+                elif f["mimeType"] == "application/pdf":
+                    pdfs.append(f)
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+
+    db.set_cache("drive_deep_scan_progress", {
+        "started_at": _dt.now().isoformat(),
+        "status": "processing",
+        "year": year,
+        "found_pdfs": len(pdfs),
+        "scanned": 0,
+        "imported_invoices": 0,
+        "imported_statements": 0,
+        "skipped_dupes": 0,
+        "errors": 0,
+    })
+
+    invoice_extractor.ensure_invoices_dir()
+    existing_invoice_hashes = {inv["file_hash"] for inv in db.list_invoices() if inv["file_hash"]}
+
+    counts = {"scanned": 0, "imported_invoices": 0, "imported_statements": 0,
+              "skipped_dupes": 0, "errors": 0}
+
+    for f in pdfs:
+        counts["scanned"] += 1
+        # Update progress every 10 files so the user can see movement
+        if counts["scanned"] % 10 == 0:
+            _update_deep_scan_progress(counts, "processing", year, len(pdfs))
+
+        file_id = f["id"]
+        original_name = f.get("name", f"drive_{file_id[:8]}.pdf")
+
+        # Skip files in our own Processed subfolder — those have already been
+        # processed by the regular watcher.
+        if "[imported-" in original_name:
+            counts["skipped_dupes"] += 1
+            continue
+
+        try:
+            pdf_bytes = _download_bytes(service, file_id)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe = re.sub(r"[^\w.-]", "_", original_name)
+            local_path = os.path.join(config.INVOICES_DIR, f"deep_{stamp}_{safe}")
+            with open(local_path, "wb") as out:
+                out.write(pdf_bytes)
+            fhash = invoice_extractor.file_hash(local_path)
+        except Exception as e:
+            counts["errors"] += 1
+            print(f"[deep-scan] download failed {original_name}: {e}")
+            continue
+
+        # Already imported? (hash match in invoices or statements)
+        if fhash in existing_invoice_hashes or db.get_statement_by_hash(fhash):
+            try: os.remove(local_path)
+            except OSError: pass
+            counts["skipped_dupes"] += 1
+            continue
+
+        # Classify and import
+        try:
+            classification = statement_detector.classify(local_path, filename=original_name)
+        except Exception:
+            classification = {"kind": "invoice", "confidence": "low",
+                              "signals": [], "extracted": {}}
+
+        try:
+            if classification["kind"] == "statement":
+                extracted = classification.get("extracted") or {}
+                db.save_statement({
+                    "supplier_id": None,
+                    "supplier_name": extracted.get("supplier_name") or "Unknown",
+                    "statement_date": extracted.get("statement_date"),
+                    "total_balance": extracted.get("total_balance"),
+                    "pdf_path": local_path,
+                    "file_hash": fhash,
+                    "drive_url": f.get("webViewLink"),
+                    "source": "drive-deep-scan",
+                    "status": "pending",
+                    "detection_signals": "; ".join(classification.get("signals", [])),
+                    "notes": f"Imported via deep-scan from {original_name}",
+                })
+                counts["imported_statements"] += 1
+            else:
+                data = invoice_extractor.extract_invoice(local_path)
+                inv_id = db.save_invoice({
+                    "supplier_id":   data.get("supplier_id"),
+                    "supplier_name": (data.get("supplier_name_canonical")
+                                      or data.get("supplier_name") or "Unknown"),
+                    "invoice_date":  data.get("invoice_date") or "",
+                    "invoice_number": data.get("invoice_number"),
+                    "net_amount":    float(data.get("net_amount") or 0),
+                    "vat_amount":    float(data.get("vat_amount") or 0),
+                    "total_amount":  float(data.get("total_amount") or 0),
+                    "vat_rate":      float(data.get("vat_rate") or 23),
+                    "category":      data.get("category"),
+                    "source":        "drive-deep-scan",
+                    "pdf_path":      local_path,
+                    "file_hash":     fhash,
+                    "status":        "pending",
+                    "notes":         f"Imported via deep-scan from {original_name}. "
+                                     f"AI confidence: {data.get('confidence','unknown')}.",
+                })
+                counts["imported_invoices"] += 1
+                existing_invoice_hashes.add(fhash)
+        except Exception as e:
+            counts["errors"] += 1
+            print(f"[deep-scan] extract/save failed {original_name}: {e}")
+
+    _update_deep_scan_progress(counts, "completed", year, len(pdfs))
+    return counts
+
+
+def _update_deep_scan_progress(counts, status, year, total):
+    from datetime import datetime as _dt
+    payload = dict(counts)
+    payload.update({
+        "status": status,
+        "year": year,
+        "found_pdfs": total,
+        "ts": _dt.now().isoformat(),
+    })
+    db.set_cache("drive_deep_scan_progress", payload)
+
+
 def status_snapshot():
     """Quick read for the bookkeeping page status panel.
 

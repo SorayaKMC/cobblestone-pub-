@@ -316,6 +316,99 @@ def edit_invoice(invoice_id):
     return redirect(url_for("bookkeeping.bookkeeping_page"))
 
 
+@bp.route("/bookkeeping/audit")
+def audit_year():
+    """Per-supplier coverage audit for a given year — surfaces missing
+    invoices by showing which months we have for each supplier."""
+    try:
+        year = int(request.args.get("year", str(date.today().year - 1)))
+    except ValueError:
+        year = date.today().year - 1
+
+    suppliers_data = db.audit_supplier_year(year)
+
+    # Sort: most-spent suppliers first, then suppliers with the most gaps
+    suppliers_data.sort(key=lambda s: (-s["total"], -(12 - len(s["months"]))))
+
+    grand_count = sum(s["count"] for s in suppliers_data)
+    grand_net = sum(s["net"] for s in suppliers_data)
+    grand_vat = sum(s["vat"] for s in suppliers_data)
+    grand_total = sum(s["total"] for s in suppliers_data)
+
+    sweep_progress, _ = db.get_cache("inbox_sweep_progress")
+    deep_scan_progress, _ = db.get_cache("drive_deep_scan_progress")
+
+    return render_template(
+        "audit_year.html",
+        year=year,
+        suppliers_data=suppliers_data,
+        grand_count=grand_count,
+        grand_net=grand_net,
+        grand_vat=grand_vat,
+        grand_total=grand_total,
+        sweep_progress=sweep_progress,
+        deep_scan_progress=deep_scan_progress,
+    )
+
+
+@bp.route("/bookkeeping/audit/sweep-info", methods=["POST"])
+def audit_sweep_info():
+    """Trigger a background sweep of info@cobblestonepub.ie for a given year.
+    Background thread updates cache_metadata['inbox_sweep_progress']."""
+    import threading
+    import gmail_poller
+
+    try:
+        year = int(request.form.get("year", str(date.today().year - 1)))
+    except ValueError:
+        year = date.today().year - 1
+    user = request.form.get("user", "info@cobblestonepub.ie").strip()
+
+    def _run():
+        try:
+            gmail_poller.sweep_inbox_for_year(user, year)
+        except Exception as e:
+            db.set_cache("inbox_sweep_progress", {
+                "status": "failed",
+                "year": year,
+                "user": user,
+                "error": str(e),
+            })
+
+    threading.Thread(target=_run, daemon=True).start()
+    flash(f"Sweep of {user} for {year} started in the background. "
+          "Refresh this page to watch progress.", "info")
+    return redirect(url_for("bookkeeping.audit_year", year=year))
+
+
+@bp.route("/bookkeeping/audit/deep-scan-drive", methods=["POST"])
+def audit_deep_scan_drive():
+    """Trigger a background recursive scan of the entire invoices Drive
+    folder tree (including all month-organised subfolders)."""
+    import threading
+    import drive_watcher
+
+    try:
+        year = int(request.form.get("year", str(date.today().year - 1)))
+    except ValueError:
+        year = date.today().year - 1
+
+    def _run():
+        try:
+            drive_watcher.deep_scan_year(year)
+        except Exception as e:
+            db.set_cache("drive_deep_scan_progress", {
+                "status": "failed",
+                "year": year,
+                "error": str(e),
+            })
+
+    threading.Thread(target=_run, daemon=True).start()
+    flash(f"Deep scan of Drive folder started for {year}. "
+          "Refresh this page to watch progress.", "info")
+    return redirect(url_for("bookkeeping.audit_year", year=year))
+
+
 @bp.route("/bookkeeping/monthly-summary")
 def download_monthly_summary():
     """Download an Excel summary of approved invoices for a given month or

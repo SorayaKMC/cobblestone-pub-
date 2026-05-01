@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Year Audit {{ year }} - Cobblestone Pub{% endblock %}
+{% block page_title %}Year Audit — {{ year }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="/bookkeeping" class="text-decoration-none">
+        <i class="bi bi-arrow-left me-1"></i>Back to Invoices
+    </a>
+    <form method="GET" class="d-flex gap-2 align-items-center">
+        <label class="small text-muted">Year:</label>
+        <select name="year" class="form-select form-select-sm" style="width:auto">
+            {% for y in range(2024, 2030) %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-primary btn-sm">Switch</button>
+    </form>
+</div>
+
+<!-- Recovery tools -->
+<div class="card mb-3 border-warning">
+    <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="small">
+                <strong><i class="bi bi-tools me-1"></i>Historical recovery tools</strong>
+                — sweep mailboxes and Drive folders to pull in {{ year }} invoices that
+                arrived through other channels.
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <form method="POST" action="/bookkeeping/audit/sweep-info" class="d-inline">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm"
+                        {% if sweep_progress and sweep_progress.status in ('scanning', 'processing') %}disabled{% endif %}>
+                        <i class="bi bi-envelope-arrow-down me-1"></i>Sweep info@ for {{ year }}
+                    </button>
+                </form>
+                <form method="POST" action="/bookkeeping/audit/deep-scan-drive" class="d-inline">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <button type="submit" class="btn btn-outline-warning btn-sm"
+                        {% if deep_scan_progress and deep_scan_progress.status in ('scanning', 'processing') %}disabled{% endif %}>
+                        <i class="bi bi-google me-1"></i>Deep-scan Drive
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if sweep_progress %}
+        <div class="mt-2 small">
+            <strong>info@ sweep:</strong>
+            {% if sweep_progress.status in ('scanning', 'processing') %}
+                <span class="badge bg-info">{{ sweep_progress.status }}</span>
+                · {{ sweep_progress.scanned }} of ~{{ sweep_progress.total_messages or '?' }} messages
+                · {{ sweep_progress.imported_invoices }} invoice(s) imported
+                · {{ sweep_progress.imported_statements }} statement(s)
+                · {{ sweep_progress.skipped_dupes }} already had
+            {% elif sweep_progress.status == 'completed' %}
+                <span class="badge bg-success">completed</span>
+                {{ sweep_progress.ts[:16].replace('T',' ') }}
+                · {{ sweep_progress.imported_invoices }} invoice(s) imported
+                · {{ sweep_progress.imported_statements }} statement(s)
+                · {{ sweep_progress.skipped_dupes }} duplicates skipped
+                · {{ sweep_progress.errors }} errors
+            {% elif sweep_progress.status == 'failed' %}
+                <span class="badge bg-danger">failed</span>
+                {{ sweep_progress.error }}
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if deep_scan_progress %}
+        <div class="mt-1 small">
+            <strong>Drive deep-scan:</strong>
+            {% if deep_scan_progress.status in ('scanning', 'processing') %}
+                <span class="badge bg-info">{{ deep_scan_progress.status }}</span>
+                · {{ deep_scan_progress.scanned }} of {{ deep_scan_progress.found_pdfs or '?' }} PDFs
+                · {{ deep_scan_progress.imported_invoices }} invoice(s)
+                · {{ deep_scan_progress.imported_statements }} statement(s)
+                · {{ deep_scan_progress.skipped_dupes }} already had
+            {% elif deep_scan_progress.status == 'completed' %}
+                <span class="badge bg-success">completed</span>
+                {{ deep_scan_progress.ts[:16].replace('T',' ') }}
+                · {{ deep_scan_progress.imported_invoices }} invoice(s) imported
+                · {{ deep_scan_progress.imported_statements }} statement(s)
+                · {{ deep_scan_progress.skipped_dupes }} duplicates skipped
+                · {{ deep_scan_progress.errors }} errors
+            {% elif deep_scan_progress.status == 'failed' %}
+                <span class="badge bg-danger">failed</span>
+                {{ deep_scan_progress.error }}
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Year totals -->
+<div class="row g-2 mb-3">
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-2 text-center">
+                <div class="kpi-label">Suppliers</div>
+                <div class="h4 mb-0">{{ suppliers_data|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-2 text-center">
+                <div class="kpi-label">Invoices</div>
+                <div class="h4 mb-0">{{ grand_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-2 text-center">
+                <div class="kpi-label">Net spend</div>
+                <div class="h4 mb-0">&euro;{{ "{:,.0f}".format(grand_net) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-2 text-center">
+                <div class="kpi-label">Recoverable VAT</div>
+                <div class="h4 mb-0 text-success">&euro;{{ "{:,.0f}".format(grand_vat) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Per-supplier table -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-cobblestone mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th>Category</th>
+                    <th class="text-end">Invoices</th>
+                    <th class="text-end">Net</th>
+                    <th class="text-end">VAT</th>
+                    <th>Coverage <small class="text-muted fw-normal">(Jan → Dec)</small></th>
+                    <th>Last invoice</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in suppliers_data %}
+                {% set gap_count = 12 - s.months|length %}
+                <tr {% if s.count == 0 %}style="background:#fff5f5"{% endif %}>
+                    <td>
+                        <a href="/bookkeeping?supplier_id={{ s.supplier_id }}&start_date={{ year }}-01-01&end_date={{ year }}-12-31"
+                           class="text-decoration-none fw-semibold">
+                            {{ s.supplier_name }}
+                        </a>
+                        {% if s.count == 0 %}
+                        <br><small class="text-danger">No invoices for {{ year }}</small>
+                        {% endif %}
+                    </td>
+                    <td><small class="text-muted">{{ s.category or '—' }}</small></td>
+                    <td class="text-end">{{ s.count }}</td>
+                    <td class="text-end">
+                        {% if s.net %}&euro;{{ "{:,.0f}".format(s.net) }}{% else %}—{% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if s.vat %}&euro;{{ "{:,.0f}".format(s.vat) }}{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        <div style="display:inline-flex; gap:2px">
+                            {% for m in range(1, 13) %}
+                            {% set has = m in s.months %}
+                            <span title="{{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }} {{ year }}{% if has %} - have invoice(s){% else %} - GAP{% endif %}"
+                                  style="display:inline-block; width:18px; height:18px; border-radius:3px; font-size:9px; text-align:center; line-height:18px; color:#fff; font-weight:600;
+                                         background:{% if has %}#16a34a{% else %}#fecaca{% endif %};
+                                         {% if not has %}color:#7f1d1d;{% endif %}">
+                                {{ m }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% if s.count > 0 %}
+                        <small class="text-muted ms-2">
+                            {% if gap_count == 0 %}✓ all months covered{% elif gap_count > 6 %}<span class="text-danger">{{ gap_count }} months missing</span>{% else %}{{ gap_count }} months missing{% endif %}
+                        </small>
+                        {% endif %}
+                    </td>
+                    <td><small>{{ s.last_date or '—' }}</small></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No data for {{ year }}.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-3 text-muted small">
+    <p class="mb-1">
+        <i class="bi bi-info-circle me-1"></i>
+        <strong>How to read this:</strong>
+        each green tile is a month with at least one invoice from that supplier.
+        Red tiles are months with no invoice — gaps. Suppliers with regular
+        cadences (drinks weekly, electricity monthly, etc.) should have most
+        months green. Supplier rows highlighted pink have zero invoices for
+        the year — likely missing entirely.
+    </p>
+    <p class="mb-0">
+        <strong>Recovery workflow:</strong>
+        (1) Click <em>Sweep info@</em> — pulls 2025 PDFs from your shared inbox.
+        (2) Click <em>Deep-scan Drive</em> — pulls everything from the
+        month-organised archive folders.
+        (3) For remaining gaps, email each supplier asking for copies of
+        their {{ year }} invoices.
+    </p>
+</div>
+
+{% endblock %}

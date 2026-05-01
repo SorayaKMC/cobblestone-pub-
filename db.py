@@ -1223,6 +1223,106 @@ def statement_counts():
     return {r["status"]: r["n"] for r in rows}
 
 
+def audit_supplier_year(year):
+    """Per-supplier coverage report for a given year. Used by the year audit
+    page to surface gaps where invoices are likely missing.
+
+    Returns list of dicts (one per supplier or supplier_name fallback):
+      {
+        "supplier_id":   int | None,
+        "supplier_name": str,
+        "category":      str | None,
+        "default_vat":   float,
+        "count":         int,
+        "net":           float,
+        "vat":           float,
+        "total":         float,
+        "months":        set[int]   # months 1-12 with at least one invoice
+        "last_date":     str | None,
+        "first_date":    str | None,
+      }
+
+    Statuses included: any (pending + approved + rejected). The point of
+    the audit is to find missing invoices, so even a pending one counts
+    as 'we know about this'.
+    """
+    conn = get_db()
+
+    # Group by supplier_id when present; fall back to supplier_name. This
+    # surfaces invoices that came in before we had a matching supplier
+    # record but with the same supplier_name.
+    rows = conn.execute(
+        """SELECT
+                COALESCE(i.supplier_id, -1) as sid_or_neg,
+                COALESCE(i.supplier_name, '(unknown)') as supplier_name,
+                COUNT(*) as count,
+                ROUND(SUM(i.net_amount), 2) as net,
+                ROUND(SUM(i.vat_amount), 2) as vat,
+                ROUND(SUM(i.total_amount), 2) as total,
+                MAX(i.invoice_date) as last_date,
+                MIN(i.invoice_date) as first_date,
+                GROUP_CONCAT(strftime('%m', i.invoice_date), ',') as month_list
+           FROM invoices i
+           WHERE strftime('%Y', i.invoice_date) = ?
+           GROUP BY sid_or_neg, supplier_name
+           ORDER BY total DESC""",
+        (str(year),),
+    ).fetchall()
+
+    # Pull supplier metadata so we can show category + default VAT rate
+    sup_rows = conn.execute("SELECT * FROM suppliers").fetchall()
+    sup_meta = {s["id"]: s for s in sup_rows}
+
+    # Suppliers that have ZERO invoices in the year — still important to
+    # show, because they may be silently missing
+    seen_sids = {r["sid_or_neg"] for r in rows if r["sid_or_neg"] != -1}
+    missing_suppliers = [s for s in sup_rows if s["id"] not in seen_sids]
+
+    conn.close()
+
+    results = []
+    for r in rows:
+        sid = r["sid_or_neg"] if r["sid_or_neg"] != -1 else None
+        meta = sup_meta.get(sid) if sid else None
+        months = set()
+        for token in (r["month_list"] or "").split(","):
+            try:
+                months.add(int(token))
+            except ValueError:
+                pass
+        results.append({
+            "supplier_id":   sid,
+            "supplier_name": r["supplier_name"],
+            "category":      meta["default_category"] if meta else None,
+            "default_vat":   float(meta["default_vat_rate"]) if meta else None,
+            "count":         r["count"],
+            "net":           r["net"] or 0,
+            "vat":           r["vat"] or 0,
+            "total":         r["total"] or 0,
+            "months":        months,
+            "last_date":     r["last_date"],
+            "first_date":    r["first_date"],
+        })
+
+    # Append zero-invoice suppliers
+    for s in missing_suppliers:
+        results.append({
+            "supplier_id":   s["id"],
+            "supplier_name": s["name"],
+            "category":      s["default_category"],
+            "default_vat":   float(s["default_vat_rate"]),
+            "count":         0,
+            "net":           0,
+            "vat":           0,
+            "total":         0,
+            "months":        set(),
+            "last_date":     None,
+            "first_date":    None,
+        })
+
+    return results
+
+
 def monthly_vat_totals(year):
     """Sum VAT amounts per month for the given year. Only 'approved' invoices.
 
