@@ -101,6 +101,108 @@ def _today_iso():
 
 
 # ─── Routes ─────────────────────────────────────────────────────────────────
+
+# Hex colours per venue, used by the calendar view. Status modulates this:
+# confirmed = solid, tentative = lighter, inquiry = orange tone, cancelled =
+# grey, completed = muted.
+_VENUE_COLORS = {
+    "Backroom": "#198754",
+    "Upstairs": "#0d6efd",
+}
+_STATUS_BG_OVERRIDE = {
+    "inquiry":   "#fd7e14",   # orange — needs review
+    "tentative": None,         # use venue colour but lighter (handled in JS)
+    "confirmed": None,         # use venue colour
+    "completed": "#6c757d",   # muted
+    "cancelled": "#adb5bd",   # light grey
+}
+
+
+@bp.route("/bookings/calendar")
+def bookings_calendar():
+    """Month/week/day calendar view of bookings."""
+    return render_template(
+        "bookings_calendar.html",
+        statuses=STATUSES,
+        status_labels=STATUS_LABELS,
+        venues=VENUES,
+        today=_today_iso(),
+    )
+
+
+@bp.route("/bookings/api/events")
+def bookings_api_events():
+    """JSON feed for FullCalendar.
+
+    Accepts ?start=ISO_DATE&end=ISO_DATE (FullCalendar passes these
+    automatically when navigating). Returns events plus blackouts.
+    Optional ?status=...&venue=... filters.
+    """
+    from flask import jsonify
+    start = request.args.get("start", "")[:10]  # YYYY-MM-DD
+    end = request.args.get("end", "")[:10]
+    status = request.args.get("status", "") or None
+    venue = request.args.get("venue", "") or None
+
+    bookings = db.list_bookings(
+        status=status,
+        venue=venue,
+        start_date=start or None,
+        end_date=end or None,
+        limit=1000,
+    )
+
+    events = []
+    for b in bookings:
+        bvenue = b["venue"] or "Backroom"
+        bstatus = b["status"] or "inquiry"
+        base_color = _VENUE_COLORS.get(bvenue, "#6c757d")
+        override = _STATUS_BG_OVERRIDE.get(bstatus)
+        color = override if override else base_color
+        title = b["act_name"] or "(untitled)"
+        if bstatus != "confirmed":
+            title = f"[{STATUS_LABELS.get(bstatus, bstatus)}] {title}"
+
+        events.append({
+            "id": f"booking-{b['id']}",
+            "title": title,
+            "start": b["event_date"],
+            "allDay": True,
+            "url": f"/bookings/{b['id']}",
+            "backgroundColor": color,
+            "borderColor": base_color,
+            "textColor": "#ffffff",
+            "extendedProps": {
+                "kind": "booking",
+                "venue": bvenue,
+                "status": bstatus,
+                "event_type": b["event_type"],
+                "start_time": b["start_time"],
+                "end_time": b["end_time"],
+            },
+        })
+
+    # Blackouts — render as background events so they shade the date
+    try:
+        blackouts = db.list_blackouts(from_date=start or None)
+        for bl in blackouts:
+            if end and bl["blackout_date"] > end:
+                continue
+            events.append({
+                "id": f"blackout-{bl['id']}",
+                "title": f"Blackout: {bl['reason'] or bl['venue']}",
+                "start": bl["blackout_date"],
+                "allDay": True,
+                "display": "background",
+                "backgroundColor": "rgba(220, 53, 69, 0.18)",
+                "extendedProps": {"kind": "blackout"},
+            })
+    except Exception:
+        pass
+
+    return jsonify(events)
+
+
 @bp.route("/bookings")
 def bookings_list():
     """Master tracker view - filterable list of all bookings."""

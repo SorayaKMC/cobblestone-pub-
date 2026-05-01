@@ -107,7 +107,13 @@
 
         @media (min-width: 600px) {
             .nav-grid {
-                grid-template-columns: repeat(4, 1fr);
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (min-width: 900px) {
+            .nav-grid {
+                grid-template-columns: repeat(3, 1fr);
             }
         }
 
@@ -215,6 +221,16 @@
                 <div class="nav-card-icon"><i class="bi bi-journal-text"></i></div>
                 <div class="nav-card-label">Bookkeeping</div>
                 <div class="nav-card-desc">Invoices & VAT</div>
+            </a>
+            <a href="/bookings" class="nav-card">
+                <div class="nav-card-icon"><i class="bi bi-music-note-list"></i></div>
+                <div class="nav-card-label">Bookings</div>
+                <div class="nav-card-desc">Backroom gigs & calendar</div>
+            </a>
+            <a href="/settings" class="nav-card">
+                <div class="nav-card-icon"><i class="bi bi-gear"></i></div>
+                <div class="nav-card-label">Settings</div>
+                <div class="nav-card-desc">Employees & directories</div>
             </a>
         </div>
 
