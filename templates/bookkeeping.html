@@ -130,18 +130,44 @@
 <!-- Monthly VAT summary -->
 <div class="card mb-4">
     <div class="card-body">
-        <h6 class="card-title mb-3">{{ current_year }} — Monthly Input VAT from Invoices</h6>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h6 class="card-title mb-0">{{ current_year }} — Monthly Input VAT from Invoices</h6>
+            <form method="GET" action="/bookkeeping/monthly-summary"
+                  class="d-flex gap-2 align-items-center">
+                <label class="small text-muted mb-0">Download summary:</label>
+                <input type="month" name="month" value="{{ today[:7] }}"
+                       class="form-control form-control-sm" style="width:auto" required>
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel
+                </button>
+            </form>
+        </div>
         <div class="row g-2">
             {% for m in range(1, 13) %}
             {% set md = monthly.get(m, {'net': 0, 'vat': 0, 'total': 0, 'count': 0}) %}
             <div class="col-md-2 col-sm-4 col-6">
-                <div class="border rounded p-2 {% if md.count > 0 %}bg-light{% endif %}">
+                {% if md.count > 0 %}
+                <a href="/bookkeeping/monthly-summary?month={{ current_year }}-{{ '%02d'|format(m) }}"
+                   class="text-decoration-none text-dark"
+                   title="Download {{ ['January','February','March','April','May','June','July','August','September','October','November','December'][m-1] }} {{ current_year }} summary">
+                    <div class="border rounded p-2 bg-light position-relative">
+                        <div class="text-muted" style="font-size:0.75rem">
+                            {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
+                            <i class="bi bi-download float-end" style="font-size:0.7rem"></i>
+                        </div>
+                        <div style="font-weight:600">&euro;{{ "%.2f"|format(md.vat) }}</div>
+                        <div class="text-muted" style="font-size:0.7rem">{{ md.count }} invoices</div>
+                    </div>
+                </a>
+                {% else %}
+                <div class="border rounded p-2">
                     <div class="text-muted" style="font-size:0.75rem">
                         {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
                     </div>
                     <div style="font-weight:600">&euro;{{ "%.2f"|format(md.vat) }}</div>
                     <div class="text-muted" style="font-size:0.7rem">{{ md.count }} invoices</div>
                 </div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

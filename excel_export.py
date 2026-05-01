@@ -221,3 +221,141 @@ def generate_raw_timecard_excel(week_label, timecard_data):
     wb.save(buf)
     buf.seek(0)
     return buf
+
+
+def generate_invoice_monthly_excel(period_label, invoices):
+    """Monthly invoice summary for the accountant / VAT prep.
+
+    Two sheets:
+      'Invoices'  — one row per approved invoice with all fields
+      'Summary'   — totals by category, by VAT rate, grand total
+
+    Args:
+        period_label: human-readable period (e.g. 'April 2026' or
+            'April-May 2026' for a VAT period).
+        invoices: list of approved invoice rows from db.list_invoices().
+
+    Returns BytesIO of an .xlsx workbook.
+    """
+    wb = Workbook()
+
+    # ─── Sheet 1: line items ─────────────────────────────────────────────────
+    ws = wb.active
+    ws.title = "Invoices"
+
+    title_cell = ws.cell(row=1, column=1,
+                         value=f"Cobblestone Pub - Invoice Summary - {period_label}")
+    title_cell.font = Font(bold=True, size=14, name="Arial")
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=9)
+
+    sub_cell = ws.cell(row=2, column=1,
+                       value=f"{len(invoices)} approved invoice(s)")
+    sub_cell.font = Font(italic=True, size=10, name="Arial", color="666666")
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=9)
+
+    headers = ["Date", "Supplier", "Invoice #", "Category",
+               "Net", "VAT %", "VAT", "Total", "Status"]
+    for col, h in enumerate(headers, start=1):
+        _apply_header(ws, row=4, col=col, value=h)
+
+    row = 5
+    total_net = total_vat = total_total = Decimal("0")
+    for inv in sorted(invoices, key=lambda i: (i["invoice_date"] or "", i["supplier_name"] or "")):
+        _apply_body(ws, row, 1, inv["invoice_date"] or "")
+        _apply_body(ws, row, 2, inv["supplier_name"] or "")
+        _apply_body(ws, row, 3, inv["invoice_number"] or "")
+        _apply_body(ws, row, 4, inv["category"] or "")
+        _apply_body(ws, row, 5, float(inv["net_amount"] or 0), MONEY_FORMAT)
+        _apply_body(ws, row, 6, float(inv["vat_rate"] or 0), '0.0"%"')
+        _apply_body(ws, row, 7, float(inv["vat_amount"] or 0), MONEY_FORMAT)
+        _apply_body(ws, row, 8, float(inv["total_amount"] or 0), MONEY_FORMAT)
+        _apply_body(ws, row, 9, (inv["status"] or "").title())
+        total_net   += Decimal(str(inv["net_amount"] or 0))
+        total_vat   += Decimal(str(inv["vat_amount"] or 0))
+        total_total += Decimal(str(inv["total_amount"] or 0))
+        row += 1
+
+    # Totals row
+    total_row = row
+    _apply_body(ws, total_row, 1, "TOTAL")
+    ws.cell(row=total_row, column=1).font = TOTAL_FONT
+    ws.cell(row=total_row, column=1).fill = TOTAL_FILL
+    for c in range(2, 10):
+        cell = ws.cell(row=total_row, column=c)
+        cell.fill = TOTAL_FILL
+        cell.font = TOTAL_FONT
+        cell.border = THIN_BORDER
+    ws.cell(row=total_row, column=5, value=float(total_net)).number_format = MONEY_FORMAT
+    ws.cell(row=total_row, column=7, value=float(total_vat)).number_format = MONEY_FORMAT
+    ws.cell(row=total_row, column=8, value=float(total_total)).number_format = MONEY_FORMAT
+
+    widths = [12, 28, 14, 18, 12, 8, 12, 12, 12]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[ws.cell(row=4, column=i).column_letter].width = w
+
+    # ─── Sheet 2: summary ────────────────────────────────────────────────────
+    sm = wb.create_sheet("Summary")
+
+    sm.cell(row=1, column=1, value=f"Summary - {period_label}").font = Font(bold=True, size=14, name="Arial")
+    sm.merge_cells(start_row=1, start_column=1, end_row=1, end_column=4)
+
+    sm.cell(row=3, column=1, value="By Category").font = Font(bold=True, size=11, name="Arial")
+    for col, h in enumerate(["Category", "Net", "VAT", "Total"], start=1):
+        _apply_header(sm, row=4, col=col, value=h)
+
+    by_cat = {}
+    for inv in invoices:
+        c = inv["category"] or "(uncategorised)"
+        if c not in by_cat:
+            by_cat[c] = {"net": Decimal("0"), "vat": Decimal("0"), "total": Decimal("0")}
+        by_cat[c]["net"]   += Decimal(str(inv["net_amount"] or 0))
+        by_cat[c]["vat"]   += Decimal(str(inv["vat_amount"] or 0))
+        by_cat[c]["total"] += Decimal(str(inv["total_amount"] or 0))
+
+    r = 5
+    for cat, vals in sorted(by_cat.items()):
+        _apply_body(sm, r, 1, cat)
+        _apply_body(sm, r, 2, float(vals["net"]),   MONEY_FORMAT)
+        _apply_body(sm, r, 3, float(vals["vat"]),   MONEY_FORMAT)
+        _apply_body(sm, r, 4, float(vals["total"]), MONEY_FORMAT)
+        r += 1
+    _apply_body(sm, r, 1, "TOTAL")
+    sm.cell(row=r, column=1).font = TOTAL_FONT
+    sm.cell(row=r, column=1).fill = TOTAL_FILL
+    for c in range(2, 5):
+        sm.cell(row=r, column=c).fill = TOTAL_FILL
+        sm.cell(row=r, column=c).font = TOTAL_FONT
+        sm.cell(row=r, column=c).border = THIN_BORDER
+    sm.cell(row=r, column=2, value=float(total_net)).number_format = MONEY_FORMAT
+    sm.cell(row=r, column=3, value=float(total_vat)).number_format = MONEY_FORMAT
+    sm.cell(row=r, column=4, value=float(total_total)).number_format = MONEY_FORMAT
+    cat_total_row = r
+
+    sm.cell(row=cat_total_row + 3, column=1, value="By VAT Rate").font = Font(bold=True, size=11, name="Arial")
+    for col, h in enumerate(["VAT Rate", "Net", "VAT", "Total"], start=1):
+        _apply_header(sm, row=cat_total_row + 4, col=col, value=h)
+
+    by_rate = {}
+    for inv in invoices:
+        rate = float(inv["vat_rate"] or 0)
+        if rate not in by_rate:
+            by_rate[rate] = {"net": Decimal("0"), "vat": Decimal("0"), "total": Decimal("0")}
+        by_rate[rate]["net"]   += Decimal(str(inv["net_amount"] or 0))
+        by_rate[rate]["vat"]   += Decimal(str(inv["vat_amount"] or 0))
+        by_rate[rate]["total"] += Decimal(str(inv["total_amount"] or 0))
+
+    r = cat_total_row + 5
+    for rate, vals in sorted(by_rate.items(), reverse=True):
+        _apply_body(sm, r, 1, f"{rate:g}%")
+        _apply_body(sm, r, 2, float(vals["net"]),   MONEY_FORMAT)
+        _apply_body(sm, r, 3, float(vals["vat"]),   MONEY_FORMAT)
+        _apply_body(sm, r, 4, float(vals["total"]), MONEY_FORMAT)
+        r += 1
+
+    for i, w in enumerate([20, 14, 14, 14], start=1):
+        sm.column_dimensions[sm.cell(row=4, column=i).column_letter].width = w
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf

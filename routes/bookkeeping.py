@@ -316,6 +316,61 @@ def edit_invoice(invoice_id):
     return redirect(url_for("bookkeeping.bookkeeping_page"))
 
 
+@bp.route("/bookkeeping/monthly-summary")
+def download_monthly_summary():
+    """Download an Excel summary of approved invoices for a given month or
+    custom date range. Used for VAT prep and accountant submissions.
+
+    Query params:
+      ?month=YYYY-MM  (single month — preferred)
+      OR
+      ?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD (custom range)
+    """
+    from calendar import monthrange
+    import excel_export
+
+    month_str = request.args.get("month", "").strip()
+    start = request.args.get("start_date", "").strip()
+    end = request.args.get("end_date", "").strip()
+
+    if month_str:
+        try:
+            year, mon = map(int, month_str.split("-"))
+            start = f"{year:04d}-{mon:02d}-01"
+            last_day = monthrange(year, mon)[1]
+            end = f"{year:04d}-{mon:02d}-{last_day:02d}"
+            period_label = datetime(year, mon, 1).strftime("%B %Y")
+        except (ValueError, IndexError):
+            flash("Invalid month format. Use YYYY-MM (e.g. 2026-04).", "danger")
+            return redirect(url_for("bookkeeping.bookkeeping_page"))
+    elif start and end:
+        try:
+            ds = datetime.strptime(start, "%Y-%m-%d")
+            de = datetime.strptime(end, "%Y-%m-%d")
+            if ds.strftime("%Y-%m") == de.strftime("%Y-%m"):
+                period_label = ds.strftime("%B %Y")
+            else:
+                period_label = f"{ds.strftime('%b %Y')} - {de.strftime('%b %Y')}"
+        except ValueError:
+            flash("Invalid date format.", "danger")
+            return redirect(url_for("bookkeeping.bookkeeping_page"))
+    else:
+        flash("Pick a month or date range to download a summary.", "warning")
+        return redirect(url_for("bookkeeping.bookkeeping_page"))
+
+    invoices = db.list_invoices(
+        start_date=start, end_date=end, status="approved", limit=5000,
+    )
+
+    buf = excel_export.generate_invoice_monthly_excel(period_label, invoices)
+    safe_label = period_label.replace(" ", "_").replace("-", "")
+    filename = f"Cobblestone_Invoice_Summary_{safe_label}.xlsx"
+    return send_file(
+        buf, download_name=filename, as_attachment=True,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
 @bp.route("/bookkeeping/<int:invoice_id>/pdf")
 def view_invoice_pdf(invoice_id):
     """Serve the local PDF for an invoice. Inline-displays so the browser
