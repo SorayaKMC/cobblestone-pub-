@@ -19,6 +19,31 @@ There are **three intake paths** that all converge on the same place:
 3. **Manual upload via the page** — the **Upload PDFs (AI)** button on
    the Bookkeeping page accepts up to 20 PDFs at a time.
 
+### Invoices vs statements
+
+Each PDF coming in is **classified** before processing:
+
+- **Invoice** — a bill for a single transaction, with line items, VAT,
+  invoice number, and total. Goes through the AI extractor and into the
+  bookkeeping invoice list. Contributes to VAT period totals.
+- **Statement** — a roll-up of multiple invoices ("here's everything we
+  billed you this month + your outstanding balance"). Goes into the
+  separate Statements module, accessible via the **Statements** button
+  at the top of the Bookkeeping page. Statements do **not** feed VAT
+  period totals — they're a record-keeping and reconciliation tool.
+
+The classifier uses filename, email subject, and PDF text content. It's
+**conservative** — when in doubt, treats the PDF as an invoice. If
+something gets misclassified either way, you can fix it with one click:
+
+- On an invoice: open it → **Actually a Statement** button
+- On a statement: open it → **Actually an Invoice** button
+
+Statements arrive at `invoice@` get filed in the **statements Drive
+folder** (set via `GOOGLE_DRIVE_STATEMENTS_FOLDER_ID`). Invoices go to
+the **invoices Drive folder**. Both have their own `Processed/`
+subfolder where files end up after import.
+
 Whichever path an invoice takes, it ends up:
 - As a record in the bookkeeping list (status: Pending Review)
 - As a stored PDF on disk + in the Drive invoices folder

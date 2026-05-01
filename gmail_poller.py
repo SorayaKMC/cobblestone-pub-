@@ -131,11 +131,15 @@ def _download_part(service, msg_id, part):
 # Drive helpers
 # ---------------------------------------------------------------------------
 
-def save_to_drive(filename, pdf_bytes):
-    """Upload a PDF to the configured Drive folder. Returns the webViewLink URL."""
+def save_to_drive(filename, pdf_bytes, folder_id=None):
+    """Upload a PDF to the given Drive folder (default: invoices folder).
+
+    Returns the webViewLink URL.
+    """
     from googleapiclient.http import MediaIoBaseUpload
 
-    folder_id = config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
+    if folder_id is None:
+        folder_id = config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
     file_metadata = {"name": filename}
     if folder_id:
         file_metadata["parents"] = [folder_id]
@@ -153,21 +157,38 @@ def save_to_drive(filename, pdf_bytes):
 # Main entry point
 # ---------------------------------------------------------------------------
 
+def _email_subject(msg):
+    headers = msg.get("payload", {}).get("headers", [])
+    for h in headers:
+        if h.get("name", "").lower() == "subject":
+            return h.get("value", "")
+    return ""
+
+
 def check_inbox():
     """Scan the inbox for unread emails with PDF attachments and process them.
+
+    Each PDF is first classified as invoice or statement (statement_detector).
+    Invoices flow through the existing Claude extractor → bookkeeping DB.
+    Statements are filed in the statements Drive folder + statements DB,
+    skipping the invoice extractor entirely.
 
     Returns a list of result dicts — one per PDF attachment found:
       {
         filename:      str,
+        kind:          'invoice' | 'statement',
         drive_url:     str | None,
-        invoice_id:    int | None,   # set if successfully extracted + saved
-        skipped:       bool,         # True if already imported (duplicate)
+        invoice_id:    int | None,
+        statement_id:  int | None,
+        skipped:       bool,
         drive_error:   str | None,
         extract_error: str | None,
+        signals:       list[str],     # detection signals
       }
     """
     import db
     import invoice_extractor
+    import statement_detector
 
     service = _gmail()
     processed_label_id = _ensure_processed_label(service)
@@ -188,6 +209,8 @@ def check_inbox():
             all_results.append({"filename": "?", "extract_error": str(e)})
             continue
 
+        subject = _email_subject(msg)
+
         pdf_parts = _pdf_parts(msg.get("payload", {}))
         if not pdf_parts:
             # No PDFs — mark read and move so we don't re-check it
@@ -195,12 +218,14 @@ def check_inbox():
             continue
 
         for part in pdf_parts:
-            filename = part.get("filename") or f"invoice_{msg_id[:8]}.pdf"
+            filename = part.get("filename") or f"file_{msg_id[:8]}.pdf"
             if not filename.lower().endswith(".pdf"):
                 filename += ".pdf"
 
-            result = {"filename": filename, "drive_url": None, "invoice_id": None,
-                      "skipped": False, "drive_error": None, "extract_error": None}
+            result = {"filename": filename, "kind": "invoice", "drive_url": None,
+                      "invoice_id": None, "statement_id": None,
+                      "skipped": False, "drive_error": None, "extract_error": None,
+                      "signals": []}
 
             try:
                 pdf_bytes = _download_part(service, msg_id, part)
@@ -209,13 +234,7 @@ def check_inbox():
                 all_results.append(result)
                 continue
 
-            # --- Save to Google Drive ---
-            try:
-                result["drive_url"] = save_to_drive(filename, pdf_bytes)
-            except Exception as e:
-                result["drive_error"] = str(e)
-
-            # --- Save locally + extract ---
+            # --- Save locally so we can hash + classify ---
             try:
                 invoice_extractor.ensure_invoices_dir()
                 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -223,43 +242,124 @@ def check_inbox():
                 local_path = os.path.join(config.INVOICES_DIR, f"{stamp}_{safe}")
                 with open(local_path, "wb") as f:
                     f.write(pdf_bytes)
-
-                # Dedupe by file hash
                 fhash = invoice_extractor.file_hash(local_path)
-                if any(inv["file_hash"] == fhash for inv in db.list_invoices()):
-                    os.remove(local_path)
-                    result["skipped"] = True
-                else:
-                    data = invoice_extractor.extract_invoice(local_path)
-                    notes = f"From email. AI confidence: {data.get('confidence', 'unknown')}"
-                    if result["drive_url"]:
-                        notes += f". Drive: {result['drive_url']}"
-                    result["invoice_id"] = db.save_invoice({
-                        "supplier_id":   data.get("supplier_id"),
-                        "supplier_name": (data.get("supplier_name_canonical")
-                                          or data.get("supplier_name") or "Unknown"),
-                        "invoice_date":  data.get("invoice_date") or date.today().isoformat(),
-                        "invoice_number": data.get("invoice_number"),
-                        "net_amount":    float(data.get("net_amount") or 0),
-                        "vat_amount":    float(data.get("vat_amount") or 0),
-                        "total_amount":  float(data.get("total_amount") or 0),
-                        "vat_rate":      float(data.get("vat_rate") or 23),
-                        "category":      data.get("category"),
-                        "source":        "email",
-                        "pdf_path":      local_path,
-                        "file_hash":     fhash,
-                        "status":        "pending",
-                        "notes":         notes,
-                    })
             except Exception as e:
-                result["extract_error"] = str(e)
+                result["extract_error"] = f"Local save failed: {e}"
+                all_results.append(result)
+                continue
+
+            # --- Classify: invoice or statement? ---
+            try:
+                classification = statement_detector.classify(
+                    local_path, filename=filename, email_subject=subject
+                )
+            except Exception:
+                classification = {"kind": "invoice", "confidence": "low",
+                                  "signals": [], "extracted": {}}
+            result["kind"] = classification["kind"]
+            result["signals"] = classification["signals"]
+
+            if classification["kind"] == "statement":
+                _process_as_statement(local_path, fhash, filename, pdf_bytes,
+                                      classification, result, source="email")
+            else:
+                _process_as_invoice(local_path, fhash, filename, pdf_bytes,
+                                    result, source="email")
 
             all_results.append(result)
 
-        # Move email to Processed + mark as read regardless of extraction outcome
+        # Move email to Processed + mark as read regardless of outcome
         _archive(service, msg_id, processed_label_id)
 
     return all_results
+
+
+def _process_as_invoice(local_path, fhash, filename, pdf_bytes, result, source):
+    """Save invoice to bookkeeping DB + upload PDF to invoices Drive folder."""
+    import db
+    import invoice_extractor
+
+    # Drive upload (best-effort; failure doesn't block local save)
+    try:
+        result["drive_url"] = save_to_drive(
+            filename, pdf_bytes, folder_id=config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
+        )
+    except Exception as e:
+        result["drive_error"] = str(e)
+
+    try:
+        if any(inv["file_hash"] == fhash for inv in db.list_invoices() if inv["file_hash"]):
+            os.remove(local_path)
+            result["skipped"] = True
+            return
+
+        data = invoice_extractor.extract_invoice(local_path)
+        notes = f"From {source}. AI confidence: {data.get('confidence', 'unknown')}"
+        if result.get("drive_url"):
+            notes += f". Drive: {result['drive_url']}"
+        result["invoice_id"] = db.save_invoice({
+            "supplier_id":   data.get("supplier_id"),
+            "supplier_name": (data.get("supplier_name_canonical")
+                              or data.get("supplier_name") or "Unknown"),
+            "invoice_date":  data.get("invoice_date") or date.today().isoformat(),
+            "invoice_number": data.get("invoice_number"),
+            "net_amount":    float(data.get("net_amount") or 0),
+            "vat_amount":    float(data.get("vat_amount") or 0),
+            "total_amount":  float(data.get("total_amount") or 0),
+            "vat_rate":      float(data.get("vat_rate") or 23),
+            "category":      data.get("category"),
+            "source":        source,
+            "pdf_path":      local_path,
+            "file_hash":     fhash,
+            "status":        "pending",
+            "notes":         notes,
+        })
+    except Exception as e:
+        result["extract_error"] = str(e)
+
+
+def _process_as_statement(local_path, fhash, filename, pdf_bytes,
+                           classification, result, source):
+    """Save statement to statements DB + upload PDF to statements Drive folder."""
+    import db
+
+    # Dedupe — if we already saved this statement, skip
+    if db.get_statement_by_hash(fhash):
+        try:
+            os.remove(local_path)
+        except OSError:
+            pass
+        result["skipped"] = True
+        return
+
+    # Drive upload to statements folder (falls back to invoices folder if
+    # the statements folder env var isn't configured)
+    target_folder = (config.GOOGLE_DRIVE_STATEMENTS_FOLDER_ID
+                     or config.GOOGLE_DRIVE_INVOICES_FOLDER_ID)
+    try:
+        result["drive_url"] = save_to_drive(filename, pdf_bytes, folder_id=target_folder)
+    except Exception as e:
+        result["drive_error"] = str(e)
+
+    extracted = classification.get("extracted") or {}
+    signals_text = "; ".join(classification.get("signals", []))
+
+    try:
+        result["statement_id"] = db.save_statement({
+            "supplier_id": None,
+            "supplier_name": extracted.get("supplier_name") or "Unknown",
+            "statement_date": extracted.get("statement_date"),
+            "total_balance": extracted.get("total_balance"),
+            "pdf_path": local_path,
+            "file_hash": fhash,
+            "drive_url": result.get("drive_url"),
+            "source": source,
+            "status": "pending",
+            "detection_signals": signals_text,
+            "notes": f"Auto-classified as statement ({classification.get('confidence', '?')} confidence) from {source}.",
+        })
+    except Exception as e:
+        result["extract_error"] = f"Save statement failed: {e}"
 
 
 def _archive(service, msg_id, processed_label_id):

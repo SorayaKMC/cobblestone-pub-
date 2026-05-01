@@ -41,6 +41,8 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 # Google Drive folder ID where incoming invoice PDFs are saved
 GOOGLE_DRIVE_INVOICES_FOLDER_ID = os.getenv("GOOGLE_DRIVE_INVOICES_FOLDER_ID", "")
+# Google Drive folder ID where supplier statements (not invoices) are filed
+GOOGLE_DRIVE_STATEMENTS_FOLDER_ID = os.getenv("GOOGLE_DRIVE_STATEMENTS_FOLDER_ID", "")
 # How often (seconds) the background thread checks the inbox (default: 30 min)
 GMAIL_POLL_INTERVAL = int(os.getenv("GMAIL_POLL_INTERVAL", "1800"))
 

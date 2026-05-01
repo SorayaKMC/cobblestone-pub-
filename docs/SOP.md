@@ -192,6 +192,10 @@ The app needs three credential sets, all stored as env vars on the
    - Gmail draft creation on `info@cobblestonepub.ie`
    - Drive folder access (read + write + move)
 3. **`ANTHROPIC_API_KEY`** — Claude API for invoice extraction.
+4. **`GOOGLE_DRIVE_INVOICES_FOLDER_ID`** — Drive folder where supplier
+   invoices land (and the watcher scans).
+5. **`GOOGLE_DRIVE_STATEMENTS_FOLDER_ID`** — Drive folder where supplier
+   statements (rolled-up account summaries) land.
 
 The service account in (2) needs **domain-wide delegation** authorised
 in Google Workspace Admin for these scopes:

@@ -71,6 +71,149 @@ def bookkeeping_page():
     )
 
 
+@bp.route("/bookkeeping/statements")
+def statements_list():
+    start = request.args.get("start_date", "")
+    end = request.args.get("end_date", "")
+    supplier_id = request.args.get("supplier_id", "")
+    status = request.args.get("status", "")
+
+    rows = db.list_statements(
+        start_date=start or None,
+        end_date=end or None,
+        supplier_id=int(supplier_id) if supplier_id.isdigit() else None,
+        status=status or None,
+    )
+    suppliers = db.list_suppliers()
+    counts = db.statement_counts()
+
+    return render_template(
+        "statements_list.html",
+        statements=rows,
+        suppliers=suppliers,
+        counts=counts,
+        filter_start=start,
+        filter_end=end,
+        filter_supplier=supplier_id,
+        filter_status=status,
+    )
+
+
+@bp.route("/bookkeeping/statements/<int:statement_id>", methods=["GET", "POST"])
+def statement_detail(statement_id):
+    stmt = db.get_statement(statement_id)
+    if not stmt:
+        flash("Statement not found.", "danger")
+        return redirect(url_for("bookkeeping.statements_list"))
+
+    if request.method == "POST":
+        action = request.form.get("action", "")
+        if action == "save":
+            db.save_statement({
+                "supplier_id": int(request.form["supplier_id"]) if request.form.get("supplier_id", "").isdigit() else None,
+                "supplier_name": request.form.get("supplier_name", "").strip() or "Unknown",
+                "statement_date": request.form.get("statement_date") or None,
+                "total_balance": float(request.form["total_balance"]) if request.form.get("total_balance") else None,
+                "pdf_path": stmt["pdf_path"],
+                "drive_url": stmt["drive_url"],
+                "status": request.form.get("status", "pending"),
+                "notes": request.form.get("notes", "").strip() or None,
+            }, statement_id=statement_id)
+            flash("Statement updated.", "success")
+        elif action == "delete":
+            db.delete_statement(statement_id)
+            flash("Statement deleted.", "info")
+            return redirect(url_for("bookkeeping.statements_list"))
+        elif action == "reclassify_as_invoice":
+            return _reclassify_statement_as_invoice(statement_id)
+        return redirect(url_for("bookkeeping.statement_detail", statement_id=statement_id))
+
+    suppliers = db.list_suppliers()
+    return render_template(
+        "statement_detail.html",
+        statement=stmt,
+        suppliers=suppliers,
+    )
+
+
+def _reclassify_statement_as_invoice(statement_id):
+    """Move a misclassified statement into the invoices DB. Best-effort —
+    we run the AI extractor on the PDF and create an invoice record, then
+    delete the statement record. PDF stays where it is on Drive (statements
+    Processed); manual move if desired."""
+    stmt = db.get_statement(statement_id)
+    if not stmt:
+        flash("Statement not found.", "danger")
+        return redirect(url_for("bookkeeping.statements_list"))
+
+    pdf_path = stmt["pdf_path"]
+    if not pdf_path or not os.path.exists(pdf_path):
+        flash("Statement PDF is no longer on local disk; cannot reclassify automatically.", "warning")
+        return redirect(url_for("bookkeeping.statement_detail", statement_id=statement_id))
+
+    try:
+        data = invoice_extractor.extract_invoice(pdf_path)
+        invoice_id = db.save_invoice({
+            "supplier_id":   data.get("supplier_id"),
+            "supplier_name": (data.get("supplier_name_canonical")
+                              or data.get("supplier_name") or stmt["supplier_name"]),
+            "invoice_date":  data.get("invoice_date") or date.today().isoformat(),
+            "invoice_number": data.get("invoice_number"),
+            "net_amount":    float(data.get("net_amount") or 0),
+            "vat_amount":    float(data.get("vat_amount") or 0),
+            "total_amount":  float(data.get("total_amount") or 0),
+            "vat_rate":      float(data.get("vat_rate") or 23),
+            "category":      data.get("category"),
+            "source":        "reclassified",
+            "pdf_path":      pdf_path,
+            "file_hash":     stmt["file_hash"],
+            "status":        "pending",
+            "notes":         f"Reclassified from statement #{statement_id}. AI confidence: {data.get('confidence', 'unknown')}.",
+        })
+        db.delete_statement(statement_id)
+        flash(f"Reclassified as invoice #{invoice_id}. Review on the bookkeeping page.", "success")
+        return redirect(url_for("bookkeeping.edit_invoice", invoice_id=invoice_id))
+    except Exception as e:
+        flash(f"Reclassify failed: {e}", "danger")
+        return redirect(url_for("bookkeeping.statement_detail", statement_id=statement_id))
+
+
+@bp.route("/bookkeeping/<int:invoice_id>/reclassify-as-statement", methods=["POST"])
+def reclassify_invoice_as_statement(invoice_id):
+    """Move a misclassified invoice into the statements DB."""
+    inv = db.get_invoice(invoice_id) if hasattr(db, "get_invoice") else None
+    if not inv:
+        # Fall back to a list lookup
+        for r in db.list_invoices():
+            if r["id"] == invoice_id:
+                inv = r
+                break
+    if not inv:
+        flash("Invoice not found.", "danger")
+        return redirect(url_for("bookkeeping.bookkeeping_page"))
+
+    try:
+        statement_id = db.save_statement({
+            "supplier_id": inv["supplier_id"],
+            "supplier_name": inv["supplier_name"],
+            "statement_date": inv["invoice_date"],
+            "total_balance": inv["total_amount"],
+            "pdf_path": inv["pdf_path"],
+            "file_hash": inv["file_hash"],
+            "drive_url": None,
+            "source": "reclassified",
+            "status": "pending",
+            "detection_signals": "manually reclassified by user",
+            "notes": f"Reclassified from invoice #{invoice_id}.",
+        })
+        db.delete_invoice(invoice_id)
+        flash(f"Reclassified as statement. Review under Statements.", "success")
+        return redirect(url_for("bookkeeping.statement_detail", statement_id=statement_id))
+    except Exception as e:
+        flash(f"Reclassify failed: {e}", "danger")
+        return redirect(url_for("bookkeeping.bookkeeping_page"))
+
+
 @bp.route("/bookkeeping/drive-scan", methods=["POST"])
 def drive_scan_now():
     """Trigger an immediate Drive folder scan."""

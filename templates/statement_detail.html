@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Statement #{{ statement.id }} - Cobblestone Pub{% endblock %}
+{% block page_title %}Statement #{{ statement.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="/bookkeeping/statements" class="text-decoration-none">
+        <i class="bi bi-arrow-left me-1"></i>Back to Statements
+    </a>
+    <div class="d-flex gap-2">
+        {% if statement.drive_url %}
+        <a href="{{ statement.drive_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-file-pdf me-1"></i>Open PDF in Drive
+        </a>
+        {% endif %}
+        <form method="POST" class="d-inline">
+            <input type="hidden" name="action" value="reclassify_as_invoice">
+            <button type="submit" class="btn btn-outline-warning btn-sm"
+                    onclick="return confirm('Reclassify this statement as an invoice? It will be moved to the bookkeeping invoice list and processed by the AI extractor.')">
+                <i class="bi bi-arrow-left-right me-1"></i>Actually an Invoice
+            </button>
+        </form>
+        <form method="POST" class="d-inline">
+            <input type="hidden" name="action" value="delete">
+            <button type="submit" class="btn btn-outline-danger btn-sm"
+                    onclick="return confirm('Delete this statement record? The PDF in Drive is not affected.')">
+                <i class="bi bi-trash me-1"></i>Delete
+            </button>
+        </form>
+    </div>
+</div>
+
+<form method="POST">
+<input type="hidden" name="action" value="save">
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title mb-3">Statement Details</h6>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label small text-muted">Supplier</label>
+                <select name="supplier_id" class="form-select form-select-sm" id="supplier-sel">
+                    <option value="">— manual entry below —</option>
+                    {% for s in suppliers %}
+                    <option value="{{ s.id }}" {% if statement.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="supplier_name" class="form-control form-control-sm mt-2"
+                       value="{{ statement.supplier_name }}" placeholder="Supplier name (free text)">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Statement date</label>
+                <input type="date" name="statement_date" class="form-control form-control-sm"
+                       value="{{ statement.statement_date or '' }}">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Total balance (&euro;)</label>
+                <input type="number" name="total_balance" step="0.01" class="form-control form-control-sm"
+                       value="{{ statement.total_balance or '' }}">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="pending" {% if statement.status == 'pending' %}selected{% endif %}>Pending Review</option>
+                    <option value="reviewed" {% if statement.status == 'reviewed' %}selected{% endif %}>Reviewed</option>
+                    <option value="discrepancy" {% if statement.status == 'discrepancy' %}selected{% endif %}>Discrepancy</option>
+                </select>
+            </div>
+
+            <div class="col-md-9">
+                <label class="form-label small text-muted">Source</label>
+                <input type="text" class="form-control form-control-sm" value="{{ statement.source }}" disabled>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label small text-muted">Notes</label>
+                <textarea name="notes" rows="3" class="form-control form-control-sm">{{ statement.notes or '' }}</textarea>
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="bi bi-save me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+</form>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">Detection &amp; metadata</h6>
+        <dl class="row mb-0 small">
+            <dt class="col-sm-3 text-muted">File hash</dt>
+            <dd class="col-sm-9"><code>{{ statement.file_hash[:16] }}...</code></dd>
+            <dt class="col-sm-3 text-muted">Local PDF path</dt>
+            <dd class="col-sm-9"><code>{{ statement.pdf_path or 'n/a' }}</code></dd>
+            <dt class="col-sm-3 text-muted">Detection signals</dt>
+            <dd class="col-sm-9">{{ statement.detection_signals or 'manually added' }}</dd>
+            <dt class="col-sm-3 text-muted">Created</dt>
+            <dd class="col-sm-9">{{ statement.created_at }}</dd>
+            {% if statement.updated_at != statement.created_at %}
+            <dt class="col-sm-3 text-muted">Updated</dt>
+            <dd class="col-sm-9">{{ statement.updated_at }}</dd>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+
+<div class="card border-info">
+    <div class="card-body">
+        <h6 class="card-title text-info">Future: reconciliation</h6>
+        <p class="small mb-0">
+            Phase 3 will let you click <strong>Reconcile</strong> here — the system
+            will extract each line of the statement (invoice number, date, amount),
+            match against your invoice DB, and flag any missing invoices, amount
+            mismatches, or unaccounted-for entries. Not yet built.
+        </p>
+    </div>
+</div>
+
+{% endblock %}

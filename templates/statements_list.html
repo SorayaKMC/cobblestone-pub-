@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Statements - Cobblestone Pub{% endblock %}
+{% block page_title %}Supplier Statements{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <a href="/bookkeeping" class="text-decoration-none">
+            <i class="bi bi-arrow-left me-1"></i>Back to Invoices
+        </a>
+    </div>
+    <div class="text-muted small">
+        Statements are <strong>roll-ups</strong> of multiple invoices, not individual bills.
+        They don't feed VAT period totals — those come from invoices only.
+    </div>
+</div>
+
+<!-- Status counts -->
+<div class="row mb-3 g-2">
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-2 text-center">
+                <div class="kpi-label">Pending Review</div>
+                <div class="h4 text-warning mb-0">{{ counts.get('pending', 0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-2 text-center">
+                <div class="kpi-label">Reviewed</div>
+                <div class="h4 text-success mb-0">{{ counts.get('reviewed', 0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-2 text-center">
+                <div class="kpi-label">Discrepancy</div>
+                <div class="h4 text-danger mb-0">{{ counts.get('discrepancy', 0) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body py-2 text-center">
+                <div class="kpi-label">Total</div>
+                <div class="h4 mb-0">{{ statements|length }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small text-muted">From</label>
+                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ filter_start }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">To</label>
+                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ filter_end }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Supplier</label>
+                <select name="supplier_id" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    {% for s in suppliers %}
+                    <option value="{{ s.id }}" {% if filter_supplier == s.id|string %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>Pending Review</option>
+                    <option value="reviewed" {% if filter_status == 'reviewed' %}selected{% endif %}>Reviewed</option>
+                    <option value="discrepancy" {% if filter_status == 'discrepancy' %}selected{% endif %}>Discrepancy</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary btn-sm me-1">
+                    <i class="bi bi-funnel me-1"></i>Filter
+                </button>
+                <a href="/bookkeeping/statements" class="btn btn-outline-secondary btn-sm">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- List -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-cobblestone mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Supplier</th>
+                    <th class="text-end">Total Balance</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                    <th>Detection</th>
+                    <th class="text-end">PDF</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in statements %}
+                <tr>
+                    <td>
+                        <a href="/bookkeeping/statements/{{ s.id }}" class="text-decoration-none">
+                            {{ s.statement_date or '—' }}
+                        </a>
+                    </td>
+                    <td>{{ s.supplier_name }}</td>
+                    <td class="text-end">
+                        {% if s.total_balance is not none %}
+                            &euro;{{ "%.2f"|format(s.total_balance|float) }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td><small class="text-muted">{{ s.source }}</small></td>
+                    <td>
+                        {% if s.status == 'pending' %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% elif s.status == 'reviewed' %}
+                            <span class="badge bg-success">Reviewed</span>
+                        {% elif s.status == 'discrepancy' %}
+                            <span class="badge bg-danger">Discrepancy</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ s.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td><small class="text-muted">{{ s.detection_signals or '' }}</small></td>
+                    <td class="text-end">
+                        {% if s.drive_url %}
+                            <a href="{{ s.drive_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-file-pdf"></i> Drive
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No statements found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

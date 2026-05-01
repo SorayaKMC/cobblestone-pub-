@@ -141,112 +141,196 @@ def _rename_and_move(service, file_id, new_name, processed_folder_id):
 # ---------------------------------------------------------------------------
 
 def import_pending():
-    """Scan the configured Drive folder, import any new PDFs, return results.
+    """Scan both the invoices and statements Drive folders for new PDFs.
+
+    Behaviour by folder:
+      - INVOICES folder: classify each PDF. If it's actually a statement,
+        save the statement record + move the PDF straight to the statements
+        folder's Processed subfolder. If it's an invoice, run the existing
+        Claude extractor + save invoice record.
+      - STATEMENTS folder: skip classification (whatever's here is presumed
+        to be a statement). Save statement record. Move to Processed.
+
+    Existing month-organised subfolders in either root are left untouched.
 
     Each result dict:
       {
         "file_id": str,
-        "filename": str,        # original name in Drive
-        "new_name": str | None, # name after rename (None if not renamed)
+        "filename": str,
+        "new_name": str | None,
+        "kind": "invoice" | "statement",
         "invoice_id": int | None,
-        "skipped": bool,        # already imported (hash hit), still renamed+moved
+        "statement_id": int | None,
+        "skipped": bool,
         "error": str | None,
       }
     """
-    import invoice_extractor  # lazy: avoids loading anthropic on local dev
-
-    root_id = config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
-    if not root_id:
+    invoices_root = config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
+    if not invoices_root:
         raise RuntimeError(
             "GOOGLE_DRIVE_INVOICES_FOLDER_ID is not set — "
             "watcher has nowhere to look."
         )
 
     service = _drive_service()
-    processed_id = _ensure_processed_folder(service, root_id)
-    pending = list_pending_pdfs(service, root_id)
-
     results = []
+
+    # --- Process invoices folder (with classification) ---
+    invoices_processed = _ensure_processed_folder(service, invoices_root)
+    statements_root = config.GOOGLE_DRIVE_STATEMENTS_FOLDER_ID
+    statements_processed = (_ensure_processed_folder(service, statements_root)
+                            if statements_root else None)
+
+    for f in list_pending_pdfs(service, invoices_root):
+        results.append(_process_drive_pdf(
+            service, f, source_kind="invoices",
+            invoices_processed=invoices_processed,
+            statements_processed=statements_processed,
+        ))
+
+    # --- Process statements folder (no classification) ---
+    if statements_root:
+        for f in list_pending_pdfs(service, statements_root):
+            results.append(_process_drive_pdf(
+                service, f, source_kind="statements",
+                invoices_processed=invoices_processed,
+                statements_processed=statements_processed,
+            ))
+
+    return results
+
+
+def _process_drive_pdf(service, f, source_kind, invoices_processed, statements_processed):
+    """Process a single PDF from Drive. source_kind is 'invoices' or 'statements'."""
+    import invoice_extractor
+    import statement_detector
+
+    file_id = f["id"]
+    original_name = f.get("name", f"drive_{file_id[:8]}.pdf")
     today_str = date.today().isoformat()
+    result = {
+        "file_id": file_id,
+        "filename": original_name,
+        "new_name": None,
+        "kind": "invoice" if source_kind == "invoices" else "statement",
+        "invoice_id": None,
+        "statement_id": None,
+        "skipped": False,
+        "error": None,
+    }
 
-    invoice_extractor.ensure_invoices_dir()
-    existing_hashes = {inv["file_hash"] for inv in db.list_invoices() if inv["file_hash"]}
+    try:
+        pdf_bytes = _download_bytes(service, file_id)
+    except Exception as e:
+        result["error"] = f"Download failed: {e}"
+        return result
 
-    for f in pending:
-        file_id = f["id"]
-        original_name = f.get("name", f"drive_{file_id[:8]}.pdf")
-        result = {
-            "file_id": file_id,
-            "filename": original_name,
-            "new_name": None,
-            "invoice_id": None,
-            "skipped": False,
-            "error": None,
-        }
+    try:
+        invoice_extractor.ensure_invoices_dir()
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe = re.sub(r"[^\w.-]", "_", original_name)
+        local_path = os.path.join(config.INVOICES_DIR, f"{stamp}_{safe}")
+        with open(local_path, "wb") as out:
+            out.write(pdf_bytes)
+        fhash = invoice_extractor.file_hash(local_path)
+    except Exception as e:
+        result["error"] = f"Local save failed: {e}"
+        return result
 
+    # Classify (only if from the invoices folder; statements folder is trusted)
+    if source_kind == "invoices":
         try:
-            pdf_bytes = _download_bytes(service, file_id)
-        except Exception as e:
-            result["error"] = f"Download failed: {e}"
-            results.append(result)
-            continue
+            classification = statement_detector.classify(local_path, filename=original_name)
+        except Exception:
+            classification = {"kind": "invoice", "confidence": "low",
+                              "signals": [], "extracted": {}}
+        result["kind"] = classification["kind"]
+    else:
+        classification = {"kind": "statement", "confidence": "high",
+                          "signals": ["located in statements folder"], "extracted": {}}
 
-        # Save locally so we can hash + extract using existing pipeline
-        try:
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe = re.sub(r"[^\w.-]", "_", original_name)
-            local_path = os.path.join(config.INVOICES_DIR, f"{stamp}_{safe}")
-            with open(local_path, "wb") as out:
-                out.write(pdf_bytes)
-            fhash = invoice_extractor.file_hash(local_path)
-
-            if fhash in existing_hashes:
-                # Already imported via another path; just clean up Drive.
-                os.remove(local_path)
-                result["skipped"] = True
-            else:
-                data = invoice_extractor.extract_invoice(local_path)
-                notes_parts = [
-                    f"From Drive folder. AI confidence: {data.get('confidence', 'unknown')}.",
-                    f"Drive link: {f.get('webViewLink', '')}".strip(),
-                ]
-                result["invoice_id"] = db.save_invoice({
-                    "supplier_id":   data.get("supplier_id"),
-                    "supplier_name": (data.get("supplier_name_canonical")
-                                      or data.get("supplier_name") or "Unknown"),
-                    "invoice_date":  data.get("invoice_date") or today_str,
-                    "invoice_number": data.get("invoice_number"),
-                    "net_amount":    float(data.get("net_amount") or 0),
-                    "vat_amount":    float(data.get("vat_amount") or 0),
-                    "total_amount":  float(data.get("total_amount") or 0),
-                    "vat_rate":      float(data.get("vat_rate") or 23),
-                    "category":      data.get("category"),
-                    "source":        "drive",
-                    "pdf_path":      local_path,
-                    "file_hash":     fhash,
-                    "status":        "pending",
-                    "notes":         " ".join(p for p in notes_parts if p),
+    # --- Statement path ---
+    if classification["kind"] == "statement":
+        if db.get_statement_by_hash(fhash):
+            try: os.remove(local_path)
+            except OSError: pass
+            result["skipped"] = True
+        else:
+            extracted = classification.get("extracted") or {}
+            try:
+                result["statement_id"] = db.save_statement({
+                    "supplier_id": None,
+                    "supplier_name": extracted.get("supplier_name") or "Unknown",
+                    "statement_date": extracted.get("statement_date"),
+                    "total_balance": extracted.get("total_balance"),
+                    "pdf_path": local_path,
+                    "file_hash": fhash,
+                    "drive_url": f.get("webViewLink"),
+                    "source": "drive",
+                    "status": "pending",
+                    "detection_signals": "; ".join(classification.get("signals", [])),
+                    "notes": (f"From Drive ({source_kind} folder). "
+                              f"Confidence: {classification.get('confidence')}."),
                 })
-                existing_hashes.add(fhash)
-        except Exception as e:
-            result["error"] = f"Extract/save failed: {e}"
-            results.append(result)
-            continue
+            except Exception as e:
+                result["error"] = f"Save statement failed: {e}"
 
-        # Rename + move regardless (so root stays empty / tidy)
+        # Move to statements Processed folder if available, else
+        # leave a note. Falls back to invoices Processed if statements
+        # folder isn't configured.
+        target_processed = statements_processed or invoices_processed
         try:
             new_name = f"[imported-{today_str}] {original_name}"
             if not new_name.lower().endswith(".pdf"):
                 new_name += ".pdf"
-            _rename_and_move(service, file_id, new_name, processed_id)
+            _rename_and_move(service, file_id, new_name, target_processed)
             result["new_name"] = new_name
         except Exception as e:
-            # Rename/move failure shouldn't lose the import — just note it.
             result["error"] = (result["error"] or "") + f" Move failed: {e}"
+        return result
 
-        results.append(result)
+    # --- Invoice path ---
+    existing_hashes = {inv["file_hash"] for inv in db.list_invoices() if inv["file_hash"]}
+    try:
+        if fhash in existing_hashes:
+            try: os.remove(local_path)
+            except OSError: pass
+            result["skipped"] = True
+        else:
+            data = invoice_extractor.extract_invoice(local_path)
+            notes_parts = [
+                f"From Drive folder. AI confidence: {data.get('confidence', 'unknown')}.",
+                f"Drive link: {f.get('webViewLink', '')}".strip(),
+            ]
+            result["invoice_id"] = db.save_invoice({
+                "supplier_id":   data.get("supplier_id"),
+                "supplier_name": (data.get("supplier_name_canonical")
+                                  or data.get("supplier_name") or "Unknown"),
+                "invoice_date":  data.get("invoice_date") or today_str,
+                "invoice_number": data.get("invoice_number"),
+                "net_amount":    float(data.get("net_amount") or 0),
+                "vat_amount":    float(data.get("vat_amount") or 0),
+                "total_amount":  float(data.get("total_amount") or 0),
+                "vat_rate":      float(data.get("vat_rate") or 23),
+                "category":      data.get("category"),
+                "source":        "drive",
+                "pdf_path":      local_path,
+                "file_hash":     fhash,
+                "status":        "pending",
+                "notes":         " ".join(p for p in notes_parts if p),
+            })
+    except Exception as e:
+        result["error"] = f"Extract/save failed: {e}"
 
-    return results
+    try:
+        new_name = f"[imported-{today_str}] {original_name}"
+        if not new_name.lower().endswith(".pdf"):
+            new_name += ".pdf"
+        _rename_and_move(service, file_id, new_name, invoices_processed)
+        result["new_name"] = new_name
+    except Exception as e:
+        result["error"] = (result["error"] or "") + f" Move failed: {e}"
+    return result
 
 
 def status_snapshot():

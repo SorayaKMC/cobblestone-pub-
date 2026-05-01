@@ -208,6 +208,31 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_invoices_supplier ON invoices(supplier_id);
         CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
 
+        -- Supplier statements: rolled-up monthly account summaries that
+        -- reference one or more invoices. NOT invoices themselves; kept
+        -- separate so they don't pollute VAT period totals.
+        CREATE TABLE IF NOT EXISTS statements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            supplier_id INTEGER,
+            supplier_name TEXT NOT NULL,
+            statement_date DATE,
+            total_balance REAL,
+            pdf_path TEXT,
+            file_hash TEXT UNIQUE,
+            drive_url TEXT,
+            source TEXT NOT NULL DEFAULT 'manual',
+            status TEXT NOT NULL DEFAULT 'pending',
+            detection_signals TEXT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_statements_date ON statements(statement_date);
+        CREATE INDEX IF NOT EXISTS idx_statements_supplier ON statements(supplier_id);
+        CREATE INDEX IF NOT EXISTS idx_statements_status ON statements(status);
+
         -- Backroom / Upstairs venue bookings
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1107,6 +1132,95 @@ def delete_invoice(invoice_id):
     conn.execute("DELETE FROM invoices WHERE id=?", (invoice_id,))
     conn.commit()
     conn.close()
+
+
+# --- Supplier Statements (separate from invoices) ---
+
+def list_statements(start_date=None, end_date=None, supplier_id=None,
+                    status=None, limit=500):
+    conn = get_db()
+    sql = "SELECT * FROM statements WHERE 1=1"
+    params = []
+    if start_date:
+        sql += " AND (statement_date >= ? OR statement_date IS NULL)"
+        params.append(start_date)
+    if end_date:
+        sql += " AND (statement_date <= ? OR statement_date IS NULL)"
+        params.append(end_date)
+    if supplier_id:
+        sql += " AND supplier_id = ?"
+        params.append(supplier_id)
+    if status:
+        sql += " AND status = ?"
+        params.append(status)
+    sql += " ORDER BY COALESCE(statement_date, created_at) DESC LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return rows
+
+
+def get_statement(statement_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM statements WHERE id=?", (statement_id,)).fetchone()
+    conn.close()
+    return row
+
+
+def get_statement_by_hash(file_hash):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM statements WHERE file_hash=?", (file_hash,)).fetchone()
+    conn.close()
+    return row
+
+
+def save_statement(data, statement_id=None):
+    conn = get_db()
+    now = datetime.now().isoformat()
+    if statement_id:
+        conn.execute(
+            """UPDATE statements SET
+                supplier_id=?, supplier_name=?, statement_date=?, total_balance=?,
+                pdf_path=?, drive_url=?, status=?, notes=?, updated_at=?
+                WHERE id=?""",
+            (data.get("supplier_id"), data["supplier_name"], data.get("statement_date"),
+             data.get("total_balance"), data.get("pdf_path"), data.get("drive_url"),
+             data.get("status", "pending"), data.get("notes"), now, statement_id),
+        )
+        sid = statement_id
+    else:
+        cursor = conn.execute(
+            """INSERT INTO statements
+                (supplier_id, supplier_name, statement_date, total_balance,
+                 pdf_path, file_hash, drive_url, source, status,
+                 detection_signals, notes, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (data.get("supplier_id"), data["supplier_name"], data.get("statement_date"),
+             data.get("total_balance"), data.get("pdf_path"), data.get("file_hash"),
+             data.get("drive_url"), data.get("source", "manual"),
+             data.get("status", "pending"), data.get("detection_signals"),
+             data.get("notes"), now, now),
+        )
+        sid = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return sid
+
+
+def delete_statement(statement_id):
+    conn = get_db()
+    conn.execute("DELETE FROM statements WHERE id=?", (statement_id,))
+    conn.commit()
+    conn.close()
+
+
+def statement_counts():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT status, COUNT(*) as n FROM statements GROUP BY status"
+    ).fetchall()
+    conn.close()
+    return {r["status"]: r["n"] for r in rows}
 
 
 def monthly_vat_totals(year):
