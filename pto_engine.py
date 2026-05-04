@@ -16,14 +16,43 @@ MAX_DAYS = Decimal("21")
 DEFAULT_SHIFT_HOURS = Decimal("8.0")
 
 
+def _shifts_grouped_by_date(timecards, team_member_id=None):
+    """Group raw timecards into per-date totals so a 'shift' = one workday,
+    even if the employee clocked in/out twice (split shift across a break).
+
+    Returns {iso_date: total_paid_hours} (only dates with > 0 hours).
+    """
+    from datetime import datetime as _dt
+    by_date = {}
+    for tc in timecards:
+        if team_member_id is not None and tc["team_member_id"] != team_member_id:
+            continue
+        if tc["paid_minutes"] <= 0:
+            continue
+        start_str = tc.get("start_at")
+        if not start_str:
+            continue
+        try:
+            day = _dt.fromisoformat(start_str.replace("Z", "+00:00")).date().isoformat()
+        except Exception:
+            continue
+        by_date[day] = by_date.get(day, Decimal("0")) + (tc["paid_minutes"] / Decimal("60"))
+    # Strip days with zero hours just in case
+    return {d: h for d, h in by_date.items() if h > 0}
+
+
 def calculate_13_week_avg_shift(team_member_id, end_date):
     """Calculate the 13-week rolling average shift length for an employee.
+
+    A 'shift' is one workday — split shifts (e.g. lunch service + dinner
+    service with a break in between) are summed into a single shift.
 
     Args:
         team_member_id: Square team member ID
         end_date: 'YYYY-MM-DD' - the end of the period to look back from
 
-    Returns Decimal average hours per shift, or DEFAULT_SHIFT_HOURS if insufficient data.
+    Returns Decimal average hours per shift, or DEFAULT_SHIFT_HOURS if
+    insufficient data (fewer than 5 shifts in the lookback window).
     """
     from datetime import datetime, timedelta
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
@@ -35,17 +64,13 @@ def calculate_13_week_avg_shift(team_member_id, end_date):
     except Exception:
         return DEFAULT_SHIFT_HOURS
 
-    # Filter to this employee's closed timecards
-    shifts = []
-    for tc in timecards:
-        if tc["team_member_id"] == team_member_id and tc["paid_minutes"] > 0:
-            shift_hours = tc["paid_minutes"] / Decimal("60")
-            shifts.append(shift_hours)
+    by_date = _shifts_grouped_by_date(timecards, team_member_id)
+    shift_hours = list(by_date.values())
 
-    if len(shifts) < 5:
+    if len(shift_hours) < 5:
         return DEFAULT_SHIFT_HOURS
 
-    avg = sum(shifts) / Decimal(str(len(shifts)))
+    avg = sum(shift_hours) / Decimal(str(len(shift_hours)))
     return avg.quantize(Decimal("0.01"))
 
 
@@ -77,20 +102,33 @@ def calculate_13_week_avg_shift_batch(employee_ids, end_date):
     except Exception:
         return {tm_id: DEFAULT_SHIFT_HOURS for tm_id in employee_ids}
 
-    shifts_by_emp = {tm_id: [] for tm_id in employee_ids}
+    # Group timecards per-employee, per-date so split shifts in one
+    # workday count as a single shift.
+    from datetime import datetime as _dt
+    by_emp_date = {tm_id: {} for tm_id in employee_ids}
     for tc in timecards:
-        tm_id = tc["team_member_id"]
-        if tm_id in shifts_by_emp and tc["paid_minutes"] > 0:
-            shift_hours = tc["paid_minutes"] / Decimal("60")
-            shifts_by_emp[tm_id].append(shift_hours)
+        tm_id = tc.get("team_member_id")
+        if tm_id not in by_emp_date or tc["paid_minutes"] <= 0:
+            continue
+        start_str_tc = tc.get("start_at")
+        if not start_str_tc:
+            continue
+        try:
+            day = _dt.fromisoformat(start_str_tc.replace("Z", "+00:00")).date().isoformat()
+        except Exception:
+            continue
+        by_emp_date[tm_id][day] = (
+            by_emp_date[tm_id].get(day, Decimal("0"))
+            + (tc["paid_minutes"] / Decimal("60"))
+        )
 
     result = {}
     for tm_id in employee_ids:
-        shifts = shifts_by_emp.get(tm_id, [])
-        if len(shifts) < 5:
+        shift_hours = [h for h in by_emp_date.get(tm_id, {}).values() if h > 0]
+        if len(shift_hours) < 5:
             result[tm_id] = DEFAULT_SHIFT_HOURS
         else:
-            avg = sum(shifts) / Decimal(str(len(shifts)))
+            avg = sum(shift_hours) / Decimal(str(len(shift_hours)))
             result[tm_id] = avg.quantize(Decimal("0.01"))
 
     return result
@@ -113,50 +151,65 @@ def get_employee_accrual_type(team_member_id, team_members=None):
     return "hourly"
 
 
-def calculate_weekly_accrual(team_member_id, start_date, end_date, team_members=None):
+def calculate_weekly_accrual(team_member_id, start_date, end_date, team_members=None,
+                              manual_hours_override=None):
     """Calculate PTO accrual for one week.
+
+    Hours are sourced from Square timecards (grouped by date so split shifts
+    in one workday count as one shift). If `manual_hours_override` is given,
+    those hours are used instead — for cases where the employee doesn't
+    clock into Square but worked hours we know from elsewhere (Peter's
+    payslip, manager-recorded hours, etc.).
 
     Args:
         team_member_id: Square team member ID
         start_date: 'YYYY-MM-DD' Monday
         end_date: 'YYYY-MM-DD' Sunday
+        manual_hours_override: Decimal | float | None
 
-    Returns dict: hours_worked, accrual_type, days_accrued, avg_shift
+    Returns dict: hours_worked, accrued_hours, days_accrued, accrual_type,
+                  avg_shift, shifts_count, source ('square' | 'manual').
     """
     accrual_type = get_employee_accrual_type(team_member_id, team_members)
 
-    # Get hours worked this week
-    try:
-        timecards = square_client.get_timecards(start_date, end_date)
-    except Exception:
-        timecards = []
-
-    hours_worked = Decimal("0")
-    shifts_count = 0
-    for tc in timecards:
-        if tc["team_member_id"] == team_member_id and tc["paid_minutes"] > 0:
-            hours_worked += tc["paid_minutes"] / Decimal("60")
-            shifts_count += 1
+    if manual_hours_override is not None and Decimal(str(manual_hours_override)) > 0:
+        hours_worked = Decimal(str(manual_hours_override))
+        shifts_count = 1  # treat manual entry as one workday
+        source = "manual"
+    else:
+        try:
+            timecards = square_client.get_timecards(start_date, end_date)
+        except Exception:
+            timecards = []
+        # Group by date so split shifts (lunch + dinner with a break) count
+        # as a single shift, matching how Cobblestone treats a workday.
+        by_date = _shifts_grouped_by_date(timecards, team_member_id)
+        hours_worked = sum(by_date.values(), Decimal("0"))
+        shifts_count = len(by_date)
+        source = "square"
 
     if accrual_type == "salaried":
         # 0.4 days per week, pro-rated if partial
         days_accrued = SALARIED_WEEKLY if shifts_count > 0 else Decimal("0")
         avg_shift = DEFAULT_SHIFT_HOURS
+        accrued_hours = days_accrued * avg_shift
     else:
-        # 8.08% of hours, converted to days
-        accrual_hours = hours_worked * ACCRUAL_RATE
+        # 8.08% of hours; days = accrued hours / avg shift hours
+        accrued_hours = hours_worked * ACCRUAL_RATE
         avg_shift = calculate_13_week_avg_shift(team_member_id, end_date)
         if avg_shift > 0:
-            days_accrued = accrual_hours / avg_shift
+            days_accrued = accrued_hours / avg_shift
         else:
             days_accrued = Decimal("0")
 
     return {
         "hours_worked": hours_worked.quantize(Decimal("0.01")),
+        "accrued_hours": accrued_hours.quantize(Decimal("0.0001")),
         "accrual_type": accrual_type,
         "days_accrued": days_accrued.quantize(Decimal("0.0001")),
         "avg_shift": avg_shift,
         "shifts_count": shifts_count,
+        "source": source,
     }
 
 
@@ -203,9 +256,10 @@ def recalculate_pto(team_member_id, from_date, to_date, team_members=None):
         week_start = current_dt.strftime("%Y-%m-%d")
         week_end = (current_dt + timedelta(days=6)).strftime("%Y-%m-%d")
 
-        # Skip protected weeks (e.g. imported from V4 spreadsheet)
+        # Skip protected weeks (e.g. imported from V4 spreadsheet) — but
+        # NOT manual-hours rows, since those are still accrual-driven and
+        # should be re-summed alongside Square data.
         if db.is_pto_accrual_protected(team_member_id, week_start):
-            # Still advance the running balance using the existing value
             conn = db.get_db()
             existing = conn.execute(
                 "SELECT running_balance FROM pto_accruals WHERE team_member_id=? AND period_start=?",
@@ -218,7 +272,12 @@ def recalculate_pto(team_member_id, from_date, to_date, team_members=None):
             current_dt += timedelta(weeks=1)
             continue
 
-        accrual = calculate_weekly_accrual(team_member_id, week_start, week_end, team_members)
+        # Pick up any manual hours override stored against this employee + week
+        manual_override = db.get_manual_hours(team_member_id, week_start)
+        accrual = calculate_weekly_accrual(
+            team_member_id, week_start, week_end, team_members,
+            manual_hours_override=manual_override,
+        )
 
         # Get days taken this week
         conn = db.get_db()
@@ -254,7 +313,7 @@ def recalculate_pto(team_member_id, from_date, to_date, team_members=None):
             accrual_type=accrual["accrual_type"],
             days_accrued=float(accrual["days_accrued"]),
             running_balance=float(running_balance),
-            source="square",
+            source=accrual.get("source", "square"),
             respect_protected=True,
         )
 

@@ -52,8 +52,14 @@
                             —
                         {% endif %}
                     </td>
-                    <td class="text-end">{{ "%.2f"|format(emp.total_accrued) }}</td>
-                    <td class="text-end">{{ "%.2f"|format(emp.total_taken) }}</td>
+                    <td class="text-end">
+                        {{ "%.2f"|format(emp.total_accrued) }}
+                        <br><small class="text-muted">{{ "%.1f"|format(emp.accrued_hours_total) }}h</small>
+                    </td>
+                    <td class="text-end">
+                        {{ "%.2f"|format(emp.total_taken) }}
+                        <br><small class="text-muted">{{ "%.1f"|format(emp.taken_hours_total) }}h</small>
+                    </td>
                     <td class="text-end">
                         {% if emp.total_adjustments != 0 %}
                             {{ "%.2f"|format(emp.total_adjustments) }}
@@ -63,6 +69,7 @@
                     </td>
                     <td class="text-end">
                         <strong>{{ "%.2f"|format(emp.balance) }}</strong>
+                        <br><small class="text-muted">{{ "%.1f"|format(emp.balance_hours) }}h</small>
                         {% if emp.over_cap and emp.over_cap > 0 %}
                             <br><small class="text-warning" title="Cap is 21 days; surplus is preserved and replenishes the balance as leave is taken.">+{{ "%.2f"|format(emp.over_cap) }} over cap</small>
                         {% endif %}
@@ -151,6 +158,87 @@
                 </form>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Manual hours entry — for employees who don't clock into Square -->
+<div class="card mb-4 border-warning">
+    <div class="card-body">
+        <h6 class="card-title">
+            <i class="bi bi-pencil-square me-1"></i>Manual Hours Entry
+        </h6>
+        <p class="small text-muted mb-3">
+            Use this when an employee worked but Square doesn't have their
+            timecards (e.g. they don't clock in via Square). The hours feed
+            directly into the next Recalculate run for that ISO week.
+            Click <strong>Recalculate from Square</strong> after entering.
+        </p>
+        <form method="POST" action="/pto/manual-hours" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Employee</label>
+                <select name="team_member_id" class="form-select form-select-sm" required>
+                    <option value="">Select...</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}">{{ emp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Week start (Monday)</label>
+                <input type="date" name="week_start" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">Hours</label>
+                <input type="number" name="hours" step="0.01" min="0" class="form-control form-control-sm" placeholder="22.67" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Note (optional)</label>
+                <input type="text" name="note" class="form-control form-control-sm" placeholder="From payslip / manager">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-warning btn-sm w-100">
+                    <i class="bi bi-save me-1"></i>Save Hours
+                </button>
+            </div>
+        </form>
+
+        {% if manual_hours_log %}
+        <hr>
+        <details>
+            <summary class="small text-muted">Manual entries on file ({{ manual_hours_log|length }})</summary>
+            <table class="table table-sm mt-2 mb-0">
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Employee</th>
+                        <th class="text-end">Hours</th>
+                        <th>Note</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for mh in manual_hours_log %}
+                <tr>
+                    <td>{{ mh.period_start }}</td>
+                    <td>{{ names_by_id.get(mh.team_member_id, mh.team_member_id[-6:]) }}</td>
+                    <td class="text-end">{{ "%.2f"|format(mh.hours) }}</td>
+                    <td><small class="text-muted">{{ mh.note or '' }}</small></td>
+                    <td class="text-end">
+                        <form method="POST" action="/pto/manual-hours/delete" class="d-inline"
+                              onsubmit="return confirm('Remove this manual-hours entry?');">
+                            <input type="hidden" name="team_member_id" value="{{ mh.team_member_id }}">
+                            <input type="hidden" name="week_start" value="{{ mh.period_start }}">
+                            <button class="btn btn-outline-danger btn-sm py-0 px-2" type="submit">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </details>
+        {% endif %}
     </div>
 </div>
 

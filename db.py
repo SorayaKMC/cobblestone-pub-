@@ -71,6 +71,20 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        -- Manual override of hours-worked for a given employee + ISO week.
+        -- Used when an employee doesn't clock into Square but worked hours
+        -- we know from elsewhere (e.g. Peter's payslip). Recalculate uses
+        -- this in place of Square timecards for that week.
+        CREATE TABLE IF NOT EXISTS pto_manual_hours (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_member_id TEXT NOT NULL,
+            period_start DATE NOT NULL,
+            hours REAL NOT NULL,
+            note TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(team_member_id, period_start)
+        );
+
         CREATE TABLE IF NOT EXISTS cache_metadata (
             cache_key TEXT PRIMARY KEY,
             last_synced_at TIMESTAMP NOT NULL,
@@ -556,6 +570,62 @@ def add_pto_accrual(team_member_id, period_start, period_end, hours_worked, accr
     conn.commit()
     conn.close()
     return True
+
+
+def get_manual_hours(team_member_id, period_start):
+    """Return manually-entered hours for an employee + ISO week, or None.
+
+    Used by recalculate_pto when Square doesn't have timecards but a
+    manager has entered hours manually."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT hours FROM pto_manual_hours WHERE team_member_id=? AND period_start=?",
+        (team_member_id, period_start),
+    ).fetchone()
+    conn.close()
+    return row["hours"] if row else None
+
+
+def list_manual_hours(team_member_id=None):
+    """Return all manual-hours rows, optionally for one employee. For audit display."""
+    conn = get_db()
+    if team_member_id:
+        rows = conn.execute(
+            "SELECT * FROM pto_manual_hours WHERE team_member_id=? ORDER BY period_start DESC",
+            (team_member_id,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM pto_manual_hours ORDER BY period_start DESC, team_member_id"
+        ).fetchall()
+    conn.close()
+    return rows
+
+
+def set_manual_hours(team_member_id, period_start, hours, note=None):
+    """Insert or update manual hours for an employee + ISO week."""
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO pto_manual_hours (team_member_id, period_start, hours, note, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(team_member_id, period_start) DO UPDATE SET
+               hours=excluded.hours,
+               note=excluded.note,
+               updated_at=excluded.updated_at""",
+        (team_member_id, period_start, float(hours), note, datetime.now().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_manual_hours(team_member_id, period_start):
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM pto_manual_hours WHERE team_member_id=? AND period_start=?",
+        (team_member_id, period_start),
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_pto_accrual_for_week(team_member_id, period_start):
