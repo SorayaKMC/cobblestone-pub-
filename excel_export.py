@@ -47,9 +47,10 @@ def _apply_body(ws, row, col, value, fmt=None):
 def generate_peter_excel(week_label, payroll_data, net_sales=None):
     """Generate the 'for Peter' payroll Excel.
 
-    Columns (with Bonus added after Cleaning):
+    Columns:
       A=(blank) B=First C=Last D=Wage E=Gross F=Hours G=Tips H=Cleaning I=Bonus
-      J=Total K=(gap) L=Total for labor M=Upper Management N=Management O=Staff P=Staff+M
+      J=Holiday Hrs K=Total L=(gap) M=Total for labor
+      N=Upper Management O=Management P=Staff Q=Staff+M
     """
     wb = Workbook()
     ws = wb.active
@@ -57,14 +58,14 @@ def generate_peter_excel(week_label, payroll_data, net_sales=None):
 
     headers = [
         "", "First", "Last", "Wage", "Gross", "Hours", "Tips",
-        "Cleaning", "Bonus", "Total", "", "Total for labor",
+        "Cleaning", "Bonus", "Holiday Hrs", "Total", "", "Total for labor",
         "Upper Management", "Management", "Staff", "Staff+M"
     ]
 
     for col, h in enumerate(headers, 1):
         _apply_header(ws, 1, col, h)
 
-    widths = [4, 14, 18, 8, 10, 8, 8, 10, 10, 10, 2, 14, 18, 14, 10, 10]
+    widths = [4, 14, 18, 8, 10, 8, 8, 10, 10, 11, 10, 2, 14, 18, 14, 10, 10]
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[chr(64 + i) if i <= 26 else ""].width = w
 
@@ -82,31 +83,29 @@ def generate_peter_excel(week_label, payroll_data, net_sales=None):
         _apply_body(ws, row, 7, float(emp["tips"]), MONEY_FORMAT)
         _apply_body(ws, row, 8, float(emp["cleaning"]), MONEY_FORMAT)
         _apply_body(ws, row, 9, float(emp.get("bonus", 0)), MONEY_FORMAT)
-        _apply_body(ws, row, 10, float(emp["total"]), MONEY_FORMAT)
+        _apply_body(ws, row, 10, float(emp.get("holiday_hours", 0) or 0), HOURS_FORMAT)
+        _apply_body(ws, row, 11, float(emp["total"]), MONEY_FORMAT)
 
-        # Category label
-        _apply_body(ws, row, 11, emp["category"].split()[0] if emp["category"] == "Upper Management" else emp["category"])
+        # Category label (column L is the gap, column M is Total for labor)
+        _apply_body(ws, row, 12, emp["category"].split()[0] if emp["category"] == "Upper Management" else emp["category"])
+        _apply_body(ws, row, 13, float(emp["total_for_labor"]), MONEY_FORMAT)
 
-        # Total for labor
-        _apply_body(ws, row, 12, float(emp["total_for_labor"]), MONEY_FORMAT)
-
-        # Category columns
         cat = emp["category"]
         if cat == "Upper Management":
-            _apply_body(ws, row, 13, float(emp["total_for_labor"]), MONEY_FORMAT)
+            _apply_body(ws, row, 14, float(emp["total_for_labor"]), MONEY_FORMAT)
             um_total += emp["total_for_labor"]
         elif cat == "Management":
-            _apply_body(ws, row, 14, float(emp["total_for_labor"]), MONEY_FORMAT)
+            _apply_body(ws, row, 15, float(emp["total_for_labor"]), MONEY_FORMAT)
             mgmt_total += emp["total_for_labor"]
         elif cat == "Staff":
-            _apply_body(ws, row, 15, float(emp["total_for_labor"]), MONEY_FORMAT)
+            _apply_body(ws, row, 16, float(emp["total_for_labor"]), MONEY_FORMAT)
             staff_total += emp["total_for_labor"]
 
         row += 1
 
     # Totals row
     total_row = row
-    for col in range(1, 17):
+    for col in range(1, 18):
         cell = ws.cell(row=total_row, column=col)
         cell.fill = TOTAL_FILL
         cell.font = TOTAL_FONT
@@ -117,19 +116,20 @@ def generate_peter_excel(week_label, payroll_data, net_sales=None):
     if len(payroll_data) > 0:
         data_start = 2
         data_end = total_row - 1
-        ws.cell(row=total_row, column=5, value=f"=SUM(E{data_start}:E{data_end})").number_format = MONEY_FORMAT
-        ws.cell(row=total_row, column=6, value=f"=SUM(F{data_start}:F{data_end})").number_format = HOURS_FORMAT
-        ws.cell(row=total_row, column=7, value=f"=SUM(G{data_start}:G{data_end})").number_format = MONEY_FORMAT
-        ws.cell(row=total_row, column=8, value=f"=SUM(H{data_start}:H{data_end})").number_format = MONEY_FORMAT
-        ws.cell(row=total_row, column=9, value=f"=SUM(I{data_start}:I{data_end})").number_format = MONEY_FORMAT
-        ws.cell(row=total_row, column=10, value=f"=SUM(J{data_start}:J{data_end})").number_format = MONEY_FORMAT
-        ws.cell(row=total_row, column=12, value=f"=SUM(L{data_start}:L{data_end})").number_format = MONEY_FORMAT
+        ws.cell(row=total_row, column=5,  value=f"=SUM(E{data_start}:E{data_end})").number_format = MONEY_FORMAT
+        ws.cell(row=total_row, column=6,  value=f"=SUM(F{data_start}:F{data_end})").number_format = HOURS_FORMAT
+        ws.cell(row=total_row, column=7,  value=f"=SUM(G{data_start}:G{data_end})").number_format = MONEY_FORMAT
+        ws.cell(row=total_row, column=8,  value=f"=SUM(H{data_start}:H{data_end})").number_format = MONEY_FORMAT
+        ws.cell(row=total_row, column=9,  value=f"=SUM(I{data_start}:I{data_end})").number_format = MONEY_FORMAT
+        ws.cell(row=total_row, column=10, value=f"=SUM(J{data_start}:J{data_end})").number_format = HOURS_FORMAT
+        ws.cell(row=total_row, column=11, value=f"=SUM(K{data_start}:K{data_end})").number_format = MONEY_FORMAT
+        ws.cell(row=total_row, column=13, value=f"=SUM(M{data_start}:M{data_end})").number_format = MONEY_FORMAT
 
     # Category totals
-    ws.cell(row=total_row, column=13, value=float(um_total)).number_format = MONEY_FORMAT
-    ws.cell(row=total_row, column=14, value=float(mgmt_total)).number_format = MONEY_FORMAT
-    ws.cell(row=total_row, column=15, value=float(staff_total)).number_format = MONEY_FORMAT
-    ws.cell(row=total_row, column=16, value=float(mgmt_total + staff_total)).number_format = MONEY_FORMAT
+    ws.cell(row=total_row, column=14, value=float(um_total)).number_format = MONEY_FORMAT
+    ws.cell(row=total_row, column=15, value=float(mgmt_total)).number_format = MONEY_FORMAT
+    ws.cell(row=total_row, column=16, value=float(staff_total)).number_format = MONEY_FORMAT
+    ws.cell(row=total_row, column=17, value=float(mgmt_total + staff_total)).number_format = MONEY_FORMAT
 
     # Summary block below totals
     row = total_row + 2

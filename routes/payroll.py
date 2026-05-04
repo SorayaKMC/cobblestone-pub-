@@ -156,70 +156,91 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
     return payroll
 
 
+def _load_week_payroll(year, week, iso_week, start_date, end_date):
+    """Build the fully-enriched payroll list for one week.
+
+    Returns (payroll, pto_taken). The payroll includes:
+      - All employees with timecards from Square
+      - All salaried employees (added by _build_payroll_data)
+      - All employees with manual tips/bonus entered
+      - All employees who took PTO that week (even if they didn't work) —
+        these get a 'pto_only' flag so the page can highlight them.
+    Each row has 'holiday_hours' and 'holiday_days' applied for the week.
+
+    Used by the payroll page, the Peter Excel download, and the Raw
+    Timecards download — so all three see the same list.
+    """
+    timecards = square_client.get_timecards(start_date, end_date)
+    team_members = square_client.get_team_members()
+    categories = db.get_employee_categories()
+    manual_tips = db.get_weekly_tips(iso_week)
+    weekly_cleaning = db.get_weekly_cleaning(iso_week)
+    weekly_bonus = db.get_weekly_bonus(iso_week)
+
+    payroll = _build_payroll_data(
+        timecards, team_members, categories,
+        manual_tips, weekly_cleaning, weekly_bonus,
+    )
+
+    pto_taken = db.get_pto_taken_for_week(start_date, end_date)
+
+    # Add PTO-only employees (took leave but didn't work this week)
+    existing_ids = {p["team_member_id"] for p in payroll}
+    members_by_id = {m["id"]: m for m in team_members}
+    cats_by_id = {c["team_member_id"]: c for c in categories}
+    for tm_id, pto_d in pto_taken.items():
+        if tm_id in existing_ids:
+            continue
+        if not pto_d.get("hours", 0):
+            continue
+        cat = cats_by_id.get(tm_id)
+        if not cat:
+            continue
+        member = members_by_id.get(tm_id, {})
+        wage_rate = member.get("hourly_rate", Decimal("0"))
+        payroll.append({
+            "team_member_id": tm_id,
+            "given_name": cat["given_name"],
+            "family_name": cat["family_name"],
+            "wage_rate": wage_rate.quantize(Decimal("0.01")) if hasattr(wage_rate, "quantize") else Decimal(str(wage_rate)),
+            "gross": Decimal("0.00"),
+            "hours": Decimal("0.00"),
+            "tips": Decimal("0.00"),
+            "cleaning": Decimal("0.00"),
+            "bonus": Decimal("0.00"),
+            "total": Decimal("0.00"),
+            "category": cat["category"],
+            "total_for_labor": Decimal("0.00"),
+            "regular_hours": Decimal("0.00"),
+            "overtime_hours": Decimal("0.00"),
+            "doubletime_hours": Decimal("0.00"),
+            "regular_cost": Decimal("0.00"),
+            "overtime_cost": Decimal("0.00"),
+            "doubletime_cost": Decimal("0.00"),
+            "total_cost": Decimal("0.00"),
+            "transaction_tips": Decimal("0.00"),
+            "declared_cash_tips": Decimal("0.00"),
+            "pto_only": True,
+        })
+
+    order = {"Upper Management": 0, "Management": 1, "Staff": 2}
+    payroll.sort(key=lambda x: (order.get(x["category"], 9), x["family_name"]))
+
+    for p in payroll:
+        pto = pto_taken.get(p["team_member_id"], {})
+        p["holiday_hours"] = pto.get("hours", 0.0)
+        p["holiday_days"] = pto.get("days", 0.0)
+        p.setdefault("pto_only", False)
+
+    return payroll, pto_taken
+
+
 @bp.route("/payroll")
 def payroll_page():
     year, week, start_date, end_date, label, iso_week = _get_week_params()
 
     try:
-        timecards = square_client.get_timecards(start_date, end_date)
-        team_members = square_client.get_team_members()
-        categories = db.get_employee_categories()
-        manual_tips = db.get_weekly_tips(iso_week)
-        weekly_cleaning = db.get_weekly_cleaning(iso_week)
-        weekly_bonus = db.get_weekly_bonus(iso_week)
-
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning, weekly_bonus)
-
-        # Holiday pay: pull from PTO tracker (auto-sync — no double-entry)
-        pto_taken = db.get_pto_taken_for_week(start_date, end_date)
-
-        # Include employees who took PTO but didn't work this week — they still
-        # need to appear on payroll so they get paid for the holiday hours.
-        existing_ids = {p["team_member_id"] for p in payroll}
-        members_by_id = {m["id"]: m for m in team_members}
-        cats_by_id = {c["team_member_id"]: c for c in categories}
-        for tm_id, pto_d in pto_taken.items():
-            if tm_id in existing_ids:
-                continue
-            if not pto_d.get("hours", 0):
-                continue
-            cat = cats_by_id.get(tm_id)
-            if not cat:
-                continue
-            member = members_by_id.get(tm_id, {})
-            wage_rate = member.get("hourly_rate", Decimal("0"))
-            payroll.append({
-                "team_member_id": tm_id,
-                "given_name": cat["given_name"],
-                "family_name": cat["family_name"],
-                "wage_rate": wage_rate.quantize(Decimal("0.01")) if hasattr(wage_rate, "quantize") else Decimal(str(wage_rate)),
-                "gross": Decimal("0.00"),
-                "hours": Decimal("0.00"),
-                "tips": Decimal("0.00"),
-                "cleaning": Decimal("0.00"),
-                "bonus": Decimal("0.00"),
-                "total": Decimal("0.00"),
-                "category": cat["category"],
-                "total_for_labor": Decimal("0.00"),
-                "regular_hours": Decimal("0.00"),
-                "overtime_hours": Decimal("0.00"),
-                "doubletime_hours": Decimal("0.00"),
-                "regular_cost": Decimal("0.00"),
-                "overtime_cost": Decimal("0.00"),
-                "doubletime_cost": Decimal("0.00"),
-                "total_cost": Decimal("0.00"),
-                "transaction_tips": Decimal("0.00"),
-                "declared_cash_tips": Decimal("0.00"),
-                "pto_only": True,  # template hint: row is PTO-only
-            })
-        # Re-sort with the added PTO-only rows
-        order = {"Upper Management": 0, "Management": 1, "Staff": 2}
-        payroll.sort(key=lambda x: (order.get(x["category"], 9), x["family_name"]))
-
-        for p in payroll:
-            pto = pto_taken.get(p["team_member_id"], {})
-            p["holiday_hours"] = pto.get("hours", 0.0)
-            p["holiday_days"] = pto.get("days", 0.0)
+        payroll, pto_taken = _load_week_payroll(year, week, iso_week, start_date, end_date)
 
         # Net pay (from accountant's gross-to-net upload, if any)
         net_pays = db.get_net_pays_by_employee(iso_week)
@@ -464,15 +485,11 @@ def download_peter():
     year, week, start_date, end_date, label, iso_week = _get_week_params()
 
     try:
-        timecards = square_client.get_timecards(start_date, end_date)
-        team_members = square_client.get_team_members()
-        categories = db.get_employee_categories()
-        manual_tips = db.get_weekly_tips(iso_week)
-        weekly_cleaning = db.get_weekly_cleaning(iso_week)
-        weekly_bonus = db.get_weekly_bonus(iso_week)
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning, weekly_bonus)
+        # Use the same enriched payroll list the page uses — includes any
+        # employees who took PTO this week but didn't work, plus
+        # holiday_hours/days per employee.
+        payroll, _pto_taken = _load_week_payroll(year, week, iso_week, start_date, end_date)
 
-        # Get sales for the summary
         try:
             sales = square_client.get_weekly_sales(start_date, end_date)
             net_sales = sales["total_sales"]
@@ -792,13 +809,7 @@ def download_raw():
     year, week, start_date, end_date, label, iso_week = _get_week_params()
 
     try:
-        timecards = square_client.get_timecards(start_date, end_date)
-        team_members = square_client.get_team_members()
-        categories = db.get_employee_categories()
-        manual_tips = db.get_weekly_tips(iso_week)
-        weekly_cleaning = db.get_weekly_cleaning(iso_week)
-        weekly_bonus = db.get_weekly_bonus(iso_week)
-        payroll = _build_payroll_data(timecards, team_members, categories, manual_tips, weekly_cleaning, weekly_bonus)
+        payroll, _pto_taken = _load_week_payroll(year, week, iso_week, start_date, end_date)
 
         raw_data = [{
             "employee_id": p["given_name"] + " " + p["family_name"],
