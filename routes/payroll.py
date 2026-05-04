@@ -172,6 +172,50 @@ def payroll_page():
 
         # Holiday pay: pull from PTO tracker (auto-sync — no double-entry)
         pto_taken = db.get_pto_taken_for_week(start_date, end_date)
+
+        # Include employees who took PTO but didn't work this week — they still
+        # need to appear on payroll so they get paid for the holiday hours.
+        existing_ids = {p["team_member_id"] for p in payroll}
+        members_by_id = {m["id"]: m for m in team_members}
+        cats_by_id = {c["team_member_id"]: c for c in categories}
+        for tm_id, pto_d in pto_taken.items():
+            if tm_id in existing_ids:
+                continue
+            if not pto_d.get("hours", 0):
+                continue
+            cat = cats_by_id.get(tm_id)
+            if not cat:
+                continue
+            member = members_by_id.get(tm_id, {})
+            wage_rate = member.get("hourly_rate", Decimal("0"))
+            payroll.append({
+                "team_member_id": tm_id,
+                "given_name": cat["given_name"],
+                "family_name": cat["family_name"],
+                "wage_rate": wage_rate.quantize(Decimal("0.01")) if hasattr(wage_rate, "quantize") else Decimal(str(wage_rate)),
+                "gross": Decimal("0.00"),
+                "hours": Decimal("0.00"),
+                "tips": Decimal("0.00"),
+                "cleaning": Decimal("0.00"),
+                "bonus": Decimal("0.00"),
+                "total": Decimal("0.00"),
+                "category": cat["category"],
+                "total_for_labor": Decimal("0.00"),
+                "regular_hours": Decimal("0.00"),
+                "overtime_hours": Decimal("0.00"),
+                "doubletime_hours": Decimal("0.00"),
+                "regular_cost": Decimal("0.00"),
+                "overtime_cost": Decimal("0.00"),
+                "doubletime_cost": Decimal("0.00"),
+                "total_cost": Decimal("0.00"),
+                "transaction_tips": Decimal("0.00"),
+                "declared_cash_tips": Decimal("0.00"),
+                "pto_only": True,  # template hint: row is PTO-only
+            })
+        # Re-sort with the added PTO-only rows
+        order = {"Upper Management": 0, "Management": 1, "Staff": 2}
+        payroll.sort(key=lambda x: (order.get(x["category"], 9), x["family_name"]))
+
         for p in payroll:
             pto = pto_taken.get(p["team_member_id"], {})
             p["holiday_hours"] = pto.get("hours", 0.0)
@@ -242,6 +286,53 @@ def payroll_page():
         net_total_accountant=net_total_accountant,
         error=error,
     )
+
+
+@bp.route("/payroll/refresh", methods=["POST"])
+def refresh_week():
+    """Re-pull from Square + recalculate PTO accruals for the selected week.
+
+    The payroll page already pulls fresh timecards on each load, but PTO
+    accruals are stored — they only update when a recalculation runs. This
+    button re-runs the recalc for ONE week so any backdated Square edits
+    flow into the holiday-hours column for that week.
+    """
+    import pto_engine
+    iso_week = request.form.get("iso_week", "").strip()
+    if not iso_week or "-W" not in iso_week:
+        flash("Missing or invalid week.", "danger")
+        return redirect(url_for("payroll.payroll_page"))
+
+    try:
+        year_str, week_str = iso_week.split("-W")
+        year = int(year_str)
+        week_num = int(week_str)
+        start_date, end_date = square_client.week_dates(year, week_num)
+    except (ValueError, IndexError):
+        flash("Invalid week format.", "danger")
+        return redirect(url_for("payroll.payroll_page"))
+
+    try:
+        team_members = square_client.get_team_members()
+        categories = db.get_employee_categories()
+        recalc_count = 0
+        for cat in categories:
+            try:
+                pto_engine.recalculate_pto(
+                    cat["team_member_id"], start_date, end_date, team_members
+                )
+                recalc_count += 1
+            except Exception as e:
+                print(f"[payroll-refresh] {cat['family_name']}: {e}")
+        flash(
+            f"Refreshed {iso_week} from Square. Recalculated PTO for "
+            f"{recalc_count} employees.",
+            "success",
+        )
+    except Exception as e:
+        flash(f"Refresh failed: {e}", "danger")
+
+    return redirect(url_for("payroll.payroll_page", week=iso_week))
 
 
 @bp.route("/payroll/tips", methods=["POST"])

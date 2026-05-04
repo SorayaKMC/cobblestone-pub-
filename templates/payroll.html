@@ -20,6 +20,13 @@
         </a>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        <form method="POST" action="/payroll/refresh" class="d-inline">
+            <input type="hidden" name="iso_week" value="{{ iso_week }}">
+            <button type="submit" class="btn btn-outline-success btn-sm"
+                    title="Re-pull from Square + recalculate PTO for this week. Use after backdated timecard edits or new PTO entries.">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh from Square
+            </button>
+        </form>
         <a href="/payroll/accountant?week={{ iso_week }}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-file-earmark-arrow-up me-1"></i>Accountant Files
             {% if has_accountant_data %}<span class="badge bg-success ms-1">uploaded</span>{% endif %}
@@ -84,8 +91,16 @@
             </thead>
             <tbody>
                 {% for emp in payroll %}
-                <tr>
-                    <td>{{ emp.given_name }}</td>
+                <tr {% if emp.pto_only %}style="background:#fff8e7"{% endif %}>
+                    <td>
+                        {{ emp.given_name }}
+                        {% if emp.pto_only %}
+                            <span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem"
+                                  title="Did not work this week — payroll row is here so they get paid for PTO taken.">
+                                PTO only
+                            </span>
+                        {% endif %}
+                    </td>
                     <td>{{ emp.family_name }}</td>
                     <td class="text-end">&euro;{{ "%.2f"|format(emp.wage_rate|float) }}</td>
                     <td class="text-end">{{ "%.2f"|format(emp.hours|float) }}</td>
