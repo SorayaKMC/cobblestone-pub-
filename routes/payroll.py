@@ -311,6 +311,9 @@ def check_tips():
         f"€{result['matched_total']:.2f} from tab '{result['tab']}'. "
         f"Total column: {result['total_col']}.",
     ]
+    if result.get("skipped_inactive"):
+        rows = ", ".join(f"{n}" for n, _ in result["skipped_inactive"][:8])
+        bits.append(f"Skipped {len(result['skipped_inactive'])} former employee(s): {rows}.")
     if result.get("unmatched"):
         rows = ", ".join(f"{n} (€{v:.2f})" for n, v in result["unmatched"][:8])
         more = "" if len(result["unmatched"]) <= 8 else f" + {len(result['unmatched'])-8} more"

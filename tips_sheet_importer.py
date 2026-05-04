@@ -195,31 +195,68 @@ def _name_tokens(s):
     return set(t for t in _normalise_name(s).split() if len(t) > 1)
 
 
-def _match_employee_row(row_name, active_employees):
-    """Return team_member_id for a name string, or None."""
+# Rows whose name cell is one of these are footers, not employees
+_FOOTER_NAMES = {"total", "totals", "grand total", "subtotal", "sub-total", "sub total", ""}
+
+# Sheet uses nicknames or alt spellings that the fuzzy matcher can't reach.
+# Map → canonical first name in our DB. Easy to extend; add new entries here.
+SHEET_NAME_ALIASES = {
+    "podge": "padhraig",  # Padhraig O'Maolagain
+}
+
+
+def _classify_row(row_name, active_employees, inactive_employees):
+    """Classify a row by its name cell.
+
+    Returns one of:
+      ('footer',   None)              - row is a TOTAL / SUBTOTAL footer
+      ('blank',    None)              - empty name
+      ('active',   team_member_id)    - matches an active employee
+      ('inactive', team_member_id)    - matches a former employee (skip silently)
+      ('unknown',  None)              - matches no one we know
+    """
     if not row_name:
-        return None
+        return ("blank", None)
+    name_clean = str(row_name).strip().lower()
+    if name_clean in _FOOTER_NAMES:
+        return ("footer", None)
+
     raw_tokens = _name_tokens(row_name)
     if not raw_tokens:
+        return ("blank", None)
+
+    # Nickname aliases — replace alias token with canonical first-name token
+    aliased_tokens = set()
+    for tok in raw_tokens:
+        aliased_tokens.add(SHEET_NAME_ALIASES.get(tok, tok))
+
+    def _try_match(pool):
+        # Strict: full token equality
+        for emp in pool:
+            emp_tokens = _name_tokens(f"{emp['given_name']} {emp['family_name']}")
+            if aliased_tokens == emp_tokens:
+                return emp["team_member_id"]
+        # Looser: subset either way
+        for emp in pool:
+            emp_tokens = _name_tokens(f"{emp['given_name']} {emp['family_name']}")
+            if aliased_tokens.issubset(emp_tokens) or emp_tokens.issubset(aliased_tokens):
+                return emp["team_member_id"]
+        # Loosest: first-name match (sheet uses given names only / alt spellings)
+        for emp in pool:
+            if emp["given_name"].lower() in aliased_tokens:
+                return emp["team_member_id"]
         return None
-    # Strict: full token equality
-    for emp in active_employees:
-        emp_tokens = _name_tokens(f"{emp['given_name']} {emp['family_name']}")
-        if raw_tokens == emp_tokens:
-            return emp["team_member_id"]
-    # Looser: subset either way
-    for emp in active_employees:
-        emp_tokens = _name_tokens(f"{emp['given_name']} {emp['family_name']}")
-        if raw_tokens.issubset(emp_tokens) or emp_tokens.issubset(raw_tokens):
-            return emp["team_member_id"]
-    # Loosest: at least the first-name match (when sheet uses given names only)
-    for emp in active_employees:
-        if emp["given_name"].lower() in raw_tokens:
-            return emp["team_member_id"]
-    return None
+
+    tm = _try_match(active_employees)
+    if tm:
+        return ("active", tm)
+    tm = _try_match(inactive_employees)
+    if tm:
+        return ("inactive", tm)
+    return ("unknown", None)
 
 
-def _parse_sheet_for_week(ws, active_employees):
+def _parse_sheet_for_week(ws, active_employees, inactive_employees=None):
     """Return {tm_id: total_tips_eur, '_unmatched': [(raw_name, value), ...]}.
 
     Heuristics:
@@ -274,6 +311,9 @@ def _parse_sheet_for_week(ws, active_employees):
 
     matched = {}
     unmatched = []
+    skipped_inactive = []
+
+    inactive_employees = inactive_employees or []
 
     for r in rows[header_row_idx + 1:]:
         if not r:
@@ -283,8 +323,6 @@ def _parse_sheet_for_week(ws, active_employees):
         raw_name = r[name_col]
         if not _is_text_cell(raw_name):
             continue
-        # If we found a total column, use it; otherwise sum all numeric cells
-        # in this row except the name column itself.
         if total_col is not None and total_col < len(r):
             value = _to_float(r[total_col])
         else:
@@ -295,14 +333,19 @@ def _parse_sheet_for_week(ws, active_employees):
             )
         if value <= 0:
             continue
-        tm_id = _match_employee_row(raw_name, active_employees)
-        if tm_id:
+
+        kind, tm_id = _classify_row(raw_name, active_employees, inactive_employees)
+        if kind == "active":
             matched[tm_id] = matched.get(tm_id, 0.0) + value
-        else:
+        elif kind == "inactive":
+            skipped_inactive.append((str(raw_name).strip(), round(value, 2)))
+        elif kind == "unknown":
             unmatched.append((str(raw_name).strip(), round(value, 2)))
+        # 'footer' / 'blank' silently dropped
 
     matched["_tabname"] = ws.title
     matched["_unmatched"] = unmatched
+    matched["_skipped_inactive"] = skipped_inactive
     matched["_total_col_used"] = headers[total_col] if total_col is not None else "(summed daily columns)"
     matched["_name_col_used"] = headers[name_col] if name_col < len(headers) else "(column A)"
     return matched
@@ -328,13 +371,21 @@ def import_tips_for_week(iso_week):
     except Exception as e:
         return {"ok": False, "error": f"Could not parse spreadsheet: {e}"}
 
-    # Active employees for name matching
+    # Split employees by active flag — active ones get tips applied,
+    # inactive (former) ones are silently skipped to keep the unmatched
+    # list focused on truly unknown names.
+    all_emp_rows = db.get_employee_categories()
     active_employees = [
         {"team_member_id": r["team_member_id"],
          "given_name": r["given_name"],
          "family_name": r["family_name"]}
-        for r in db.get_employee_categories()
-        if r["is_active"]
+        for r in all_emp_rows if r["is_active"]
+    ]
+    inactive_employees = [
+        {"team_member_id": r["team_member_id"],
+         "given_name": r["given_name"],
+         "family_name": r["family_name"]}
+        for r in all_emp_rows if not r["is_active"]
     ]
 
     # Find the right tab
@@ -354,7 +405,7 @@ def import_tips_for_week(iso_week):
             "tabs_seen": candidate_tabs,
         }
 
-    parsed = _parse_sheet_for_week(wb[matching_tab], active_employees)
+    parsed = _parse_sheet_for_week(wb[matching_tab], active_employees, inactive_employees)
     if "_error" in parsed:
         return {"ok": False, "error": f"Tab '{matching_tab}': {parsed['_error']}"}
 
@@ -370,6 +421,7 @@ def import_tips_for_week(iso_week):
         "matched_count": len(tips_to_save),
         "matched_total": round(sum(tips_to_save.values()), 2),
         "unmatched": parsed.get("_unmatched", []),
+        "skipped_inactive": parsed.get("_skipped_inactive", []),
         "name_col": parsed.get("_name_col_used"),
         "total_col": parsed.get("_total_col_used"),
     }
