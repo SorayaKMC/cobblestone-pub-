@@ -43,6 +43,11 @@ GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 GOOGLE_DRIVE_INVOICES_FOLDER_ID = os.getenv("GOOGLE_DRIVE_INVOICES_FOLDER_ID", "")
 # Google Drive folder ID where supplier statements (not invoices) are filed
 GOOGLE_DRIVE_STATEMENTS_FOLDER_ID = os.getenv("GOOGLE_DRIVE_STATEMENTS_FOLDER_ID", "")
+# Google Sheet ID for the weekly tips spreadsheet (one tab per week)
+TIPS_SHEET_ID = os.getenv(
+    "TIPS_SHEET_ID",
+    "1C27gFAXQ8vYK9yFkwGG4mxVgdhwfz_L8iV3OXZozDBo",
+)
 # How often (seconds) the background thread checks the inbox (default: 30 min)
 GMAIL_POLL_INTERVAL = int(os.getenv("GMAIL_POLL_INTERVAL", "1800"))
 

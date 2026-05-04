@@ -288,6 +288,41 @@ def payroll_page():
     )
 
 
+@bp.route("/payroll/check-tips", methods=["POST"])
+def check_tips():
+    """Pull this week's tips from the shared Google Sheet → save into the
+    weekly_tips table → flash result. Skipped if week is finalized."""
+    import tips_sheet_importer
+    iso_week = request.form.get("iso_week", "").strip()
+    if not iso_week:
+        flash("Missing week.", "danger")
+        return redirect(url_for("payroll.payroll_page"))
+    if db.is_week_finalized(iso_week):
+        flash(f"{iso_week} is finalized — unlock it first to refresh tips.", "warning")
+        return redirect(url_for("payroll.payroll_page", week=iso_week))
+
+    result = tips_sheet_importer.import_tips_for_week(iso_week)
+    if not result.get("ok"):
+        flash(f"Tip import failed: {result.get('error', '?')}", "danger")
+        return redirect(url_for("payroll.payroll_page", week=iso_week))
+
+    bits = [
+        f"Matched {result['matched_count']} employee(s) totalling "
+        f"€{result['matched_total']:.2f} from tab '{result['tab']}'. "
+        f"Total column: {result['total_col']}.",
+    ]
+    if result.get("unmatched"):
+        rows = ", ".join(f"{n} (€{v:.2f})" for n, v in result["unmatched"][:8])
+        more = "" if len(result["unmatched"]) <= 8 else f" + {len(result['unmatched'])-8} more"
+        bits.append(
+            f"{len(result['unmatched'])} row(s) didn't match: "
+            f"{rows}{more}. Edit the sheet name or add to Settings, then re-run."
+        )
+    category = "warning" if result.get("unmatched") else "success"
+    flash(" ".join(bits), category)
+    return redirect(url_for("payroll.payroll_page", week=iso_week))
+
+
 @bp.route("/payroll/refresh", methods=["POST"])
 def refresh_week():
     """Re-pull from Square + recalculate PTO accruals for the selected week.
