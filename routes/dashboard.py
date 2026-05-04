@@ -120,20 +120,37 @@ def _get_week_sales_with_daily(year, week):
     if is_future:
         return None
 
-    # Completed weeks: cache forever. Current week: 24-hour cache (refresh daily).
+    start_date, end_date = square_client.week_dates(year, week)
+
+    # Completed weeks: cache forever — but only if the cache was filled
+    # AFTER the week's actual end-of-day Sunday. If the cache was filled
+    # mid-week (when the week was still 'current'), it's missing the last
+    # day(s) and needs to be refreshed once. Without this, Sunday's sales
+    # never make it into the dashboard for completed weeks.
+    # Current week: 1-hour cache so the dashboard tracks today's sales
+    # without burning the Square API.
     cached, synced_at = db.get_cache(cache_key)
     if cached:
         if not is_current:
-            return cached
-        if synced_at:
+            stale = False
+            if synced_at:
+                try:
+                    synced_dt = datetime.fromisoformat(synced_at)
+                    week_end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                        hour=23, minute=59, second=59
+                    )
+                    stale = synced_dt < week_end_dt
+                except Exception:
+                    stale = False
+            if not stale:
+                return cached
+        elif synced_at:
             try:
                 synced_dt = datetime.fromisoformat(synced_at)
-                if (datetime.now() - synced_dt).total_seconds() < 86400:  # 24h
+                if (datetime.now() - synced_dt).total_seconds() < 3600:  # 1h
                     return cached
             except Exception:
                 pass
-
-    start_date, end_date = square_client.week_dates(year, week)
 
     try:
         raw_orders = _fetch_orders(start_date, end_date)

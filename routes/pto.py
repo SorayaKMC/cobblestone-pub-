@@ -179,6 +179,144 @@ def import_historical():
     return redirect(url_for("pto.pto_page"))
 
 
+@bp.route("/pto/diagnose/<tm_id>")
+def diagnose(tm_id):
+    """Show raw Square + DB data for one employee, to figure out why
+    accruals aren't computing. Surfaces the most common causes:
+      - team_member_id mismatch between our DB and Square
+      - duplicate Square team members with same name
+      - Square member is Inactive (excluded from default sync)
+      - genuinely zero timecards (employee isn't clocking in)
+    """
+    from datetime import datetime as _dt
+    try:
+        year = int(request.args.get("year", str(date.today().year)))
+    except ValueError:
+        year = date.today().year
+
+    cat = db.get_employee_category(tm_id)
+    given = cat["given_name"] if cat else ""
+    family = cat["family_name"] if cat else ""
+    full_name = f"{given} {family}".strip().lower()
+
+    # Square: pull ALL team members (any status) to spot duplicates / inactives
+    square_members = []
+    square_match_by_id = None
+    square_name_matches = []
+    square_err = None
+    try:
+        square_members = square_client.get_all_team_members()
+        for m in square_members:
+            if m["id"] == tm_id:
+                square_match_by_id = m
+            mname = f"{m['given_name']} {m['family_name']}".strip().lower()
+            # Match on first or last name token presence (loose)
+            if full_name and mname and (
+                given.lower() and given.lower() in mname
+                or family.lower() and family.lower() in mname
+            ):
+                square_name_matches.append(m)
+    except Exception as e:
+        square_err = str(e)
+
+    # Square timecards for this tm_id in the year
+    timecards_year = []
+    timecard_err = None
+    try:
+        timecards_year = [
+            tc for tc in square_client.get_timecards(f"{year}-01-01", f"{year}-12-31")
+            if tc["team_member_id"] == tm_id
+        ]
+    except Exception as e:
+        timecard_err = str(e)
+
+    # Group timecards by date
+    by_date = {}
+    for tc in timecards_year:
+        try:
+            day = _dt.fromisoformat(tc["start_at"].replace("Z", "+00:00")).date().isoformat()
+        except Exception:
+            continue
+        if tc["paid_minutes"] > 0:
+            by_date[day] = by_date.get(day, 0) + float(tc["paid_minutes"]) / 60.0
+
+    # PTO accruals saved for this employee
+    conn = db.get_db()
+    accrual_rows = conn.execute(
+        """SELECT period_start, period_end, hours_worked, days_accrued, source
+           FROM pto_accruals
+           WHERE team_member_id = ? AND strftime('%Y', period_start) = ?
+           ORDER BY period_start""",
+        (tm_id, str(year)),
+    ).fetchall()
+    conn.close()
+
+    manual_rows = db.list_manual_hours(tm_id)
+
+    return render_template("pto_diagnose.html",
+        tm_id=tm_id,
+        year=year,
+        cat=cat,
+        square_match_by_id=square_match_by_id,
+        square_name_matches=[m for m in square_name_matches if m["id"] != tm_id],
+        square_err=square_err,
+        timecards_year=timecards_year,
+        by_date=by_date,
+        timecard_err=timecard_err,
+        accrual_rows=accrual_rows,
+        manual_rows=manual_rows,
+    )
+
+
+@bp.route("/pto/relink", methods=["POST"])
+def relink_to_square():
+    """Move all PTO history from one team_member_id to another. Used when
+    the diagnostic shows an employee has been recreated in Square under
+    a new ID — we want to pull the PTO history forward."""
+    old_id = request.form.get("old_id", "").strip()
+    new_id = request.form.get("new_id", "").strip()
+    if not old_id or not new_id or old_id == new_id:
+        flash("Pick a different new ID to relink to.", "warning")
+        return redirect(url_for("pto.pto_page"))
+
+    conn = db.get_db()
+    # Move all PTO-related rows
+    conn.execute("UPDATE pto_accruals SET team_member_id=? WHERE team_member_id=?", (new_id, old_id))
+    conn.execute("UPDATE pto_taken SET team_member_id=? WHERE team_member_id=?", (new_id, old_id))
+    conn.execute("UPDATE pto_manual_adjustments SET team_member_id=? WHERE team_member_id=?", (new_id, old_id))
+    conn.execute("UPDATE pto_manual_hours SET team_member_id=? WHERE team_member_id=?", (new_id, old_id))
+    # Move the employee_categories row too
+    cat = conn.execute("SELECT * FROM employee_categories WHERE team_member_id=?", (old_id,)).fetchone()
+    if cat:
+        conn.execute("DELETE FROM employee_categories WHERE team_member_id=?", (old_id,))
+        # Update names from Square if it has them
+        member = next((m for m in square_client.get_all_team_members() if m["id"] == new_id), None)
+        gn = member["given_name"] if member else cat["given_name"]
+        fn = member["family_name"] if member else cat["family_name"]
+        conn.execute(
+            """INSERT INTO employee_categories
+               (team_member_id, given_name, family_name, category, cleaning_amount,
+                weekly_salary, pay_type, email, is_active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(team_member_id) DO UPDATE SET
+                 given_name=excluded.given_name,
+                 family_name=excluded.family_name,
+                 category=excluded.category,
+                 cleaning_amount=excluded.cleaning_amount,
+                 weekly_salary=excluded.weekly_salary,
+                 pay_type=excluded.pay_type,
+                 is_active=excluded.is_active""",
+            (new_id, gn, fn, cat["category"], cat["cleaning_amount"],
+             cat["weekly_salary"], cat["pay_type"], cat["email"] if "email" in cat.keys() else None,
+             cat["is_active"]),
+        )
+    conn.commit()
+    conn.close()
+    flash(f"Relinked from {old_id} to {new_id}. Click Recalculate PTO to refresh.",
+          "success")
+    return redirect(url_for("pto.diagnose", tm_id=new_id))
+
+
 @bp.route("/pto/recalculate", methods=["POST"])
 def recalculate():
     from_date = request.form.get("from_date", "2026-01-05")

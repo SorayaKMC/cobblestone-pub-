@@ -68,6 +68,37 @@ def _paginated_get(endpoint, params=None, result_key=None):
 
 # --- Team Members ---
 
+def get_all_team_members():
+    """Fetch ALL team members (active + inactive) for diagnostic use.
+
+    Same shape as get_team_members but without the status filter.
+    """
+    body = {
+        "query": {
+            "filter": {
+                "location_ids": config.ALL_LOCATION_IDS,
+            }
+        },
+        "limit": 100,
+    }
+    raw_members = _paginated_post("team-members/search", body, "team_members")
+    members = []
+    for m in raw_members:
+        wage_setting = m.get("wage_setting", {}) or {}
+        primary_job = (wage_setting.get("job_assignments") or [{}])[0]
+        members.append({
+            "id": m["id"],
+            "given_name": m.get("given_name", ""),
+            "family_name": m.get("family_name", ""),
+            "email_address": (m.get("email_address") or "").strip(),
+            "status": m.get("status", ""),
+            "job_title": primary_job.get("job_title", ""),
+            "pay_type": primary_job.get("pay_type", "NONE"),
+            "is_owner": m.get("is_owner", False),
+        })
+    return members
+
+
 def get_team_members():
     """Fetch all active team members with wage data.
 

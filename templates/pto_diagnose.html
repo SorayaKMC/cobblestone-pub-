@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}PTO Diagnostic - {{ cat.given_name if cat else tm_id }} - Cobblestone Pub{% endblock %}
+{% block page_title %}PTO Diagnostic — {{ cat.given_name if cat else '?' }} {{ cat.family_name if cat else '' }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="/pto" class="text-decoration-none">
+        <i class="bi bi-arrow-left me-1"></i>Back to PTO
+    </a>
+    <form method="GET" class="d-flex gap-2 align-items-center">
+        <label class="small text-muted">Year:</label>
+        <select name="year" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+            {% for y in range(2024, 2030) %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+{% set total_hours = (by_date.values() | sum) | round(2) %}
+{% set workdays = by_date | length %}
+
+<!-- Headline -->
+<div class="card mb-3 {% if total_hours == 0 and workdays == 0 %}border-danger{% else %}border-success{% endif %}">
+    <div class="card-body">
+        <h6 class="card-title">
+            {% if total_hours == 0 and workdays == 0 %}
+                <i class="bi bi-exclamation-triangle text-danger me-1"></i>
+                Square has <strong>zero timecards</strong> for {{ tm_id }} in {{ year }}
+            {% else %}
+                <i class="bi bi-check-circle text-success me-1"></i>
+                Square has <strong>{{ workdays }} workday(s)</strong> totalling
+                <strong>{{ total_hours }}h</strong> in {{ year }}
+            {% endif %}
+        </h6>
+        <p class="small text-muted mb-0">
+            Linked Square ID: <code>{{ tm_id }}</code>
+            · DB pay_type: <code>{{ cat.pay_type if cat else '—' }}</code>
+            · DB category: <code>{{ cat.category if cat else '—' }}</code>
+            · DB active: {% if cat and cat.is_active %}yes{% else %}no{% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Square match for the linked ID -->
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">Square record under our linked ID</h6>
+        {% if square_err %}
+            <div class="text-danger small">{{ square_err }}</div>
+        {% elif square_match_by_id %}
+            <table class="table table-sm mb-0">
+                <tr><th style="width:140px">Name</th>
+                    <td>{{ square_match_by_id.given_name }} {{ square_match_by_id.family_name }}</td></tr>
+                <tr><th>Status</th>
+                    <td>
+                        {% if square_match_by_id.status == 'ACTIVE' %}
+                            <span class="badge bg-success">ACTIVE</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">{{ square_match_by_id.status }}</span>
+                            <small class="text-muted ms-2">non-active members are excluded from default sync</small>
+                        {% endif %}
+                    </td></tr>
+                <tr><th>Pay type</th><td>{{ square_match_by_id.pay_type }}</td></tr>
+                <tr><th>Job title</th><td>{{ square_match_by_id.job_title or '—' }}</td></tr>
+                <tr><th>Email</th><td>{{ square_match_by_id.email_address or '—' }}</td></tr>
+            </table>
+        {% else %}
+            <div class="text-danger">
+                <strong>No Square team member found with ID <code>{{ tm_id }}</code>.</strong>
+                The ID we have in our DB doesn't match any current Square record.
+                Check the suggestions below — Square may have a different ID for this person.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Other Square candidates with similar name -->
+{% if square_name_matches %}
+<div class="card mb-3 border-warning">
+    <div class="card-body">
+        <h6 class="card-title">
+            <i class="bi bi-question-circle text-warning me-1"></i>
+            Other Square records with a similar name
+        </h6>
+        <p class="small text-muted">
+            These match on first or last name. If one of these is the
+            <em>real</em> active record, click <strong>Relink</strong> to move
+            this employee's PTO history to that ID.
+        </p>
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr><th>Square ID</th><th>Name</th><th>Status</th><th>Pay type</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% for m in square_name_matches %}
+            <tr>
+                <td><code>{{ m.id }}</code></td>
+                <td>{{ m.given_name }} {{ m.family_name }}</td>
+                <td>
+                    {% if m.status == 'ACTIVE' %}
+                        <span class="badge bg-success">ACTIVE</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ m.status }}</span>
+                    {% endif %}
+                </td>
+                <td><small>{{ m.pay_type }}</small></td>
+                <td>
+                    <form method="POST" action="/pto/relink"
+                          onsubmit="return confirm('Move all PTO history (accruals, leave taken, adjustments, manual hours) from {{ tm_id }} to {{ m.id }}? This is reversible by relinking back.');">
+                        <input type="hidden" name="old_id" value="{{ tm_id }}">
+                        <input type="hidden" name="new_id" value="{{ m.id }}">
+                        <button class="btn btn-outline-warning btn-sm" type="submit">
+                            <i class="bi bi-arrow-left-right me-1"></i>Relink to this ID
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Timecards from Square for the year -->
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">Timecards from Square ({{ year }})</h6>
+        {% if timecard_err %}
+            <div class="text-danger small">{{ timecard_err }}</div>
+        {% elif workdays == 0 %}
+            <div class="text-muted small">
+                Square returned no timecards for this employee ID for the entire year.
+                <br>
+                <strong>Likely causes:</strong>
+                (1) employee doesn't clock in via Square;
+                (2) the team_member_id is stale and a different ID is being used in Square — see suggestions above;
+                (3) the Square Member status is Inactive but they're still working.
+            </div>
+        {% else %}
+            <div class="d-flex flex-wrap gap-1">
+                {% for day, hrs in by_date.items() | sort %}
+                <span class="badge bg-light text-dark border" title="{{ day }}: {{ '%.2f'|format(hrs) }}h">
+                    {{ day[5:] }} — {{ "%.1f"|format(hrs) }}h
+                </span>
+                {% endfor %}
+            </div>
+            <div class="mt-2 small text-muted">
+                {{ workdays }} workday(s), total {{ total_hours }}h.
+                Avg shift = {{ "%.2f"|format(total_hours / workdays) if workdays else "—" }}h.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Saved accruals -->
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">PTO accruals saved in our DB ({{ year }})</h6>
+        {% if accrual_rows %}
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Week start</th>
+                        <th class="text-end">Hours worked</th>
+                        <th class="text-end">Days accrued</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in accrual_rows %}
+                    <tr>
+                        <td>{{ r.period_start }}</td>
+                        <td class="text-end">{{ "%.2f"|format(r.hours_worked) }}</td>
+                        <td class="text-end">{{ "%.4f"|format(r.days_accrued) }}</td>
+                        <td>
+                            {% if r.source == 'square' %}
+                                <span class="badge bg-primary">square</span>
+                            {% elif r.source == 'manual' %}
+                                <span class="badge bg-warning text-dark">manual</span>
+                            {% elif r.source == 'spreadsheet' %}
+                                <span class="badge bg-secondary">v4 import</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ r.source }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="text-muted small">No accruals saved for {{ year }}.</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Manual hours entries -->
+{% if manual_rows %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">Manual hours entries</h6>
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Week</th><th class="text-end">Hours</th><th>Note</th></tr></thead>
+            <tbody>
+            {% for mh in manual_rows %}
+            <tr>
+                <td>{{ mh.period_start }}</td>
+                <td class="text-end">{{ "%.2f"|format(mh.hours) }}</td>
+                <td><small class="text-muted">{{ mh.note or '' }}</small></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

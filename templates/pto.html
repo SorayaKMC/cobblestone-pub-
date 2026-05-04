@@ -43,6 +43,12 @@
                     <td>
                         <strong>{{ emp.given_name }} {{ emp.family_name }}</strong>
                         {% if not emp.is_active %}<span class="badge bg-secondary ms-1" style="font-size:0.65rem">Former</span>{% endif %}
+                        <a href="/pto/diagnose/{{ emp.team_member_id }}"
+                           class="ms-1 text-decoration-none"
+                           title="Why is this employee's accrual the way it is?"
+                           style="font-size:0.85rem">
+                            <i class="bi bi-search"></i>
+                        </a>
                     </td>
                     <td><span class="badge bg-secondary">{{ emp.accrual_type }}</span></td>
                     <td class="text-end text-muted" style="font-size:.85rem">
