@@ -195,6 +195,48 @@
     </div>
 </div>
 
+<!-- PTO TAKEN -->
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">PTO taken — raw rows in the DB ({{ year }})</h6>
+        {% if taken_rows %}
+            <p class="small text-muted mb-2">
+                Each row is one record from the leave log. The
+                <strong>Holiday Pay column on the Payroll page</strong>
+                sums <code>hours_equivalent</code> for rows whose
+                <code>date</code> falls inside the selected ISO week.
+            </p>
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th class="text-end">Days taken</th>
+                        <th class="text-end">Hours equivalent</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for r in taken_rows %}
+                <tr>
+                    <td>{{ r.date }}</td>
+                    <td class="text-end">{{ "%.2f"|format(r.days_taken) }}</td>
+                    <td class="text-end">{{ "%.2f"|format(r.hours_equivalent) }}</td>
+                    <td><small>{{ r.reason or '' }}</small></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div class="small text-muted mt-2">
+                Total across all rows: <strong>{{ taken_rows|sum(attribute='days_taken') }} days</strong>
+                / {{ taken_rows|sum(attribute='hours_equivalent') }} hours.
+                Each Payroll week shows only rows whose date falls inside that week's Mon-Sun range.
+            </div>
+        {% else %}
+            <div class="text-muted small">No PTO taken rows for {{ year }}.</div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Manual hours entries -->
 {% if manual_rows %}
 <div class="card mb-3">

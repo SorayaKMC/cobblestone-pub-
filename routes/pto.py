@@ -249,6 +249,16 @@ def diagnose(tm_id):
            ORDER BY period_start""",
         (tm_id, str(year)),
     ).fetchall()
+
+    # PTO TAKEN rows for this employee — shows the raw dates and amounts
+    # logged. Use this to diagnose 'Holiday Pay column on W18 looks wrong'.
+    taken_rows = conn.execute(
+        """SELECT date, days_taken, hours_equivalent, reason
+           FROM pto_taken
+           WHERE team_member_id = ? AND strftime('%Y', date) = ?
+           ORDER BY date""",
+        (tm_id, str(year)),
+    ).fetchall()
     conn.close()
 
     manual_rows = db.list_manual_hours(tm_id)
@@ -264,6 +274,7 @@ def diagnose(tm_id):
         by_date=by_date,
         timecard_err=timecard_err,
         accrual_rows=accrual_rows,
+        taken_rows=taken_rows,
         manual_rows=manual_rows,
     )
 
