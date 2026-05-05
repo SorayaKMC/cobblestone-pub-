@@ -285,14 +285,33 @@ def new_invoice():
 
 
 def _filter_args_from_request():
-    """Pull bookkeeping filter args from request (POST form or GET query)."""
-    src = request.form if request.method == "POST" else request.args
+    """Pull bookkeeping filter args from the request.
+
+    GET: accepts either filter_* prefixed names OR plain names
+    (start_date etc.) — the bookkeeping list page links with plain
+    names, the edit page passes them through with filter_* prefix.
+
+    POST: ONLY accepts filter_* prefixed names. The invoice form has
+    its own non-prefixed fields named supplier_id / category / status
+    that belong to the invoice being edited, NOT to the filter — never
+    treat those as filter context.
+    """
+    if request.method == "POST":
+        src = request.form
+        return {
+            "start_date":  src.get("filter_start_date", ""),
+            "end_date":    src.get("filter_end_date", ""),
+            "supplier_id": src.get("filter_supplier_id", ""),
+            "category":    src.get("filter_category", ""),
+            "status":      src.get("filter_status", ""),
+        }
+    src = request.args
     return {
-        "start_date": src.get("filter_start_date") or src.get("start_date") or "",
-        "end_date":   src.get("filter_end_date") or src.get("end_date") or "",
+        "start_date":  src.get("filter_start_date") or src.get("start_date") or "",
+        "end_date":    src.get("filter_end_date") or src.get("end_date") or "",
         "supplier_id": src.get("filter_supplier_id") or src.get("supplier_id") or "",
-        "category":   src.get("filter_category") or src.get("category") or "",
-        "status":     src.get("filter_status") or src.get("status") or "",
+        "category":    src.get("filter_category") or src.get("category") or "",
+        "status":      src.get("filter_status") or src.get("status") or "",
     }
 
 
@@ -303,28 +322,42 @@ def _filter_query_string(filters):
 
 
 def _next_pending_in_filter(current_invoice_id, filters):
-    """Find the next pending invoice in the filtered set, after the
-    currently-edited one. Returns its id or None."""
+    """Find the next pending invoice strictly after the currently-edited
+    one (by invoice_date, then id). Returns its id, or None if there's
+    nothing further.
+
+    The comparison is by date+id rather than 'walk past current in the
+    list', so it works correctly when the current invoice has been
+    approved and is no longer in the pending list.
+    """
+    current_inv = db.get_invoice(current_invoice_id)
+    current_date = (current_inv["invoice_date"] if current_inv else "") or ""
+    current_key = (current_date, current_invoice_id)
+
     rows = db.list_invoices(
         start_date=filters.get("start_date") or None,
         end_date=filters.get("end_date") or None,
         supplier_id=int(filters["supplier_id"]) if (filters.get("supplier_id") or "").isdigit() else None,
         category=filters.get("category") or None,
-        status="pending",  # only walk the pending queue
+        status="pending",
         limit=500,
     )
-    # Sort by date then id for stable ordering
     rows = sorted(rows, key=lambda r: ((r["invoice_date"] or ""), r["id"]))
-    seen_current = False
+
+    # First: find a pending strictly after the current one.
     for r in rows:
-        if seen_current and r["id"] != current_invoice_id:
-            return r["id"]
         if r["id"] == current_invoice_id:
-            seen_current = True
-    # If current wasn't in the filtered list (e.g. we just approved it and
-    # status changed), return the first pending row.
-    if not seen_current and rows:
-        return rows[0]["id"]
+            continue
+        r_key = ((r["invoice_date"] or ""), r["id"])
+        if r_key > current_key:
+            return r["id"]
+
+    # Nothing strictly after — wrap around to the first pending that
+    # isn't the current one (covers the 'current was the last pending'
+    # case but still has earlier ones to clear).
+    for r in rows:
+        if r["id"] != current_invoice_id:
+            return r["id"]
     return None
 
 
