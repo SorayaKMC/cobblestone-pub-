@@ -284,7 +284,6 @@ def new_invoice():
     return redirect(url_for("bookkeeping.bookkeeping_page"))
 
 
-@bp.route("/bookkeeping/<int:invoice_id>/edit", methods=["GET", "POST"])
 def _filter_args_from_request():
     """Pull bookkeeping filter args from request (POST form or GET query)."""
     src = request.form if request.method == "POST" else request.args
@@ -329,6 +328,7 @@ def _next_pending_in_filter(current_invoice_id, filters):
     return None
 
 
+@bp.route("/bookkeeping/<int:invoice_id>/edit", methods=["GET", "POST"])
 def edit_invoice(invoice_id):
     invoice = db.get_invoice(invoice_id)
     if not invoice:
