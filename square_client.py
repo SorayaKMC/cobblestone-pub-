@@ -106,7 +106,22 @@ def get_team_members():
         id, given_name, family_name, email_address, status, job_title,
         pay_type, hourly_rate (Decimal), annual_rate (Decimal),
         weekly_hours, is_owner
+
+    Cached for 5 minutes — team members change rarely.
     """
+    import db as _db
+    from datetime import datetime as _dt
+
+    cache_key = "square_team_members_active"
+    cached, synced_at = _db.get_cache(cache_key)
+    if cached is not None and synced_at:
+        try:
+            synced_dt = _dt.fromisoformat(synced_at)
+            if (_dt.now() - synced_dt).total_seconds() < 300:  # 5 min
+                return [_deserialize_member(m) for m in cached]
+        except Exception:
+            pass
+
     body = {
         "query": {
             "filter": {
@@ -145,7 +160,32 @@ def get_team_members():
             "is_owner": m.get("is_owner", False),
         })
 
+    # Cache (serialize Decimals)
+    try:
+        _db.set_cache(cache_key, [_serialize_member(m) for m in members])
+    except Exception as e:
+        print(f"[square] cache write failed for {cache_key}: {e}")
+
     return members
+
+
+def _serialize_member(m):
+    out = dict(m)
+    for key in ("hourly_rate", "annual_rate"):
+        if key in out and out[key] is not None:
+            out[key] = str(out[key])
+    return out
+
+
+def _deserialize_member(m):
+    out = dict(m)
+    for key in ("hourly_rate", "annual_rate"):
+        if key in out and out[key] is not None and not isinstance(out[key], Decimal):
+            try:
+                out[key] = Decimal(str(out[key]))
+            except Exception:
+                out[key] = Decimal("0")
+    return out
 
 
 def get_team_member_wages():
@@ -177,7 +217,36 @@ def get_timecards(start_date, end_date):
         regular_hours (Decimal), overtime_hours (Decimal),
         doubletime_hours (Decimal), status,
         declared_cash_tip (Decimal)
+
+    Caching:
+      - Completed weeks (end_date < today): cached forever — timecards
+        for past weeks don't change.
+      - Current/recent weeks: cached for 5 minutes — fresh enough for
+        the payroll page, avoids hammering Square on every navigation.
     """
+    import db as _db
+    from datetime import datetime as _dt, timedelta as _td
+
+    cache_key = f"square_timecards_{start_date}_{end_date}"
+    today = _dt.now().date()
+    try:
+        end_d = _dt.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError:
+        end_d = today
+
+    # Read cache
+    cached, synced_at = _db.get_cache(cache_key)
+    if cached is not None:
+        if end_d < today:  # completed week
+            return [_deserialize_timecard(tc) for tc in cached]
+        if synced_at:
+            try:
+                synced_dt = _dt.fromisoformat(synced_at)
+                if (_dt.now() - synced_dt).total_seconds() < 300:  # 5 min
+                    return [_deserialize_timecard(tc) for tc in cached]
+            except Exception:
+                pass
+
     body = {
         "query": {
             "filter": {
@@ -199,7 +268,40 @@ def get_timecards(start_date, end_date):
     }
 
     raw_timecards = _paginated_post("labor/timecards/search", body, "timecards")
-    return [_process_timecard(tc) for tc in raw_timecards]
+    processed = [_process_timecard(tc) for tc in raw_timecards]
+
+    # Write cache (serialize Decimals to strings)
+    try:
+        _db.set_cache(cache_key, [_serialize_timecard(tc) for tc in processed])
+    except Exception as e:
+        print(f"[square] cache write failed for {cache_key}: {e}")
+
+    return processed
+
+
+def _serialize_timecard(tc):
+    """Convert Decimal fields to strings for JSON cache serialization."""
+    out = dict(tc)
+    for key in ("total_minutes", "break_minutes", "paid_minutes",
+                "regular_hours", "overtime_hours", "doubletime_hours",
+                "declared_cash_tip"):
+        if key in out and out[key] is not None:
+            out[key] = str(out[key])
+    return out
+
+
+def _deserialize_timecard(tc):
+    """Restore Decimal fields after reading from JSON cache."""
+    out = dict(tc)
+    for key in ("total_minutes", "break_minutes", "paid_minutes",
+                "regular_hours", "overtime_hours", "doubletime_hours",
+                "declared_cash_tip"):
+        if key in out and out[key] is not None and not isinstance(out[key], Decimal):
+            try:
+                out[key] = Decimal(str(out[key]))
+            except Exception:
+                out[key] = Decimal("0")
+    return out
 
 
 def _process_timecard(tc):
