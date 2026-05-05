@@ -135,13 +135,27 @@ def calculate_13_week_avg_shift_batch(employee_ids, end_date):
 
 
 def get_employee_accrual_type(team_member_id, team_members=None):
-    """Determine if employee is hourly or salaried.
+    """Determine if employee is hourly or salaried for PTO accrual purposes.
+
+    Local Settings is the source of truth — at Cobblestone, Management
+    staff are salaried but clock in via Square so we can track how much
+    of their time is spent bartending. Square has them as HOURLY but
+    their PTO accrual must follow their salaried status (0.4 days/week
+    flat, not 8.08% of hours).
 
     Returns 'hourly' or 'salaried'.
     """
+    cat = db.get_employee_category(team_member_id)
+    if cat:
+        pt = (cat["pay_type"] or "").lower()
+        if pt == "salaried":
+            return "salaried"
+        if pt == "hourly":
+            return "hourly"
+
+    # Fall back to Square's pay_type if no local record found
     if team_members is None:
         team_members = square_client.get_team_members()
-
     for m in team_members:
         if m["id"] == team_member_id:
             if m["pay_type"] == "SALARY":
@@ -189,8 +203,11 @@ def calculate_weekly_accrual(team_member_id, start_date, end_date, team_members=
         source = "square"
 
     if accrual_type == "salaried":
-        # 0.4 days per week, pro-rated if partial
-        days_accrued = SALARIED_WEEKLY if shifts_count > 0 else Decimal("0")
+        # Salaried staff accrue a flat 0.4 days every week regardless of
+        # whether they clocked in (they don't, by definition — Square
+        # timecards are for hourly staff). The previous gate on
+        # shifts_count > 0 silently zeroed every salaried week.
+        days_accrued = SALARIED_WEEKLY
         avg_shift = DEFAULT_SHIFT_HOURS
         accrued_hours = days_accrued * avg_shift
     else:
@@ -216,10 +233,18 @@ def calculate_weekly_accrual(team_member_id, start_date, end_date, team_members=
 def recalculate_pto(team_member_id, from_date, to_date, team_members=None):
     """Recalculate PTO accruals for an employee over a date range.
 
+    Upper Management employees are skipped entirely — per Cobblestone
+    policy they don't accrue annual leave through this system.
+
     Iterates week by week, calculating accruals and updating the database.
     Returns the final running balance.
     """
     from datetime import datetime, timedelta
+
+    cat = db.get_employee_category(team_member_id)
+    if cat and cat["category"] == "Upper Management":
+        return {"final_balance": 0.0, "skipped_protected": 0,
+                "skipped_reason": "upper_management"}
 
     start_dt = datetime.strptime(from_date, "%Y-%m-%d")
     end_dt = datetime.strptime(to_date, "%Y-%m-%d")

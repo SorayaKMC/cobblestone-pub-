@@ -45,11 +45,28 @@ def pto_page():
 
     # For each employee, hours-equivalent of their balance using their
     # 13-week avg shift. Makes "you have X hours of leave" easy to read.
+    # Also flag salaried staff (excl. UM) with zero accrual — likely a
+    # data issue (Square pay_type wrong, or Settings pay_type wrong).
+    config_warnings = []
     for emp in summary:
         avg = emp.get("avg_shift") or 8.0
         emp["balance_hours"] = round(emp["balance"] * avg, 1)
         emp["accrued_hours_total"] = round(emp["total_accrued"] * avg, 1)
         emp["taken_hours_total"] = round(emp["total_taken"] * avg, 1)
+
+        cat = next((c for c in categories if c["team_member_id"] == emp["team_member_id"]), None)
+        if cat and emp["is_active"] and cat["category"] != "Upper Management":
+            local_pt = (cat["pay_type"] or "").lower()
+            if local_pt == "salaried" and emp["total_accrued"] == 0:
+                config_warnings.append({
+                    "name": f"{emp['given_name']} {emp['family_name']}",
+                    "issue": "Salaried with zero accrual — recalculate or check pay_type in Settings.",
+                })
+            elif local_pt == "hourly" and emp["accrual_type"] == "Salaried":
+                config_warnings.append({
+                    "name": f"{emp['given_name']} {emp['family_name']}",
+                    "issue": "Settings says hourly but Square says salaried — pick one.",
+                })
 
     categories = db.get_employee_categories()
     active_employees = [
@@ -70,6 +87,7 @@ def pto_page():
         names_by_id=names_by_id,
         taken_log=taken_log,
         manual_hours_log=manual_hours_log,
+        config_warnings=config_warnings,
         today=date.today().isoformat(),
     )
 

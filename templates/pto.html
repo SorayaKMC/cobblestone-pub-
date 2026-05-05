@@ -3,10 +3,23 @@
 {% block page_title %}PTO / Annual Leave Tracker{% endblock %}
 
 {% block content %}
+{% if config_warnings %}
+<div class="alert alert-warning mb-3">
+    <strong><i class="bi bi-exclamation-triangle me-1"></i>PTO configuration check</strong> —
+    these employees look misconfigured for accrual. Fix the Settings → Pay Type column,
+    then click <em>Recalculate from Square</em>.
+    <ul class="mb-0 mt-2">
+    {% for w in config_warnings %}
+        <li><strong>{{ w.name }}</strong> — {{ w.issue }}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <!-- Control buttons -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <small class="text-muted">Accrual: 8.08% of hours (hourly) | 0.4 days/week (salaried) | Max 21 days</small>
+        <small class="text-muted">Accrual: 8.08% of hours (hourly) | 0.4 days/week (salaried) | UM no PTO | Max 21 days</small>
     </div>
     <div>
         <form method="POST" action="/pto/import-historical" class="d-inline"
