@@ -266,7 +266,7 @@
             <tbody>
                 {% for inv in invoices %}
                 <tr>
-                    <td>{{ inv.invoice_date }}</td>
+                    <td>{{ inv.invoice_date | eu_date }}</td>
                     <td>
                         {{ inv.supplier_name }}
                         {% if inv.pdf_path %}

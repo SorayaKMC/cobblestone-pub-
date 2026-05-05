@@ -60,8 +60,8 @@
         <strong>2. Confirm Employee Mappings</strong>
         <span class="text-muted small">
             Period: {{ period.period_label }}
-            · pay date {{ period.pay_date }}
-            · ending {{ period.period_end }}
+            · pay date {{ period.pay_date | eu_date }}
+            · ending {{ period.period_end | eu_date }}
         </span>
     </div>
     <div class="card-body p-0">

@@ -111,7 +111,7 @@
                 <tr>
                     <td>
                         <a href="/bookkeeping/statements/{{ s.id }}" class="text-decoration-none">
-                            {{ s.statement_date or '—' }}
+                            {{ s.statement_date | eu_date or '—' }}
                         </a>
                     </td>
                     <td>{{ s.supplier_name }}</td>

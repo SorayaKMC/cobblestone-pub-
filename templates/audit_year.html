@@ -191,7 +191,7 @@
                         </small>
                         {% endif %}
                     </td>
-                    <td><small>{{ s.last_date or '—' }}</small></td>
+                    <td><small>{{ s.last_date | eu_date or '—' }}</small></td>
                 </tr>
                 {% else %}
                 <tr><td colspan="7" class="text-center text-muted py-4">No data for {{ year }}.</td></tr>

@@ -24,6 +24,52 @@ def pdf_basename(path):
     return re.sub(r"^\d{8}_\d{6}_", "", name)
 
 
+def eu_date(value):
+    """Format a date for display in European convention: dd/mm/yyyy.
+
+    Storage stays in ISO (YYYY-MM-DD) for sortability — this is the
+    display-only conversion. Accepts ISO strings, datetime/date objects,
+    or pre-formatted strings (returned as-is if already dd/mm/yyyy).
+
+    Empty / None / unparseable values become an empty string so templates
+    don't render literal 'None'.
+    """
+    from datetime import datetime as _dt, date as _date
+    if value in (None, "", "None"):
+        return ""
+    # Already a datetime/date
+    if isinstance(value, _dt):
+        return value.strftime("%d/%m/%Y")
+    if isinstance(value, _date):
+        return value.strftime("%d/%m/%Y")
+    s = str(value).strip()
+    # ISO date YYYY-MM-DD (with optional time component)
+    iso_match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", s)
+    if iso_match:
+        y, mo, d = iso_match.group(1), iso_match.group(2), iso_match.group(3)
+        return f"{d}/{mo}/{y}"
+    # Already dd/mm/yyyy — pass through
+    if re.match(r"^\d{2}/\d{2}/\d{4}$", s):
+        return s
+    return s
+
+
+def eu_month(value):
+    """Format an ISO date as 'mmm yyyy' (e.g. 'Apr 2026'). For headers
+    and summary blocks where a full date is unnecessary."""
+    from datetime import datetime as _dt
+    if value in (None, "", "None"):
+        return ""
+    s = str(value).strip()
+    iso_match = re.match(r"^(\d{4})-(\d{2})", s)
+    if iso_match:
+        try:
+            return _dt(int(iso_match.group(1)), int(iso_match.group(2)), 1).strftime("%b %Y")
+        except Exception:
+            return s
+    return s
+
+
 def _gmail_poll_loop():
     """Background thread: poll invoice@cobblestonepub.ie every 30 minutes.
 
@@ -238,6 +284,8 @@ def create_app():
         return {"today": date.today().strftime("%A, %d %B %Y")}
 
     app.jinja_env.filters["pdf_basename"] = pdf_basename
+    app.jinja_env.filters["eu_date"] = eu_date
+    app.jinja_env.filters["eu_month"] = eu_month
 
     # Initialize database
     with app.app_context():
