@@ -20,14 +20,23 @@ def pto_page():
 
     members_by_id = {m["id"]: m for m in team_members} if team_members else {}
 
-    # Enrich with status and accrual type
+    # Enrich with status and accrual type — use local Settings pay_type
+    # (consistent with how pto_engine computes accrual). Square's pay_type
+    # is misleading at Cobblestone because Management staff are salaried
+    # but clock in via Square (so Square reports them as HOURLY).
+    cats_lookup = {c["team_member_id"]: c for c in db.get_employee_categories()}
     for emp in summary:
         status_label, status_class = pto_engine.get_pto_status(emp["balance"])
         emp["status_label"] = status_label
         emp["status_class"] = status_class
 
-        member = members_by_id.get(emp["team_member_id"], {})
-        emp["accrual_type"] = "Salaried" if member.get("pay_type") == "SALARY" else "Hourly"
+        local_cat = cats_lookup.get(emp["team_member_id"])
+        if local_cat:
+            local_pt = (local_cat["pay_type"] or "hourly").lower()
+            emp["accrual_type"] = "Salaried" if local_pt == "salaried" else "Hourly"
+        else:
+            member = members_by_id.get(emp["team_member_id"], {})
+            emp["accrual_type"] = "Salaried" if member.get("pay_type") == "SALARY" else "Hourly"
 
     # Batch-compute 13-week avg shift for all hourly employees (single Square API call)
     today_iso = date.today().isoformat()
