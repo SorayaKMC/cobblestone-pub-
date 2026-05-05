@@ -612,9 +612,14 @@ def accountant_page():
         r["draft_email"] = d["email"] if d else None
         r["draft_error"] = d["error"] if d else None
 
+    drafts_progress = None
+    if period:
+        drafts_progress, _ = db.get_cache(f"drafts_progress_{period['id']}")
+
     return render_template("payroll_accountant.html",
         iso_week=iso_week,
         week_label=label,
+        drafts_progress=drafts_progress,
         **vm,
     )
 
@@ -770,6 +775,21 @@ def accountant_test_gmail():
 
 @bp.route("/payroll/accountant/generate-drafts", methods=["POST"])
 def accountant_generate_drafts():
+    """Kick off draft generation in a background thread.
+
+    Each draft involves a Gmail API call (deletion of the previous draft +
+    creation of the new one), and 13 employees × 2 calls × 1-2s each adds
+    up to 30-50 seconds. Running synchronously was hitting Render's
+    request-timeout window and made the page feel like it had hung.
+
+    Now: route returns immediately with 'started in background' flash, and
+    the accountant page polls cache_metadata['drafts_progress'] to show
+    live progress + final results.
+    """
+    import threading
+    import payroll_drafts
+    from datetime import datetime as _dt
+
     period_id = int(request.form.get("pay_period_id", 0) or 0)
     if not period_id:
         flash("Missing pay period.", "danger")
@@ -779,35 +799,55 @@ def accountant_generate_drafts():
         flash("Pay period not found.", "danger")
         return redirect(url_for("payroll.accountant_page"))
 
-    try:
-        import payroll_drafts
-        result = payroll_drafts.generate_drafts_for_period(period_id)
-    except Exception as e:
-        flash(f"Could not create drafts: {e}", "danger")
+    # Block double-clicks: if a job is already in flight for this period,
+    # don't start a second one.
+    existing, _ = db.get_cache(f"drafts_progress_{period_id}")
+    if existing and existing.get("status") in ("running",):
+        flash(
+            "Draft generation already in progress for this week — refresh "
+            "the page to see live progress.",
+            "info",
+        )
         return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
 
-    summary_bits = []
-    if result["created"]:
-        summary_bits.append(f"{result['created']} draft(s) created")
-    if result["skipped"]:
-        summary_bits.append(f"{result['skipped']} skipped")
-    if result["failed"]:
-        summary_bits.append(f"{result['failed']} failed")
+    db.set_cache(f"drafts_progress_{period_id}", {
+        "status": "running",
+        "started_at": _dt.now().isoformat(),
+        "period_id": period_id,
+        "iso_week": period["iso_week"],
+    })
+
+    def _run():
+        try:
+            result = payroll_drafts.generate_drafts_for_period(period_id)
+            db.set_cache(f"drafts_progress_{period_id}", {
+                "status": "completed",
+                "ts": _dt.now().isoformat(),
+                "period_id": period_id,
+                "iso_week": period["iso_week"],
+                "created": result.get("created", 0),
+                "skipped": result.get("skipped", 0),
+                "failed": result.get("failed", 0),
+                "total": result.get("total", 0),
+                "zero_accrual_warnings": result.get("zero_accrual_warnings", 0),
+                "results": result.get("results", []),
+            })
+        except Exception as e:
+            db.set_cache(f"drafts_progress_{period_id}", {
+                "status": "failed",
+                "ts": _dt.now().isoformat(),
+                "period_id": period_id,
+                "iso_week": period["iso_week"],
+                "error": str(e),
+            })
+            print(f"[drafts] background job failed: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
     flash(
-        ("Drafts generated for " + period["iso_week"] + ": "
-         + ", ".join(summary_bits)
-         + ". Open Gmail Drafts to review."),
-        "success" if not result["failed"] else "warning",
+        "Draft generation started in the background. This typically takes "
+        "30-60 seconds. Refresh this page to watch progress.",
+        "info",
     )
-    zero_warnings = result.get("zero_accrual_warnings", 0)
-    if zero_warnings:
-        flash(
-            f"Heads up: {zero_warnings} email(s) show 0 hrs accrued for the "
-            "week. If these employees worked, check Square has their "
-            "timecards and click Recalculate from Square on the PTO page, "
-            "then re-run Generate Drafts.",
-            "warning",
-        )
     return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
 
 

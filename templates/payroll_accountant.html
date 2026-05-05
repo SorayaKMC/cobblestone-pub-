@@ -135,7 +135,31 @@
             Creates one Gmail draft per employee in <code>info@cobblestonepub.ie</code>,
             with their payslip attached and a personalised message including PTO summary
             (staff &amp; management only — upper management gets a payslip-only message).
+            Runs in the background; refresh this page to see progress.
         </p>
+
+        {% if drafts_progress %}
+        <div class="alert {% if drafts_progress.status == 'completed' %}alert-success{% elif drafts_progress.status == 'failed' %}alert-danger{% else %}alert-info{% endif %} py-2 mb-3 small">
+            {% if drafts_progress.status == 'running' %}
+                <i class="bi bi-arrow-clockwise me-1"></i>
+                <strong>Draft generation in progress…</strong>
+                Started {{ drafts_progress.started_at[11:16] }}.
+                <a href="javascript:location.reload()" class="ms-2">Refresh now</a>
+            {% elif drafts_progress.status == 'completed' %}
+                <i class="bi bi-check-circle me-1"></i>
+                <strong>Last run completed</strong> {{ drafts_progress.ts[11:16] if drafts_progress.ts else '' }} —
+                {{ drafts_progress.created }} created
+                {% if drafts_progress.skipped %} · {{ drafts_progress.skipped }} skipped{% endif %}
+                {% if drafts_progress.failed %} · {{ drafts_progress.failed }} failed{% endif %}
+                {% if drafts_progress.zero_accrual_warnings %}
+                · <span class="text-warning">{{ drafts_progress.zero_accrual_warnings }} with 0 hrs accrued</span>
+                {% endif %}
+            {% elif drafts_progress.status == 'failed' %}
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <strong>Last run failed</strong>: {{ drafts_progress.error }}
+            {% endif %}
+        </div>
+        {% endif %}
 
         <div class="d-flex gap-2 flex-wrap">
             <form method="POST" action="/payroll/accountant/generate-drafts" class="d-inline">

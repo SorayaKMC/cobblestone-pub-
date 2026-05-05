@@ -232,33 +232,13 @@ def generate_drafts_for_period(pay_period_id):
     """Create one Gmail draft per employee with a mapped row + email + payslip.
 
     Returns a dict with counts and per-employee outcomes.
+
+    PTO accrual data is pulled live from Square via _pto_data_for_employee
+    at email-composition time — no need for a separate pre-recalc here.
     """
     period = db.get_pay_period_by_id(pay_period_id)
     if not period:
         raise ValueError("Pay period not found")
-
-    # Belt-and-braces: recalc PTO for THIS week before composing emails.
-    # The Sunday-night auto-recalc handles the regular case, but if a deploy
-    # or restart skipped that fire, the email body would otherwise show
-    # 0 hrs accrued for everyone hourly. This guarantees fresh numbers.
-    try:
-        from datetime import timedelta
-        period_end_d = datetime.strptime(period["period_end"], "%Y-%m-%d").date()
-        period_start_d = period_end_d - timedelta(days=6)
-        team_members = square_client.get_team_members()
-        categories = db.get_employee_categories()
-        for cat in categories:
-            try:
-                pto_engine.recalculate_pto(
-                    cat["team_member_id"],
-                    period_start_d.isoformat(),
-                    period_end_d.isoformat(),
-                    team_members,
-                )
-            except Exception as e:
-                print(f"[drafts] PTO recalc failed for {cat['family_name']}: {e}")
-    except Exception as e:
-        print(f"[drafts] Pre-draft PTO recalc skipped: {e}")
 
     nets = db.get_pay_period_nets(pay_period_id)
     payslips_meta = db.get_pay_period_payslips(pay_period_id)
