@@ -213,6 +213,29 @@ def generate_drafts_for_period(pay_period_id):
     if not period:
         raise ValueError("Pay period not found")
 
+    # Belt-and-braces: recalc PTO for THIS week before composing emails.
+    # The Sunday-night auto-recalc handles the regular case, but if a deploy
+    # or restart skipped that fire, the email body would otherwise show
+    # 0 hrs accrued for everyone hourly. This guarantees fresh numbers.
+    try:
+        from datetime import timedelta
+        period_end_d = datetime.strptime(period["period_end"], "%Y-%m-%d").date()
+        period_start_d = period_end_d - timedelta(days=6)
+        team_members = square_client.get_team_members()
+        categories = db.get_employee_categories()
+        for cat in categories:
+            try:
+                pto_engine.recalculate_pto(
+                    cat["team_member_id"],
+                    period_start_d.isoformat(),
+                    period_end_d.isoformat(),
+                    team_members,
+                )
+            except Exception as e:
+                print(f"[drafts] PTO recalc failed for {cat['family_name']}: {e}")
+    except Exception as e:
+        print(f"[drafts] Pre-draft PTO recalc skipped: {e}")
+
     nets = db.get_pay_period_nets(pay_period_id)
     payslips_meta = db.get_pay_period_payslips(pay_period_id)
     payslip_refs = {p["ref_no"] for p in payslips_meta}
@@ -246,6 +269,7 @@ def generate_drafts_for_period(pay_period_id):
         print(f"[payroll-drafts] Cleaned up {deleted_count} existing draft(s) before regenerating")
 
     created = skipped = failed = 0
+    zero_accrual_warnings = 0  # hourly+mgmt drafts where accrued hrs came out 0
     results = []
 
     for n in nets:
@@ -301,6 +325,8 @@ def generate_drafts_for_period(pay_period_id):
                 # Fall back to a no-PTO email rather than failing the whole draft.
                 body = build_body(period["period_end"], first_name=first_name)
             else:
+                if accrued_hrs == 0:
+                    zero_accrual_warnings += 1
                 body = build_body(period["period_end"], first_name=first_name,
                                   accrued_hrs=accrued_hrs, avg_shift=avg_shift,
                                   balance_days=balance_days)
@@ -326,5 +352,6 @@ def generate_drafts_for_period(pay_period_id):
         "skipped": skipped,
         "failed": failed,
         "total": len(nets),
+        "zero_accrual_warnings": zero_accrual_warnings,
         "results": results,
     }

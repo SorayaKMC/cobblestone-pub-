@@ -799,6 +799,15 @@ def accountant_generate_drafts():
          + ". Open Gmail Drafts to review."),
         "success" if not result["failed"] else "warning",
     )
+    zero_warnings = result.get("zero_accrual_warnings", 0)
+    if zero_warnings:
+        flash(
+            f"Heads up: {zero_warnings} email(s) show 0 hrs accrued for the "
+            "week. If these employees worked, check Square has their "
+            "timecards and click Recalculate from Square on the PTO page, "
+            "then re-run Generate Drafts.",
+            "warning",
+        )
     return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
 
 
