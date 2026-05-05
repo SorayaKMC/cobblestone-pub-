@@ -43,6 +43,11 @@ def pto_page():
         else:
             emp["avg_shift"] = None  # salaried — not used for accrual
 
+    # Pull category data once, used for both the per-employee enrichment
+    # and the active-employee dropdowns below.
+    categories = db.get_employee_categories()
+    cats_by_id = {c["team_member_id"]: c for c in categories}
+
     # For each employee, hours-equivalent of their balance using their
     # 13-week avg shift. Makes "you have X hours of leave" easy to read.
     # Also flag salaried staff (excl. UM) with zero accrual — likely a
@@ -54,7 +59,7 @@ def pto_page():
         emp["accrued_hours_total"] = round(emp["total_accrued"] * avg, 1)
         emp["taken_hours_total"] = round(emp["total_taken"] * avg, 1)
 
-        cat = next((c for c in categories if c["team_member_id"] == emp["team_member_id"]), None)
+        cat = cats_by_id.get(emp["team_member_id"])
         if cat and emp["is_active"] and cat["category"] != "Upper Management":
             local_pt = (cat["pay_type"] or "").lower()
             if local_pt == "salaried" and emp["total_accrued"] == 0:
@@ -68,7 +73,6 @@ def pto_page():
                     "issue": "Settings says hourly but Square says salaried — pick one.",
                 })
 
-    categories = db.get_employee_categories()
     active_employees = [
         {"id": r["team_member_id"], "name": f"{r['given_name']} {r['family_name']}"}
         for r in categories if r["is_active"]
