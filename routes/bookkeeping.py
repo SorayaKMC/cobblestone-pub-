@@ -285,16 +285,73 @@ def new_invoice():
 
 
 @bp.route("/bookkeeping/<int:invoice_id>/edit", methods=["GET", "POST"])
+def _filter_args_from_request():
+    """Pull bookkeeping filter args from request (POST form or GET query)."""
+    src = request.form if request.method == "POST" else request.args
+    return {
+        "start_date": src.get("filter_start_date") or src.get("start_date") or "",
+        "end_date":   src.get("filter_end_date") or src.get("end_date") or "",
+        "supplier_id": src.get("filter_supplier_id") or src.get("supplier_id") or "",
+        "category":   src.get("filter_category") or src.get("category") or "",
+        "status":     src.get("filter_status") or src.get("status") or "",
+    }
+
+
+def _filter_query_string(filters):
+    """Build a query string from filter dict, omitting empty fields."""
+    parts = [f"{k}={v}" for k, v in filters.items() if v]
+    return ("?" + "&".join(parts)) if parts else ""
+
+
+def _next_pending_in_filter(current_invoice_id, filters):
+    """Find the next pending invoice in the filtered set, after the
+    currently-edited one. Returns its id or None."""
+    rows = db.list_invoices(
+        start_date=filters.get("start_date") or None,
+        end_date=filters.get("end_date") or None,
+        supplier_id=int(filters["supplier_id"]) if (filters.get("supplier_id") or "").isdigit() else None,
+        category=filters.get("category") or None,
+        status="pending",  # only walk the pending queue
+        limit=500,
+    )
+    # Sort by date then id for stable ordering
+    rows = sorted(rows, key=lambda r: ((r["invoice_date"] or ""), r["id"]))
+    seen_current = False
+    for r in rows:
+        if seen_current and r["id"] != current_invoice_id:
+            return r["id"]
+        if r["id"] == current_invoice_id:
+            seen_current = True
+    # If current wasn't in the filtered list (e.g. we just approved it and
+    # status changed), return the first pending row.
+    if not seen_current and rows:
+        return rows[0]["id"]
+    return None
+
+
 def edit_invoice(invoice_id):
     invoice = db.get_invoice(invoice_id)
     if not invoice:
         flash("Invoice not found.", "danger")
         return redirect(url_for("bookkeeping.bookkeeping_page"))
 
+    filters = _filter_args_from_request()
+
     if request.method == "GET":
         suppliers = db.list_suppliers()
         drive_url = _drive_url_from_notes(invoice["notes"])
         local_pdf_available = bool(invoice["pdf_path"]) and os.path.exists(invoice["pdf_path"])
+
+        # Count remaining pending in this filter (informational header)
+        pending_in_filter = db.list_invoices(
+            start_date=filters.get("start_date") or None,
+            end_date=filters.get("end_date") or None,
+            supplier_id=int(filters["supplier_id"]) if (filters.get("supplier_id") or "").isdigit() else None,
+            category=filters.get("category") or None,
+            status="pending",
+            limit=500,
+        )
+
         return render_template(
             "invoice_form.html",
             invoice=invoice,
@@ -303,8 +360,13 @@ def edit_invoice(invoice_id):
             today=date.today().isoformat(),
             drive_url=drive_url,
             local_pdf_available=local_pdf_available,
+            filters=filters,
+            filter_query_string=_filter_query_string(filters),
+            pending_in_filter_count=len(pending_in_filter),
         )
 
+    # POST — save
+    save_action = request.form.get("save_action", "back")  # 'back' | 'next'
     try:
         data = _parse_invoice_form(request.form)
         db.save_invoice(data, invoice_id=invoice_id)
@@ -313,7 +375,22 @@ def edit_invoice(invoice_id):
         flash("Invoice updated.", "success")
     except Exception as e:
         flash(f"Could not update invoice: {e}", "danger")
-    return redirect(url_for("bookkeeping.bookkeeping_page"))
+        # Stay on this invoice if save failed
+        return redirect(url_for("bookkeeping.edit_invoice", invoice_id=invoice_id, **{
+            f"filter_{k}": v for k, v in filters.items() if v
+        }))
+
+    if save_action == "next":
+        next_id = _next_pending_in_filter(invoice_id, filters)
+        if next_id:
+            return redirect(url_for("bookkeeping.edit_invoice", invoice_id=next_id, **{
+                f"filter_{k}": v for k, v in filters.items() if v
+            }))
+        # No more pending in filter — fall through to list
+        flash("No more pending invoices in this filter — back to list.", "info")
+
+    # 'back' or no-more-next — return to the filtered list
+    return redirect("/bookkeeping" + _filter_query_string(filters))
 
 
 @bp.route("/bookkeeping/audit")

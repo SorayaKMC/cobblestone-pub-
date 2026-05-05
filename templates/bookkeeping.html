@@ -295,8 +295,9 @@
                             <i class="bi bi-file-pdf"></i>
                         </a>
                         {% endif %}
-                        <a href="/bookkeeping/{{ inv.id }}/edit" class="btn btn-outline-secondary btn-sm py-0 px-2"
-                           title="Edit / approve">
+                        <a href="/bookkeeping/{{ inv.id }}/edit?filter_start_date={{ filter_start }}&filter_end_date={{ filter_end }}&filter_supplier_id={{ filter_supplier }}&filter_category={{ filter_category }}&filter_status={{ filter_status }}"
+                           class="btn btn-outline-secondary btn-sm py-0 px-2"
+                           title="Edit / approve (filter preserved)">
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form method="POST" action="/bookkeeping/{{ inv.id }}/delete" class="d-inline"

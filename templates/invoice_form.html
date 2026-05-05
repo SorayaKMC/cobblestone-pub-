@@ -131,11 +131,31 @@
                 </div>
             </div>
 
-            <div class="mt-4 d-flex gap-2 flex-wrap">
-                <button type="submit" class="btn btn-primary">
+            {% if invoice and filters %}
+            <input type="hidden" name="filter_start_date" value="{{ filters.start_date }}">
+            <input type="hidden" name="filter_end_date" value="{{ filters.end_date }}">
+            <input type="hidden" name="filter_supplier_id" value="{{ filters.supplier_id }}">
+            <input type="hidden" name="filter_category" value="{{ filters.category }}">
+            <input type="hidden" name="filter_status" value="{{ filters.status }}">
+            {% endif %}
+
+            <div class="mt-4 d-flex gap-2 flex-wrap align-items-center">
+                <button type="submit" name="save_action" value="back" class="btn btn-primary">
                     <i class="bi bi-save me-1"></i>{{ 'Update Invoice' if invoice else 'Save Invoice' }}
                 </button>
-                <a href="/bookkeeping" class="btn btn-outline-secondary">Cancel</a>
+                {% if invoice and pending_in_filter_count and pending_in_filter_count > 1 %}
+                <button type="submit" name="save_action" value="next" class="btn btn-success"
+                        title="Save this one and jump to the next pending invoice in the same filter.">
+                    <i class="bi bi-arrow-right-circle me-1"></i>Save &amp; Next
+                </button>
+                {% endif %}
+                <a href="/bookkeeping{{ filter_query_string|default('') }}" class="btn btn-outline-secondary">Cancel</a>
+
+                {% if invoice and filters and pending_in_filter_count %}
+                <span class="text-muted small ms-2">
+                    {{ pending_in_filter_count }} pending in this filter
+                </span>
+                {% endif %}
             </div>
         </form>
         {% if invoice %}
