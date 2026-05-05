@@ -78,7 +78,13 @@ def generate_peter_excel(week_label, payroll_data, net_sales=None):
     for emp in payroll_data:
         wage = Decimal(str(emp["wage_rate"]))
         holiday_hrs = Decimal(str(emp.get("holiday_hours", 0) or 0))
-        holiday_pay = (holiday_hrs * wage).quantize(Decimal("0.01"))
+        # Prefer the pre-computed holiday_pay from _load_week_payroll (which
+        # also rolls it into total_for_labor). Fall back to compute it here
+        # if a caller passes raw rows without that field.
+        if emp.get("holiday_pay") is not None:
+            holiday_pay = Decimal(str(emp["holiday_pay"]))
+        else:
+            holiday_pay = (holiday_hrs * wage).quantize(Decimal("0.01"))
 
         _apply_body(ws, row, 2, emp["given_name"])
         _apply_body(ws, row, 3, emp["family_name"])

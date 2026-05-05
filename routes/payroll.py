@@ -232,6 +232,21 @@ def _load_week_payroll(year, week, iso_week, start_date, end_date):
         p["holiday_days"] = pto.get("days", 0.0)
         p.setdefault("pto_only", False)
 
+        # Compute holiday pay = hours x wage; roll it into total_for_labor
+        # so it counts toward Cobblestone's labor cost + labor %.
+        try:
+            wage_dec = Decimal(str(p["wage_rate"]))
+            hrs_dec = Decimal(str(p["holiday_hours"]))
+            hp = (wage_dec * hrs_dec).quantize(Decimal("0.01"))
+        except (ValueError, TypeError, ArithmeticError):
+            hp = Decimal("0.00")
+        p["holiday_pay"] = hp
+        try:
+            current_labor = Decimal(str(p["total_for_labor"]))
+        except (ValueError, TypeError, ArithmeticError):
+            current_labor = Decimal("0.00")
+        p["total_for_labor"] = (current_labor + hp).quantize(Decimal("0.01"))
+
     return payroll, pto_taken
 
 
