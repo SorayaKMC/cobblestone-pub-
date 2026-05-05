@@ -357,6 +357,13 @@ def init_db():
     if "email" not in columns:
         cursor.execute("ALTER TABLE employee_categories ADD COLUMN email TEXT")
 
+    # Migration: hours_worked column on pay_period_payslips (extracted
+    # from each payslip PDF — used as ground-truth fallback when Square
+    # is missing an employee's timecards).
+    pps_cols = [row[1] for row in cursor.execute("PRAGMA table_info(pay_period_payslips)").fetchall()]
+    if pps_cols and "hours_worked" not in pps_cols:
+        cursor.execute("ALTER TABLE pay_period_payslips ADD COLUMN hours_worked REAL DEFAULT 0")
+
     # Migration: add source column to pto_accruals (tracks where accrual came from)
     acc_cols = [row[1] for row in cursor.execute("PRAGMA table_info(pto_accruals)").fetchall()]
     if "source" not in acc_cols:
@@ -954,18 +961,37 @@ def replace_pay_period_nets(pay_period_id, rows):
 
 def replace_pay_period_payslips(pay_period_id, slips):
     """Replace all payslip blobs for a period. Each slip is a dict with
-    'ref', 'raw_name', 'pdf_bytes', and optional 'team_member_id'."""
+    'ref', 'raw_name', 'pdf_bytes', optional 'team_member_id', and
+    optional 'hours_worked'."""
     conn = get_db()
     conn.execute("DELETE FROM pay_period_payslips WHERE pay_period_id = ?", (pay_period_id,))
     for s in slips:
         conn.execute(
             """INSERT INTO pay_period_payslips
-               (pay_period_id, ref_no, team_member_id, raw_name, pdf_blob)
-               VALUES (?, ?, ?, ?, ?)""",
-            (pay_period_id, s["ref"], s.get("team_member_id"), s["raw_name"], s["pdf_bytes"]),
+               (pay_period_id, ref_no, team_member_id, raw_name, pdf_blob, hours_worked)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (pay_period_id, s["ref"], s.get("team_member_id"), s["raw_name"],
+             s["pdf_bytes"], float(s.get("hours_worked") or 0)),
         )
     conn.commit()
     conn.close()
+
+
+def get_payslip_hours_for_employee(team_member_id, iso_week):
+    """Return hours_worked from the most recent uploaded payslip for an
+    employee + ISO week, or None if no upload exists for that week."""
+    conn = get_db()
+    row = conn.execute(
+        """SELECT ps.hours_worked
+           FROM pay_period_payslips ps
+           JOIN pay_periods p ON p.id = ps.pay_period_id
+           WHERE ps.team_member_id = ? AND p.iso_week = ?""",
+        (team_member_id, iso_week),
+    ).fetchone()
+    conn.close()
+    if row and row["hours_worked"] and row["hours_worked"] > 0:
+        return float(row["hours_worked"])
+    return None
 
 
 def get_pay_period_nets(pay_period_id):

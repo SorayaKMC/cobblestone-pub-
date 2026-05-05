@@ -205,14 +205,26 @@ def _pto_data_for_employee(tm_id, period_end_iso, summary_balances):
         days_accrued = float(accrual["days_accrued"]) if accrual else 0.0
 
         # Live path: compute from Square right now. Always trust the live
-        # computation if it's higher than the DB value (indicates the DB is
-        # stale). Critically, this must include any manual-hours override
-        # the user entered for employees who don't clock into Square.
+        # computation if it's higher than the DB value (indicates the DB
+        # is stale). Hours sources, in priority order:
+        #   1. Manual-hours entry (rare)
+        #   2. Hours extracted from Peter's uploaded payslip (most authoritative)
+        #   3. Square timecards (the normal path)
         try:
             manual_override = db.get_manual_hours(tm_id, period_start.isoformat())
+            # If Peter's payslip is uploaded for the work week the user is
+            # processing, those hours override Square — payslip is ground
+            # truth post-upload.
+            iso_week_str = f"{period_end.year}-W{period_end.isocalendar()[1]:02d}"
+            payslip_hours = db.get_payslip_hours_for_employee(tm_id, iso_week_str)
+            if payslip_hours and (manual_override is None or payslip_hours > manual_override):
+                effective_override = payslip_hours
+            else:
+                effective_override = manual_override
+
             live = pto_engine.calculate_weekly_accrual(
                 tm_id, period_start.isoformat(), period_end.isoformat(),
-                manual_hours_override=manual_override,
+                manual_hours_override=effective_override,
             )
             live_days = float(live["days_accrued"]) if live else 0.0
             if live_days > days_accrued:

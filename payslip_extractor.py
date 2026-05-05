@@ -114,6 +114,34 @@ _SLIP_NAME_RE = re.compile(r"Name\s*:\s*(.+?)\s*$", re.MULTILINE)
 _SLIP_DATE_RE = re.compile(r"Date\s*:\s*(\d{1,2}\s+\w+\s+\d{4})")
 _SLIP_PERIOD_RE = re.compile(r"Period\s*:\s*(.+?)\s*$", re.MULTILINE)
 
+# Match the 'Basic Rate' line which carries hours worked.
+# Format: "G Basic Rate 1 22.67 17.000 385.39 1613.98 T"
+#         (G | Basic Rate | hours | rate | amount | YTD | flag)
+_SLIP_HOURS_RE = re.compile(
+    r"G\s+Basic\s+Rate\s+\d+\s+([\d.]+)\s+[\d.]+\s+[\d.,]+",
+    re.IGNORECASE,
+)
+
+
+def _extract_hours_from_payslip_text(text):
+    """Extract hours worked from a payslip page. Returns float or None.
+
+    Sums all 'Basic Rate N' lines on the page (some employees have
+    multiple rate tiers — e.g. one row at €17/hr plus another at €20/hr
+    overtime).
+    """
+    if not text:
+        return None
+    total = 0.0
+    found = False
+    for m in _SLIP_HOURS_RE.finditer(text):
+        try:
+            total += float(m.group(1))
+            found = True
+        except ValueError:
+            continue
+    return total if found else None
+
 
 def split_payslips(pdf_path):
     """Split the combined payslip PDF into one PDF per employee.
@@ -150,11 +178,14 @@ def split_payslips(pdf_path):
             writer.write(buf)
             pdf_bytes = buf.getvalue()
 
+            hours_worked = _extract_hours_from_payslip_text(text)
+
             results.append({
                 "ref": ref_match.group(1),
                 "raw_name": name_match.group(1).strip(),
                 "period": period_match.group(1).strip() if period_match else None,
                 "pay_date": date_match.group(1) if date_match else None,
+                "hours_worked": hours_worked,
                 "pdf_bytes": pdf_bytes,
             })
 

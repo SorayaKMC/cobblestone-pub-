@@ -661,16 +661,48 @@ def accountant_upload():
         flash("No employee rows found in the gross-to-net PDF.", "danger")
         return redirect(url_for("payroll.accountant_page", week=fallback_iso))
 
-    week_num, pay_date, year_parsed = payslip_extractor.parse_period_label(gtn["period_label"])
-    if not pay_date:
-        flash("Could not read the pay period from the gross-to-net PDF.", "danger")
-        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+    # Trust the URL's iso_week (= the work week the user is processing)
+    # over Peter's "Pay Period : Week N" label. Peter dates his
+    # paperwork by when HE receives our download, which can be days or
+    # weeks after the actual work was done — using his label for
+    # accrual lookups would land in the wrong Square data.
+    work_iso = fallback_iso  # 'YYYY-Www' from the URL the user clicked Upload from
+    try:
+        year_parsed, week_num_str = work_iso.split("-W")
+        year_parsed = int(year_parsed)
+        week_num = int(week_num_str)
+    except (ValueError, IndexError):
+        flash("Could not parse the work week from the URL. Navigate to "
+              "/payroll/accountant?week=YYYY-Www first.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
 
-    iso_week_actual = f"{year_parsed}-W{week_num:02d}"
+    # Pay date still comes from Peter's PDF (informational only — not
+    # used for accrual lookup).
+    _peter_week_num, pay_date, _peter_year = payslip_extractor.parse_period_label(gtn["period_label"])
+    if not pay_date:
+        # Peter's label was unparseable; fall back to the Friday of the work week.
+        from datetime import datetime as _dt, timedelta as _td
+        try:
+            monday = _dt.strptime(square_client.week_dates(year_parsed, week_num)[0], "%Y-%m-%d")
+            pay_date = (monday + _td(days=4)).strftime("%Y-%m-%d")
+        except Exception:
+            pay_date = ""
+
+    iso_week_actual = work_iso
     try:
         _, period_end = square_client.week_dates(year_parsed, week_num)
     except Exception:
-        period_end = payslip_extractor.period_end_from_pay_date(pay_date)
+        period_end = payslip_extractor.period_end_from_pay_date(pay_date) if pay_date else ""
+
+    # Soft warning if Peter's label is more than 1 week off from the work
+    # week — surfaces unusual timing without blocking the upload.
+    if _peter_week_num and abs(_peter_week_num - week_num) > 1:
+        flash(
+            f"Heads up: Peter's PDF is labelled Week {_peter_week_num} but you're "
+            f"uploading for work week {week_num}. Using work week {week_num} for "
+            "PTO lookup. If that's wrong, navigate to the right week first.",
+            "warning",
+        )
 
     saved_map = db.get_ref_mappings()
     active_employees = [r for r in db.get_employee_categories() if r["is_active"]]
