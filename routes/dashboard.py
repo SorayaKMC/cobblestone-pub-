@@ -216,10 +216,15 @@ def _get_week_sales_with_daily(year, week):
 def _get_week_payroll(year, week):
     """Build payroll summary for a week.
 
-    Uses Square timecards for current/recent weeks. Falls back to historical data
-    for 2026 weeks prior to Square timecard rollout.
+    Uses Square timecards + manual cleaning + PTO holiday pay. Falls back to
+    historical data for 2026 weeks prior to Square timecard rollout.
+
+    Per Cobblestone policy, the dashboard's M+S labor cost ('ms' below)
+    excludes Upper Management. UM holiday pay (rare in practice — UM is
+    salaried) flows into the 'um' bucket only, never into the M+S labor %.
     """
-    cache_key = f"week_payroll_{year}_W{week:02d}"
+    # v2: bumped to invalidate caches that didn't include holiday pay
+    cache_key = f"week_payroll_v2_{year}_W{week:02d}"
     current_year, current_week = square_client.current_week()
     is_current = (year == current_year and week == current_week)
 
@@ -284,6 +289,29 @@ def _get_week_payroll(year, week):
                 mgmt_total += labor
             elif cat_row["category"] == "Staff":
                 staff_total += labor
+
+        # Add holiday pay (PTO taken × wage). Bucket per category — UM
+        # holiday pay never enters the M+S labor cost the dashboard reports.
+        try:
+            pto_taken = db.get_pto_taken_for_week(start_date, end_date)
+        except Exception:
+            pto_taken = {}
+        for tm_id, pto_d in pto_taken.items():
+            cat_row = cats_by_id.get(tm_id)
+            if not cat_row:
+                continue
+            member = members_by_id.get(tm_id, {})
+            wage_rate = member.get("hourly_rate", Decimal("0"))
+            holiday_hrs = Decimal(str(pto_d.get("hours", 0) or 0))
+            if holiday_hrs <= 0 or wage_rate <= 0:
+                continue
+            holiday_pay = holiday_hrs * wage_rate
+            if cat_row["category"] == "Upper Management":
+                um_total += holiday_pay
+            elif cat_row["category"] == "Management":
+                mgmt_total += holiday_pay
+            elif cat_row["category"] == "Staff":
+                staff_total += holiday_pay
 
         result = {
             "total": float(um_total + mgmt_total + staff_total),
@@ -687,7 +715,7 @@ def refresh_dashboard():
 
     keys_to_clear = [
         f"week_sales_v3_{current_year}_W{current_week:02d}",
-        f"week_payroll_{current_year}_W{current_week:02d}",
+        f"week_payroll_v2_{current_year}_W{current_week:02d}",
         f"timecard_hours_by_day_{current_year}_W{current_week:02d}",
         f"vat_periods_{current_year}",
     ]
@@ -697,7 +725,7 @@ def refresh_dashboard():
     for wk in range(max(2, current_week - 4), current_week):
         _, end_date = square_client.week_dates(current_year, wk)
         week_end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-        for prefix in ("week_sales_v3", "week_payroll", "timecard_hours_by_day"):
+        for prefix in ("week_sales_v3", "week_payroll_v2", "timecard_hours_by_day"):
             key = f"{prefix}_{current_year}_W{wk:02d}"
             row = conn.execute(
                 "SELECT last_synced_at FROM cache_metadata WHERE cache_key = ?", (key,)
