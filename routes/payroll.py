@@ -802,6 +802,92 @@ def accountant_generate_drafts():
     return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
 
 
+@bp.route("/payroll/accountant/payment-list/<int:period_id>")
+def accountant_payment_list(period_id):
+    """Generate a downloadable PDF with each employee + their net pay,
+    intended for Tomas to use when paying payroll through the bank app.
+    Just names + amounts, alphabetical by family name, with a total at
+    the bottom — no extra noise."""
+    from fpdf import FPDF
+
+    period = db.get_pay_period_by_id(period_id)
+    if not period:
+        flash("Pay period not found.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+
+    nets = db.get_pay_period_nets(period_id)
+    employees = {r["team_member_id"]: r for r in db.get_employee_categories()}
+
+    rows = []
+    for n in nets:
+        # Prefer the DB name if mapped — that's the canonical 'First Last'.
+        # Otherwise fall back to the raw name from Peter's PDF, stripped of
+        # honorifics like Mr / Ms.
+        if n["team_member_id"] and employees.get(n["team_member_id"]):
+            emp = employees[n["team_member_id"]]
+            name = f"{emp['given_name']} {emp['family_name']}".strip()
+            sort_key = emp["family_name"].lower()
+        else:
+            raw = (n["raw_name"] or "").strip()
+            for prefix in ("Mr ", "Ms ", "Mrs ", "Miss ", "Dr "):
+                if raw.startswith(prefix):
+                    raw = raw[len(prefix):]
+                    break
+            name = raw
+            sort_key = raw.lower().split()[-1] if raw else ""
+        rows.append({"name": name, "net": float(n["net_pay"]), "sort_key": sort_key})
+    rows.sort(key=lambda r: r["sort_key"])
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "Cobblestone Pub - Payroll Payments", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 6, f"Pay date: {period['pay_date']}",
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, f"Period: {period['period_label']}",
+             new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_fill_color(15, 35, 24)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(120, 8, "Employee", border=1, fill=True)
+    pdf.cell(40, 8, "Net Pay", border=1, fill=True, align="R",
+             new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "", 11)
+    total = 0.0
+    for r in rows:
+        pdf.cell(120, 7, r["name"], border=1)
+        pdf.cell(40, 7, f"EUR {r['net']:,.2f}", border=1, align="R",
+                 new_x="LMARGIN", new_y="NEXT")
+        total += r["net"]
+
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_fill_color(233, 236, 239)
+    pdf.cell(120, 8, f"TOTAL - {len(rows)} employee(s)",
+             border=1, fill=True)
+    pdf.cell(40, 8, f"EUR {total:,.2f}", border=1, fill=True, align="R",
+             new_x="LMARGIN", new_y="NEXT")
+
+    pdf_bytes = bytes(pdf.output())
+
+    safe_label = (period["period_label"] or
+                  f"W{period['week_num']:02d}_{period['year']}").replace(" ", "_").replace("/", "-")
+    filename = f"Cobblestone_Payments_{safe_label}.pdf"
+
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        download_name=filename,
+        as_attachment=True,
+        mimetype="application/pdf",
+    )
+
+
 @bp.route("/payroll/accountant/payslip/<int:period_id>/<ref>")
 def accountant_payslip(period_id, ref):
     row = db.get_payslip_blob_by_ref(period_id, ref)

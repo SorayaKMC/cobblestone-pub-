@@ -145,6 +145,11 @@
                     <i class="bi bi-envelope-plus me-1"></i>Generate Drafts
                 </button>
             </form>
+            <a href="/payroll/accountant/payment-list/{{ period.id }}"
+               class="btn btn-success btn-sm"
+               title="Download a clean PDF of name + net pay, for forwarding to Tomas to do bank transfers.">
+                <i class="bi bi-bank me-1"></i>Payment List for Bank
+            </a>
             <form method="POST" action="/payroll/accountant/test-gmail" class="d-inline">
                 <input type="hidden" name="iso_week" value="{{ iso_week }}">
                 <button type="submit" class="btn btn-outline-secondary btn-sm"
