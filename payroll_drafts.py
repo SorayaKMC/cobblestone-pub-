@@ -185,14 +185,37 @@ def create_test_draft():
 
 
 def _pto_data_for_employee(tm_id, period_end_iso, summary_balances):
-    """Returns (accrued_hrs, avg_shift, balance_days) or (None, None, None) on failure."""
+    """Returns (accrued_hrs, avg_shift, balance_days) or (None, None, None) on failure.
+
+    Computes accrual TWO ways, picks the higher value:
+      1. Read from pto_accruals table (fast path, populated by recalc)
+      2. Compute live by calling pto_engine.calculate_weekly_accrual
+
+    The live path is bulletproof against stale or missing DB rows. Even if
+    the recalc job didn't fire for this week, the email body will still
+    show the correct number directly from Square + the accrual rules.
+    """
     try:
         from datetime import timedelta
         period_end = datetime.strptime(period_end_iso, "%Y-%m-%d").date()
         period_start = period_end - timedelta(days=6)
 
+        # Fast path: read from DB
         accrual = db.get_pto_accrual_for_week(tm_id, period_start.isoformat())
         days_accrued = float(accrual["days_accrued"]) if accrual else 0.0
+
+        # Live path: compute from Square right now. Always trust the live
+        # computation if it's higher than the DB value (indicates the DB is
+        # stale).
+        try:
+            live = pto_engine.calculate_weekly_accrual(
+                tm_id, period_start.isoformat(), period_end.isoformat(),
+            )
+            live_days = float(live["days_accrued"]) if live else 0.0
+            if live_days > days_accrued:
+                days_accrued = live_days
+        except Exception as e:
+            print(f"[drafts] Live accrual calc failed for {tm_id}: {e}")
 
         avg_shift_dec = pto_engine.calculate_13_week_avg_shift(tm_id, period_end_iso)
         avg_shift = float(avg_shift_dec) if avg_shift_dec else 8.0
@@ -200,7 +223,8 @@ def _pto_data_for_employee(tm_id, period_end_iso, summary_balances):
         accrued_hrs = days_accrued * avg_shift
         balance_days = float(summary_balances.get(tm_id, 0.0))
         return accrued_hrs, avg_shift, balance_days
-    except Exception:
+    except Exception as e:
+        print(f"[drafts] _pto_data_for_employee failed for {tm_id}: {e}")
         return None, None, None
 
 
