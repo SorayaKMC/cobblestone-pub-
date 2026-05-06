@@ -1178,6 +1178,17 @@ def get_invoice(invoice_id):
     return row
 
 
+def bust_vat_cache():
+    """Drop cached VAT-period rollups so the dashboard recomputes from
+    the live monthly_vat_totals on its next request. Called from the
+    dashboard's manual 'Refresh VAT' button.
+    """
+    conn = get_db()
+    conn.execute("DELETE FROM cache_metadata WHERE cache_key LIKE 'vat_periods_%'")
+    conn.commit()
+    conn.close()
+
+
 def save_invoice(data, invoice_id=None):
     """Insert a new invoice or update an existing one. Returns invoice id.
 

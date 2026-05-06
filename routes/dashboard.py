@@ -1,6 +1,6 @@
 """Cobblestone dashboard - assembles all data for the Weekly Performance Dashboard."""
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from decimal import Decimal
 from datetime import datetime, timedelta, date
 import json
@@ -514,6 +514,18 @@ def _cache_coverage(current_year, current_week):
         if data:
             cached += 1
     return cached
+
+
+@bp.route("/dashboard/refresh-vat", methods=["POST"])
+def refresh_vat():
+    """Drop the cached VAT-period rollup so the dashboard recomputes
+    from the latest approved invoices in the bookkeeping DB on the
+    next page load. Triggered by the 'Refresh' button in the VAT
+    section of the dashboard.
+    """
+    db.bust_vat_cache()
+    flash("VAT periods refreshed from latest approved invoices.", "success")
+    return redirect(url_for("dashboard.dashboard_page") + "#vat")
 
 
 @bp.route("/dashboard")

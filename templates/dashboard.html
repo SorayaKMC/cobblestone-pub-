@@ -149,7 +149,15 @@ html, body{overflow-x:hidden;max-width:100vw}
 </div>
 
 <div class="sec">
-  <div class="sec-lbl">VAT reporting periods — Scheme 2 · 23%</div>
+  <div class="sec-lbl" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <span>VAT reporting periods — Scheme 2 · 23%</span>
+    <form method="POST" action="/dashboard/refresh-vat" style="margin:0">
+      <button type="submit" class="btn btn-outline-secondary btn-sm"
+              title="Recalculate input VAT from the latest approved invoices in Bookkeeping.">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refresh from invoices
+      </button>
+    </form>
+  </div>
   <div class="grid2" id="vat"></div>
 </div>
 
