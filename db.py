@@ -1084,6 +1084,13 @@ def list_suppliers():
     return rows
 
 
+def get_supplier(supplier_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM suppliers WHERE id=?", (supplier_id,)).fetchone()
+    conn.close()
+    return row
+
+
 def find_supplier_by_name(name):
     """Match supplier name - exact, then substring-in-either-direction.
 

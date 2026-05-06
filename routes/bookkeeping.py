@@ -876,6 +876,47 @@ def suppliers_quick_add():
     })
 
 
+@bp.route("/bookkeeping/suppliers/quick-edit", methods=["POST"])
+def suppliers_quick_edit():
+    """JSON endpoint for the 'edit supplier' modal on the invoice form.
+
+    Updates an existing supplier and returns the fresh row so the caller
+    can update its dropdown <option> without a page reload.
+    """
+    sid_raw = (request.form.get("supplier_id") or "").strip()
+    if not sid_raw.isdigit():
+        return jsonify({"error": "Missing or invalid supplier id."}), 400
+    supplier_id = int(sid_raw)
+
+    existing = db.get_supplier(supplier_id)
+    if not existing:
+        return jsonify({"error": "Supplier not found."}), 404
+
+    name = (request.form.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Name is required."}), 400
+
+    try:
+        rate = float(request.form.get("default_vat_rate", 23) or 23)
+    except (TypeError, ValueError):
+        rate = 23.0
+    category = (request.form.get("default_category") or "").strip() or None
+    vat_num = (request.form.get("vat_number") or "").strip() or None
+
+    db.update_supplier(supplier_id, name, rate, category, vat_num)
+    row = db.get_supplier(supplier_id)
+    if not row:
+        return jsonify({"error": "Could not load updated supplier."}), 500
+
+    return jsonify({
+        "id": row["id"],
+        "name": row["name"],
+        "default_vat_rate": row["default_vat_rate"],
+        "default_category": row["default_category"] or "",
+        "vat_number": row["vat_number"] or "",
+    })
+
+
 @bp.route("/bookkeeping/suppliers", methods=["GET", "POST"])
 def suppliers():
     if request.method == "POST":

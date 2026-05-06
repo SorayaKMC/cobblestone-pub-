@@ -63,13 +63,21 @@
         <form method="POST">
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label d-flex justify-content-between align-items-center">
+                    <label class="form-label d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <span>Supplier</span>
-                        <button type="button" class="btn btn-link btn-sm p-0"
-                                data-bs-toggle="modal" data-bs-target="#newSupplierModal"
-                                title="Add a new supplier without leaving this page">
-                            <i class="bi bi-plus-circle me-1"></i>New supplier
-                        </button>
+                        <span class="d-inline-flex gap-2">
+                            <button type="button" class="btn btn-link btn-sm p-0"
+                                    id="edit_supplier_btn"
+                                    title="Edit the selected supplier"
+                                    style="display:none">
+                                <i class="bi bi-pencil-square me-1"></i>Edit
+                            </button>
+                            <button type="button" class="btn btn-link btn-sm p-0"
+                                    id="new_supplier_btn"
+                                    title="Add a new supplier without leaving this page">
+                                <i class="bi bi-plus-circle me-1"></i>New supplier
+                            </button>
+                        </span>
                     </label>
                     <select name="supplier_id" class="form-select" id="supplier_select">
                         <option value="">-- select --</option>
@@ -77,6 +85,7 @@
                         <option value="{{ s.id }}"
                                 data-vat-rate="{{ s.default_vat_rate }}"
                                 data-category="{{ s.default_category or '' }}"
+                                data-vat-number="{{ s.vat_number or '' }}"
                                 data-name="{{ s.name }}"
                                 {% if invoice and invoice.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
                         {% endfor %}
@@ -210,16 +219,17 @@
     </div>
 </div>
 
-<!-- New supplier modal -->
-<div class="modal fade" id="newSupplierModal" tabindex="-1" aria-hidden="true">
+<!-- Supplier modal (handles both add + edit modes) -->
+<div class="modal fade" id="supplierModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Supplier</h5>
+                <h5 class="modal-title" id="ns_modal_title"><i class="bi bi-plus-circle me-2"></i>Add Supplier</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div id="new_supplier_error" class="alert alert-danger d-none py-2 small"></div>
+                <input type="hidden" id="ns_supplier_id" value="">
                 <div class="mb-3">
                     <label class="form-label small fw-semibold">Name</label>
                     <input type="text" id="ns_name" class="form-control" autofocus>
@@ -252,7 +262,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" id="ns_save_btn" class="btn btn-primary">
-                    <i class="bi bi-check-lg me-1"></i>Save &amp; Use
+                    <i class="bi bi-check-lg me-1"></i><span id="ns_save_label">Save &amp; Use</span>
                 </button>
             </div>
         </div>
@@ -279,9 +289,16 @@ supplierSelect.addEventListener('change', function() {
     }
 });
 
-// "+ New supplier" modal — quick-add without leaving the page
+// Supplier modal — handles both Add and Edit modes
 const nsSaveBtn = document.getElementById('ns_save_btn');
 const nsErrorBox = document.getElementById('new_supplier_error');
+const nsSupplierIdInput = document.getElementById('ns_supplier_id');
+const nsModalTitle = document.getElementById('ns_modal_title');
+const nsSaveLabel = document.getElementById('ns_save_label');
+const newBtn = document.getElementById('new_supplier_btn');
+const editBtn = document.getElementById('edit_supplier_btn');
+const supplierModalEl = document.getElementById('supplierModal');
+const supplierModal = new bootstrap.Modal(supplierModalEl);
 
 function showNsError(msg) {
     nsErrorBox.textContent = msg;
@@ -289,12 +306,63 @@ function showNsError(msg) {
 }
 function clearNsError() { nsErrorBox.classList.add('d-none'); }
 
+function resetNsForm() {
+    nsSupplierIdInput.value = '';
+    document.getElementById('ns_name').value = '';
+    document.getElementById('ns_vat_rate').value = '23';
+    document.getElementById('ns_category').value = '';
+    document.getElementById('ns_vat_number').value = '';
+    clearNsError();
+}
+
+function setNsMode(mode) {
+    // mode: 'add' | 'edit'
+    if (mode === 'edit') {
+        nsModalTitle.innerHTML = '<i class="bi bi-pencil-square me-2"></i>Edit Supplier';
+        nsSaveLabel.textContent = 'Save Changes';
+    } else {
+        nsModalTitle.innerHTML = '<i class="bi bi-plus-circle me-2"></i>Add Supplier';
+        nsSaveLabel.textContent = 'Save & Use';
+    }
+}
+
+// Show/hide the Edit button depending on whether a supplier is selected.
+function refreshEditBtnVisibility() {
+    editBtn.style.display = supplierSelect.value ? '' : 'none';
+}
+refreshEditBtnVisibility();
+supplierSelect.addEventListener('change', refreshEditBtnVisibility);
+
+newBtn.addEventListener('click', function() {
+    resetNsForm();
+    setNsMode('add');
+    supplierModal.show();
+});
+
+editBtn.addEventListener('click', function() {
+    const opt = supplierSelect.options[supplierSelect.selectedIndex];
+    if (!opt || !opt.value) return;
+    resetNsForm();
+    setNsMode('edit');
+    nsSupplierIdInput.value = opt.value;
+    document.getElementById('ns_name').value = opt.dataset.name || opt.text;
+    document.getElementById('ns_vat_rate').value = opt.dataset.vatRate || '23';
+    document.getElementById('ns_category').value = opt.dataset.category || '';
+    document.getElementById('ns_vat_number').value = opt.dataset.vatNumber || '';
+    supplierModal.show();
+});
+
 nsSaveBtn.addEventListener('click', async function() {
     clearNsError();
     const name = document.getElementById('ns_name').value.trim();
     if (!name) { showNsError('Name is required.'); return; }
 
+    const isEdit = !!nsSupplierIdInput.value;
+    const url = isEdit ? '/bookkeeping/suppliers/quick-edit'
+                       : '/bookkeeping/suppliers/quick-add';
+
     const fd = new FormData();
+    if (isEdit) fd.append('supplier_id', nsSupplierIdInput.value);
     fd.append('name', name);
     fd.append('default_vat_rate', document.getElementById('ns_vat_rate').value);
     fd.append('default_category', document.getElementById('ns_category').value);
@@ -303,13 +371,13 @@ nsSaveBtn.addEventListener('click', async function() {
     nsSaveBtn.disabled = true;
     nsSaveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
     try {
-        const resp = await fetch('/bookkeeping/suppliers/quick-add', { method: 'POST', body: fd });
+        const resp = await fetch(url, { method: 'POST', body: fd });
         const data = await resp.json();
         if (!resp.ok) {
             showNsError(data.error || 'Could not save supplier.');
             return;
         }
-        // Append (or update) the option in the dropdown, then select it.
+        // Update or append the option, then select it.
         let opt = supplierSelect.querySelector(`option[value="${data.id}"]`);
         if (!opt) {
             opt = document.createElement('option');
@@ -330,23 +398,20 @@ nsSaveBtn.addEventListener('click', async function() {
         opt.text = data.name;
         opt.dataset.vatRate = data.default_vat_rate;
         opt.dataset.category = data.default_category || '';
+        opt.dataset.vatNumber = data.vat_number || '';
         opt.dataset.name = data.name;
         opt.selected = true;
-        // Trigger change event so VAT rate + category auto-fill
+        // Trigger change event so VAT rate + category auto-fill on the form
         supplierSelect.dispatchEvent(new Event('change'));
 
-        // Close modal + reset fields
-        const modalEl = document.getElementById('newSupplierModal');
-        bootstrap.Modal.getInstance(modalEl).hide();
-        document.getElementById('ns_name').value = '';
-        document.getElementById('ns_vat_rate').value = '23';
-        document.getElementById('ns_category').value = '';
-        document.getElementById('ns_vat_number').value = '';
+        supplierModal.hide();
+        resetNsForm();
     } catch (err) {
         showNsError('Network error: ' + err.message);
     } finally {
         nsSaveBtn.disabled = false;
-        nsSaveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save &amp; Use';
+        nsSaveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i><span id="ns_save_label">' +
+                              (isEdit ? 'Save Changes' : 'Save & Use') + '</span>';
     }
 });
 
