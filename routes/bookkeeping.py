@@ -1,7 +1,7 @@
 """Bookkeeping routes - invoice tracking + supplier management."""
 
 import re
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, abort, jsonify
 from datetime import date, datetime
 import os
 import db
@@ -361,6 +361,32 @@ def _next_pending_in_filter(current_invoice_id, filters):
     return None
 
 
+def _neighbors_in_filter(current_invoice_id, filters):
+    """Return (prev_id, next_id) for plain prev/next browsing in the same
+    filter. Unlike _next_pending_in_filter, this ignores status — so you
+    can step back to an already-approved invoice to fix it.
+    """
+    rows = db.list_invoices(
+        start_date=filters.get("start_date") or None,
+        end_date=filters.get("end_date") or None,
+        supplier_id=int(filters["supplier_id"]) if (filters.get("supplier_id") or "").isdigit() else None,
+        category=filters.get("category") or None,
+        status=filters.get("status") or None,
+        limit=1000,
+    )
+    rows = sorted(rows, key=lambda r: ((r["invoice_date"] or ""), r["id"]))
+    prev_id = None
+    next_id = None
+    for i, r in enumerate(rows):
+        if r["id"] == current_invoice_id:
+            if i > 0:
+                prev_id = rows[i - 1]["id"]
+            if i < len(rows) - 1:
+                next_id = rows[i + 1]["id"]
+            break
+    return prev_id, next_id
+
+
 @bp.route("/bookkeeping/<int:invoice_id>/edit", methods=["GET", "POST"])
 def edit_invoice(invoice_id):
     invoice = db.get_invoice(invoice_id)
@@ -385,6 +411,10 @@ def edit_invoice(invoice_id):
             limit=500,
         )
 
+        # Plain prev/next neighbours in the same filter (any status) so
+        # you can step back to fix an already-approved invoice.
+        prev_id, next_id = _neighbors_in_filter(invoice_id, filters)
+
         return render_template(
             "invoice_form.html",
             invoice=invoice,
@@ -396,6 +426,8 @@ def edit_invoice(invoice_id):
             filters=filters,
             filter_query_string=_filter_query_string(filters),
             pending_in_filter_count=len(pending_in_filter),
+            prev_invoice_id=prev_id,
+            next_invoice_id=next_id,
         )
 
     # POST — save
@@ -789,6 +821,44 @@ def check_inbox():
 
 
 # --- Suppliers management ---
+
+@bp.route("/bookkeeping/suppliers/quick-add", methods=["POST"])
+def suppliers_quick_add():
+    """JSON endpoint for the 'add supplier' modal on the invoice form.
+
+    Returns the supplier dict on success so the caller can append a new
+    <option> to the dropdown without a page reload. If a supplier with
+    the same name already exists (case-insensitive), returns that one
+    instead of erroring — DB has INSERT OR IGNORE so this is the
+    sensible behaviour.
+    """
+    name = (request.form.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Name is required."}), 400
+
+    try:
+        rate = float(request.form.get("default_vat_rate", 23) or 23)
+    except (TypeError, ValueError):
+        rate = 23.0
+    category = (request.form.get("default_category") or "").strip() or None
+    vat_num = (request.form.get("vat_number") or "").strip() or None
+
+    db.add_supplier(name, rate, category, vat_num)
+    # add_supplier uses INSERT OR IGNORE so on duplicate we still need
+    # to look up the existing row. find_supplier_by_name handles both
+    # exact and fuzzy match — for the freshly-inserted row this is exact.
+    row = db.find_supplier_by_name(name)
+    if not row:
+        return jsonify({"error": "Could not save supplier."}), 500
+
+    return jsonify({
+        "id": row["id"],
+        "name": row["name"],
+        "default_vat_rate": row["default_vat_rate"],
+        "default_category": row["default_category"] or "",
+        "vat_number": row["vat_number"] or "",
+    })
+
 
 @bp.route("/bookkeeping/suppliers", methods=["GET", "POST"])
 def suppliers():
