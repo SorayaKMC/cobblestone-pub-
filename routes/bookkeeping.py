@@ -202,6 +202,22 @@ def reclassify_invoice_as_statement(invoice_id):
         return redirect(url_for("bookkeeping.bookkeeping_page"))
 
     try:
+        # If a statement with this file_hash already exists, the user is
+        # effectively saying "I already have this as a statement, just
+        # drop the bad invoice copy". Skip the insert and link to the
+        # existing one — otherwise we'd hit the UNIQUE constraint.
+        existing = None
+        if inv["file_hash"]:
+            existing = db.get_statement_by_hash(inv["file_hash"])
+        if existing:
+            db.delete_invoice(invoice_id)
+            flash(
+                f"Invoice removed — a statement for this PDF already exists "
+                f"(#{existing['id']}). Opened the existing statement.",
+                "info",
+            )
+            return redirect(url_for("bookkeeping.statement_detail", statement_id=existing["id"]))
+
         statement_id = db.save_statement({
             "supplier_id": inv["supplier_id"],
             "supplier_name": inv["supplier_name"],
