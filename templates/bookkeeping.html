@@ -247,11 +247,39 @@
 </div>
 
 <!-- Invoices table -->
+{% set pending_visible = invoices | selectattr("status", "equalto", "pending") | list %}
+<form method="POST" action="/bookkeeping/bulk-approve" id="bulk_approve_form"
+      onsubmit="return confirmBulkApprove();">
+    <input type="hidden" name="filter_start_date" value="{{ filter_start }}">
+    <input type="hidden" name="filter_end_date" value="{{ filter_end }}">
+    <input type="hidden" name="filter_supplier_id" value="{{ filter_supplier }}">
+    <input type="hidden" name="filter_category" value="{{ filter_category }}">
+    <input type="hidden" name="filter_status" value="{{ filter_status }}">
+
+    {% if pending_visible %}
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <div class="small text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            Tick pending invoices to approve them in bulk, or use the checkbox in the header
+            to select all pending invoices in this view.
+        </div>
+        <button type="submit" class="btn btn-success btn-sm" id="bulk_approve_btn" disabled>
+            <i class="bi bi-check2-all me-1"></i>Approve Selected (<span id="bulk_count">0</span>)
+        </button>
+    </div>
+    {% endif %}
+
 <div class="card">
     <div class="card-body p-0" style="overflow-x:auto">
-        <table class="table table-cobblestone mb-0" style="min-width:900px">
+        <table class="table table-cobblestone mb-0" style="min-width:940px">
             <thead>
                 <tr>
+                    <th style="width:38px">
+                        {% if pending_visible %}
+                        <input type="checkbox" id="bulk_select_all" class="form-check-input"
+                               title="Select all pending in this view">
+                        {% endif %}
+                    </th>
                     <th>Date</th>
                     <th>Supplier</th>
                     <th>Invoice #</th>
@@ -266,6 +294,12 @@
             <tbody>
                 {% for inv in invoices %}
                 <tr>
+                    <td>
+                        {% if inv.status == 'pending' %}
+                        <input type="checkbox" name="invoice_ids" value="{{ inv.id }}"
+                               class="form-check-input bulk-row-cb">
+                        {% endif %}
+                    </td>
                     <td>{{ inv.invoice_date | eu_date }}</td>
                     <td>
                         {{ inv.supplier_name }}
@@ -300,19 +334,17 @@
                            title="Edit / approve (filter preserved)">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <form method="POST" action="/bookkeeping/{{ inv.id }}/delete" class="d-inline"
-                              onsubmit="return confirm('Delete this invoice?');">
-                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2"
-                                    title="Delete">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2"
+                                title="Delete"
+                                onclick="if(confirm('Delete this invoice?')){document.getElementById('delete_form_{{ inv.id }}').submit();}">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
                 {% if not invoices %}
                 <tr>
-                    <td colspan="9" class="text-center text-muted py-4">
+                    <td colspan="10" class="text-center text-muted py-4">
                         No invoices yet. Click <strong>Add Invoice</strong> to enter your first one.
                     </td>
                 </tr>
@@ -321,6 +353,60 @@
         </table>
     </div>
 </div>
+</form>
+
+<!-- Per-row delete forms (kept outside the bulk-approve form so submit
+     hits /delete instead of /bulk-approve) -->
+{% for inv in invoices %}
+<form method="POST" action="/bookkeeping/{{ inv.id }}/delete"
+      id="delete_form_{{ inv.id }}" style="display:none"></form>
+{% endfor %}
+
+<script>
+(function(){
+    const form = document.getElementById('bulk_approve_form');
+    if (!form) return;
+    const cbAll = document.getElementById('bulk_select_all');
+    const rowCbs = document.querySelectorAll('.bulk-row-cb');
+    const btn = document.getElementById('bulk_approve_btn');
+    const count = document.getElementById('bulk_count');
+
+    function refresh() {
+        const n = document.querySelectorAll('.bulk-row-cb:checked').length;
+        if (count) count.textContent = n;
+        if (btn) btn.disabled = (n === 0);
+        // Sync the header checkbox state (checked / indeterminate / unchecked)
+        if (cbAll) {
+            if (n === 0) {
+                cbAll.checked = false;
+                cbAll.indeterminate = false;
+            } else if (n === rowCbs.length) {
+                cbAll.checked = true;
+                cbAll.indeterminate = false;
+            } else {
+                cbAll.checked = false;
+                cbAll.indeterminate = true;
+            }
+        }
+    }
+
+    if (cbAll) {
+        cbAll.addEventListener('change', function(){
+            rowCbs.forEach(cb => { cb.checked = cbAll.checked; });
+            refresh();
+        });
+    }
+    rowCbs.forEach(cb => cb.addEventListener('change', refresh));
+
+    window.confirmBulkApprove = function() {
+        const n = document.querySelectorAll('.bulk-row-cb:checked').length;
+        if (n === 0) return false;
+        return confirm('Approve ' + n + ' invoice(s)? This will move them out of Pending and feed the dashboard VAT totals.');
+    };
+
+    refresh();
+})();
+</script>
 
 <p class="text-muted small mt-3">
     <i class="bi bi-info-circle me-1"></i>Monthly VAT totals above automatically feed the VAT calculator on the Dashboard.

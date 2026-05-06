@@ -187,6 +187,61 @@ def _reclassify_statement_as_invoice(statement_id):
         return redirect(url_for("bookkeeping.statement_detail", statement_id=statement_id))
 
 
+@bp.route("/bookkeeping/bulk-approve", methods=["POST"])
+def bulk_approve_invoices():
+    """Approve every invoice id submitted via invoice_ids[] checkboxes.
+
+    Skips ids that don't exist or are already approved (idempotent).
+    Filter context is preserved on the redirect so the user lands back
+    where they were.
+    """
+    raw_ids = request.form.getlist("invoice_ids")
+    ids = []
+    for r in raw_ids:
+        try:
+            ids.append(int(r))
+        except (TypeError, ValueError):
+            continue
+
+    approved = 0
+    skipped = 0
+    for inv_id in ids:
+        inv = db.get_invoice(inv_id)
+        if not inv:
+            skipped += 1
+            continue
+        if inv["status"] == "approved":
+            skipped += 1
+            continue
+        # Re-save with status flipped — keep all other fields untouched.
+        data = {
+            "supplier_id": inv["supplier_id"],
+            "supplier_name": inv["supplier_name"],
+            "invoice_date": inv["invoice_date"],
+            "invoice_number": inv["invoice_number"],
+            "net_amount": inv["net_amount"],
+            "vat_amount": inv["vat_amount"],
+            "total_amount": inv["total_amount"],
+            "vat_rate": inv["vat_rate"],
+            "category": inv["category"],
+            "status": "approved",
+            "notes": inv["notes"],
+        }
+        db.save_invoice(data, invoice_id=inv_id)
+        approved += 1
+
+    if approved == 0 and skipped == 0:
+        flash("No invoices selected.", "warning")
+    elif skipped:
+        flash(f"Approved {approved} invoice(s). Skipped {skipped} (already approved or missing).", "success")
+    else:
+        flash(f"Approved {approved} invoice(s).", "success")
+
+    # Preserve the filter context the user was browsing
+    filter_qs = _filter_query_string(_filter_args_from_request())
+    return redirect("/bookkeeping" + filter_qs)
+
+
 @bp.route("/bookkeeping/<int:invoice_id>/reclassify-as-statement", methods=["POST"])
 def reclassify_invoice_as_statement(invoice_id):
     """Move a misclassified invoice into the statements DB."""
