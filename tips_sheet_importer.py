@@ -16,14 +16,19 @@ import json
 import re
 from datetime import datetime, timedelta
 
+# Eagerly import the Google client libs at module load (single-threaded
+# context) to avoid the well-known import race in googleapiclient when
+# multiple threads first-import .discovery concurrently:
+#   https://github.com/googleapis/google-api-python-client/issues/1502
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+
 import config
 import db
 
 
 def _drive_service():
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-
     sa_info = json.loads(config.GOOGLE_SERVICE_ACCOUNT_JSON)
     creds = (
         service_account.Credentials
@@ -42,7 +47,6 @@ def fetch_sheet_as_xlsx(sheet_id):
         fileId=sheet_id,
         mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    from googleapiclient.http import MediaIoBaseDownload
     buf = io.BytesIO()
     downloader = MediaIoBaseDownload(buf, request)
     done = False

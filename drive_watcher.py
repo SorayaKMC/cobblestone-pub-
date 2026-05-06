@@ -23,6 +23,14 @@ import os
 import re
 from datetime import date, datetime
 
+# Eagerly import the Google client libs at module load (single-threaded
+# context) to avoid the well-known import race in googleapiclient when
+# multiple threads first-import .discovery concurrently:
+#   https://github.com/googleapis/google-api-python-client/issues/1502
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+
 import config
 import db
 
@@ -40,8 +48,6 @@ IMPORTED_PREFIX_RE = re.compile(r"^\[imported-\d{4}-\d{2}-\d{2}\]\s")
 # ---------------------------------------------------------------------------
 
 def _credentials():
-    from google.oauth2 import service_account
-
     sa_json = config.GOOGLE_SERVICE_ACCOUNT_JSON
     if not sa_json:
         raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON is not set.")
@@ -54,7 +60,6 @@ def _credentials():
 
 
 def _drive_service():
-    from googleapiclient.discovery import build
     return build("drive", "v3", credentials=_credentials(), cache_discovery=False)
 
 
@@ -113,7 +118,6 @@ def list_pending_pdfs(service, root_id):
 
 
 def _download_bytes(service, file_id):
-    from googleapiclient.http import MediaIoBaseDownload
     buf = io.BytesIO()
     request = service.files().get_media(fileId=file_id)
     downloader = MediaIoBaseDownload(buf, request)

@@ -17,6 +17,13 @@ uninterrupted.
 import json
 import os
 
+# Eagerly import the Google client libs at module load (single-threaded
+# context) to avoid the well-known import race in googleapiclient when
+# multiple threads first-import .discovery concurrently:
+#   https://github.com/googleapis/google-api-python-client/issues/1502
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
 import config
 
 
@@ -44,9 +51,6 @@ def _calendar_service(venue="Backroom"):
         return None
 
     try:
-        from google.oauth2 import service_account
-        from googleapiclient.discovery import build
-
         info = json.loads(config.GOOGLE_SERVICE_ACCOUNT_JSON)
         creds = service_account.Credentials.from_service_account_info(
             info,

@@ -20,6 +20,14 @@ import os
 import re
 from datetime import date, datetime
 
+# Eagerly import the Google client libs at module load (single-threaded
+# context) to avoid the well-known import race in googleapiclient when
+# multiple threads first-import .discovery concurrently:
+#   https://github.com/googleapis/google-api-python-client/issues/1502
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+
 import config
 
 
@@ -39,8 +47,6 @@ DRIVE_SCOPES = [
 
 def _credentials(scopes):
     """Build delegated service account credentials."""
-    from google.oauth2 import service_account
-
     sa_json = config.GOOGLE_SERVICE_ACCOUNT_JSON
     if not sa_json:
         raise RuntimeError(
@@ -56,12 +62,10 @@ def _credentials(scopes):
 
 
 def _gmail():
-    from googleapiclient.discovery import build
     return build("gmail", "v1", credentials=_credentials(GMAIL_SCOPES))
 
 
 def _drive():
-    from googleapiclient.discovery import build
     return build("drive", "v3", credentials=_credentials(DRIVE_SCOPES))
 
 
@@ -136,8 +140,6 @@ def save_to_drive(filename, pdf_bytes, folder_id=None):
 
     Returns the webViewLink URL.
     """
-    from googleapiclient.http import MediaIoBaseUpload
-
     if folder_id is None:
         folder_id = config.GOOGLE_DRIVE_INVOICES_FOLDER_ID
     file_metadata = {"name": filename}
@@ -394,9 +396,6 @@ def sweep_inbox_for_year(impersonate_user, year):
 
     # Build a service impersonating the requested user (info@ is different
     # from the gmail_poller's default invoice@)
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-
     sa_info = json.loads(config.GOOGLE_SERVICE_ACCOUNT_JSON)
     creds = (
         service_account.Credentials
