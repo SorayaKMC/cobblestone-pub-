@@ -7,6 +7,28 @@ import os
 import re
 import secrets
 import threading
+
+# Force-load googleapiclient on the MAIN thread before any background
+# thread spawns. This works around a known thread-safety bug where two
+# threads first-importing googleapiclient.discovery concurrently can
+# return a partially-initialised module:
+#   https://github.com/googleapis/google-api-python-client/issues/1502
+# The downstream modules (drive_watcher, gmail_poller, payroll_drafts,
+# calendar_client, tips_sheet_importer) all import these at module top,
+# but they themselves are only imported inside threads — so the race
+# still happens on first-import. Importing here forces the cache hit.
+try:
+    from google.oauth2 import service_account as _sa  # noqa: F401
+    from googleapiclient.discovery import build as _build  # noqa: F401
+    from googleapiclient.http import (  # noqa: F401
+        MediaIoBaseDownload as _mdl,
+        MediaIoBaseUpload as _mul,
+    )
+except ImportError as e:
+    # Local dev without the deps installed — log and continue. On Render
+    # the deps are always present so this won't fire in production.
+    print(f"[boot] googleapiclient not installed: {e}")
+
 import db
 import config
 
