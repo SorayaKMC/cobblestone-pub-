@@ -1828,7 +1828,11 @@ def set_door_fee_payment_link(booking_id, url):
 def _generate_series_dates(start_date_str, end_date_str, recurrence):
     """Return a list of YYYY-MM-DD strings for a recurring series.
 
-    recurrence — 'weekly' | 'biweekly' | 'monthly'
+    recurrence — 'weekly' | 'biweekly' | 'monthly' | 'weekly_skip_first'
+    'weekly_skip_first' means weekly except the first occurrence of that
+    weekday in each calendar month (e.g. Balaclavas: every Wed except the
+    first Wed of the month). For any weekday, the first occurrence in a
+    month always falls on day-of-month 1-7.
     Dates are inclusive of start_date; stops before or on end_date.
     """
     from datetime import timedelta
@@ -1837,7 +1841,7 @@ def _generate_series_dates(start_date_str, end_date_str, recurrence):
 
     dates = []
     current = start
-    if recurrence == "weekly":
+    if recurrence in ("weekly", "weekly_skip_first"):
         delta = timedelta(weeks=1)
     elif recurrence == "biweekly":
         delta = timedelta(weeks=2)
@@ -1846,7 +1850,11 @@ def _generate_series_dates(start_date_str, end_date_str, recurrence):
 
     if delta:
         while current <= end:
-            dates.append(current.isoformat())
+            if recurrence == "weekly_skip_first" and current.day <= 7:
+                # First occurrence of this weekday in the month — skip
+                pass
+            else:
+                dates.append(current.isoformat())
             current += delta
     else:
         # Monthly: same day-of-month, advancing month by month
