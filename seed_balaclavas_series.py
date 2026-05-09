@@ -77,6 +77,20 @@ def main():
         print(f"\nDRY RUN — no rows written. Re-run without --dry-run to seed.")
         return
 
+    # Idempotency check — skip if a Balaclavas series already exists overlapping this range
+    conn = db.get_db()
+    existing = conn.execute(
+        """SELECT id, start_date, end_date FROM booking_series
+           WHERE act_name = ? AND end_date >= ? AND start_date <= ?""",
+        (series_data["act_name"], series_data["start_date"], series_data["end_date"]),
+    ).fetchone()
+    if existing:
+        print(f"\nSeries already exists (id={existing['id']}, "
+              f"{existing['start_date']} → {existing['end_date']}). Skipping.")
+        print("If you want to re-create, delete the existing series first or "
+              "run dedupe_bookings.py to clean up.")
+        return
+
     print(f"\nCreating series + {len(dates)} bookings...")
     series_id, booking_ids = db.create_booking_series(series_data)
     print(f"Done. series_id={series_id}, {len(booking_ids)} booking rows created.")

@@ -408,18 +408,34 @@ def to_booking_data(form_row, status, calendar_event_id=None, source_note="form-
     }
 
 
+def _booking_already_imported(conn, act_name, event_date):
+    """Check if a form-imported booking already exists for this act + date."""
+    row = conn.execute(
+        """SELECT id FROM bookings
+           WHERE LOWER(TRIM(act_name)) = LOWER(TRIM(?))
+             AND event_date = ?
+             AND source = 'form-import'""",
+        (act_name, event_date),
+    ).fetchone()
+    return row is not None
+
+
 def insert_rows(auto_import, needs_review, pending):
-    """Returns dict of counts."""
+    """Returns dict of counts. Idempotent — skips rows already imported."""
     db.init_db()
-    counts = {"confirmed": 0, "inquiry_review": 0, "inquiry_pending": 0, "errors": 0}
+    conn = db.get_db()
+    counts = {"confirmed": 0, "inquiry_review": 0, "inquiry_pending": 0,
+              "skipped_existing": 0, "errors": 0}
 
     for r, ev in auto_import:
         try:
+            if _booking_already_imported(conn, r.get("act_name") or "(no title)", r["event_date"]):
+                counts["skipped_existing"] += 1
+                continue
             data = to_booking_data(r, status="confirmed",
                                    source_note="form-import; matched calendar event exactly")
             bid = db.save_booking(data)
             if ev:
-                # Optionally store the calendar event id if we have it
                 ev_id = ev.get("id")
                 if ev_id:
                     db.update_booking_field(bid, "google_calendar_event_id", ev_id, actor="import")
@@ -431,6 +447,9 @@ def insert_rows(auto_import, needs_review, pending):
 
     for r, ev, mtype in needs_review:
         try:
+            if _booking_already_imported(conn, r.get("act_name") or "(no title)", r["event_date"]):
+                counts["skipped_existing"] += 1
+                continue
             note = f"form-import; needs review ({mtype} match — verify before confirming)"
             data = to_booking_data(r, status="inquiry", source_note=note)
             bid = db.save_booking(data)
@@ -442,6 +461,9 @@ def insert_rows(auto_import, needs_review, pending):
 
     for r in pending:
         try:
+            if _booking_already_imported(conn, r.get("act_name") or "(no title)", r["event_date"]):
+                counts["skipped_existing"] += 1
+                continue
             data = to_booking_data(r, status="inquiry",
                                    source_note="form-import; no calendar match — likely never confirmed")
             bid = db.save_booking(data)
@@ -517,6 +539,7 @@ def main():
     print(f"  status=confirmed     : {counts['confirmed']}")
     print(f"  status=inquiry (rev) : {counts['inquiry_review']}")
     print(f"  status=inquiry (pen) : {counts['inquiry_pending']}")
+    print(f"  skipped (already in) : {counts['skipped_existing']}")
     print(f"  errors               : {counts['errors']}")
 
 
