@@ -411,6 +411,53 @@
         </div>
         {% endif %}
 
+        <!-- Recent emails (from cobblestonedublin@ legacy inbox) -->
+        {% if booking.contact_email %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-envelope me-1"></i>Recent emails
+                    </h6>
+                    <a href="https://mail.google.com/mail/u/0/#search/from%3A{{ booking.contact_email | urlencode }}+OR+to%3A{{ booking.contact_email | urlencode }}"
+                       target="_blank" rel="noopener"
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Open in Gmail
+                    </a>
+                </div>
+                {% if email_snippets %}
+                    <ul class="list-unstyled small mb-0">
+                        {% for m in email_snippets[:3] %}
+                        <li class="mb-2 pb-2 border-bottom">
+                            <div class="d-flex justify-content-between" style="font-size:0.72rem;">
+                                <span class="text-muted">{{ m.date[:16] if m.date else '' }}</span>
+                                <span class="text-muted">{{ m.sender }}</span>
+                            </div>
+                            {% if m.subject %}
+                            <div class="fw-semibold" style="font-size:0.85rem;">{{ m.subject }}</div>
+                            {% endif %}
+                            <div class="text-muted" style="font-size:0.82rem;line-height:1.35;">
+                                {{ m.snippet }}
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if email_snippets|length > 3 %}
+                    <p class="text-muted small mb-0 mt-2">
+                        Showing 3 of {{ email_snippets|length }} cached messages —
+                        <a href="https://mail.google.com/mail/u/0/#search/from%3A{{ booking.contact_email | urlencode }}+OR+to%3A{{ booking.contact_email | urlencode }}"
+                           target="_blank" rel="noopener">see full thread in Gmail</a>.
+                    </p>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted small mb-0">
+                        No cached emails yet. Click "Open in Gmail" above to view this band's thread.
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Audit log -->
         <div class="card">
             <div class="card-body">

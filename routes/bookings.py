@@ -5,6 +5,7 @@ Squarespace block + auto-confirm emails land in Phase 3.
 Square payment links land in Phase 4.
 """
 
+import json
 import os
 import re
 from datetime import date, datetime
@@ -318,6 +319,23 @@ def new_booking():
         return redirect(url_for("bookings.new_booking"))
 
 
+def _load_email_snippets_for(contact_email):
+    """Read cached Gmail snippets for a contact_email from data/email_snippets.json.
+
+    Returns a list of {date, sender, subject, snippet} dicts (latest first), or [].
+    The cache is populated by an out-of-band script (see email_snippets_refresh.py).
+    """
+    if not contact_email:
+        return []
+    try:
+        cache_path = os.path.join(os.path.dirname(__file__), "..", "data", "email_snippets.json")
+        with open(cache_path) as f:
+            data = json.load(f)
+        return data.get(contact_email.strip().lower(), [])
+    except Exception:
+        return []
+
+
 @bp.route("/bookings/<int:booking_id>")
 def booking_detail(booking_id):
     """Detail view for a single booking - shows everything + actions sidebar."""
@@ -338,6 +356,7 @@ def booking_detail(booking_id):
         venues=VENUES,
         today=_today_iso(),
         squarespace_block=_squarespace_block(booking),
+        email_snippets=_load_email_snippets_for(booking["contact_email"]),
     )
 
 
