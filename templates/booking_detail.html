@@ -202,6 +202,16 @@
                         <button class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-x-circle me-1"></i>Cancel Booking</button>
                     </form>
                     {% endif %}
+                    {% if booking.archived_at %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/unarchive">
+                        <button class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-counterclockwise me-1"></i>Restore from Archive</button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/archive"
+                          onsubmit="return confirm('Archive this booking? It will be hidden from the active list (toggle &quot;Show archived&quot; to see archived bookings).');">
+                        <button class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-archive me-1"></i>Archive</button>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
         </div>

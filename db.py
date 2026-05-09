@@ -379,6 +379,8 @@ def init_db():
         cursor.execute("ALTER TABLE bookings ADD COLUMN door_fee_payment_link TEXT")
     if "info_sheet_read_at" not in bk_cols:
         cursor.execute("ALTER TABLE bookings ADD COLUMN info_sheet_read_at TIMESTAMP")
+    if "archived_at" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN archived_at TIMESTAMP")
 
     # Seed default categories if table is empty
     count = cursor.execute("SELECT COUNT(*) FROM employee_categories").fetchone()[0]
@@ -1511,11 +1513,17 @@ def _new_booking_token():
 
 
 def list_bookings(status=None, venue=None, start_date=None, end_date=None,
-                  event_type=None, search=None, limit=1000):
-    """Get bookings with optional filters. Returns rows ordered by event_date asc."""
+                  event_type=None, search=None, limit=1000,
+                  include_archived=False):
+    """Get bookings with optional filters. Returns rows ordered by event_date asc.
+
+    include_archived — if False (default), excludes rows where archived_at IS NOT NULL.
+    """
     conn = get_db()
     sql = "SELECT * FROM bookings WHERE 1=1"
     params = []
+    if not include_archived:
+        sql += " AND archived_at IS NULL"
     if status:
         if isinstance(status, (list, tuple)):
             placeholders = ",".join("?" * len(status))
@@ -1545,6 +1553,38 @@ def list_bookings(status=None, venue=None, start_date=None, end_date=None,
     rows = conn.execute(sql, params).fetchall()
     conn.close()
     return rows
+
+
+def archive_booking(booking_id, actor="internal"):
+    """Mark a booking as archived (soft-hide from default list views)."""
+    now = datetime.now().isoformat()
+    conn = get_db()
+    conn.execute(
+        "UPDATE bookings SET archived_at = ?, updated_at = ? WHERE id = ?",
+        (now, now, booking_id),
+    )
+    conn.execute(
+        "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+        (booking_id, actor, "archived", "Booking archived"),
+    )
+    conn.commit()
+    conn.close()
+
+
+def unarchive_booking(booking_id, actor="internal"):
+    """Un-archive a booking — restore to the active list."""
+    now = datetime.now().isoformat()
+    conn = get_db()
+    conn.execute(
+        "UPDATE bookings SET archived_at = NULL, updated_at = ? WHERE id = ?",
+        (now, booking_id),
+    )
+    conn.execute(
+        "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+        (booking_id, actor, "unarchived", "Booking unarchived"),
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_booking(id_or_token):

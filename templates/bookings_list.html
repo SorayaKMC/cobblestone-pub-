@@ -149,6 +149,17 @@
                 </button>
                 <a href="/bookings" class="btn btn-sm btn-outline-secondary">Reset</a>
             </div>
+            <div class="col-12">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="show_archived"
+                           name="show_archived" value="1"
+                           {% if show_archived %}checked{% endif %}
+                           onchange="this.form.submit()">
+                    <label class="form-check-label small text-muted" for="show_archived">
+                        <i class="bi bi-archive me-1"></i>Show archived bookings
+                    </label>
+                </div>
+            </div>
         </form>
     </div>
 </div>
@@ -184,11 +195,17 @@
                 </thead>
                 <tbody>
                 {% for b in bookings %}
-                    <tr {% if b.id in door_warning_ids %}class="table-warning"{% endif %}>
-                        <td><span class="text-muted small">{{ b.event_date }}</span></td>
-                        <td><span class="small">{{ b.day_of_week or '' }}</span></td>
+                    <tr {% if b.id in door_warning_ids %}class="table-warning"{% endif %}
+                        {% if b.archived_at %}style="opacity:.55;"{% endif %}>
+                        <td><span class="text-muted small">{{ b.event_date | pretty_date }}</span></td>
+                        <td><span class="small">{{ b.day_of_week or (b.event_date | day_name) }}</span></td>
                         <td>
                             <a href="/bookings/{{ b.id }}" class="text-decoration-none fw-semibold">{{ b.act_name }}</a>
+                            {% if b.archived_at %}
+                                <span class="badge bg-secondary ms-1" title="Archived">
+                                    <i class="bi bi-archive"></i> Archived
+                                </span>
+                            {% endif %}
                             {% if b.id in door_warning_ids %}
                                 <span class="badge bg-warning text-dark ms-1" title="Door person not set — gig within 7 days">
                                     <i class="bi bi-exclamation-triangle-fill"></i> Door person TBC

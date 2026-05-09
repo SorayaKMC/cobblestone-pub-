@@ -19,6 +19,8 @@ bp = Blueprint("bookings", __name__)
 
 # ─── Constants exposed to templates ─────────────────────────────────────────
 EVENT_TYPES = ["Gig", "Class", "Private Hire", "Rehearsal", "Filming", "Other"]
+# Subset shown on the public "something else" form (everything except Gig + Class)
+OTHER_FORM_EVENT_TYPES = ["Filming", "Rehearsal", "Private Hire", "Other"]
 STATUSES = ["inquiry", "tentative", "confirmed", "completed", "cancelled"]
 VENUES = ["Backroom"]  # V0: Upstairs disabled — re-add to re-enable
 
@@ -212,6 +214,7 @@ def bookings_list():
     start    = request.args.get("start_date", "")
     end      = request.args.get("end_date", "")
     view     = request.args.get("view", "upcoming")  # upcoming | past | all
+    show_archived = request.args.get("show_archived") == "1"
 
     today = _today_iso()
     effective_start = start or None
@@ -232,6 +235,7 @@ def bookings_list():
         start_date=effective_start,
         end_date=effective_end,
         search=search or None,
+        include_archived=show_archived,
     )
 
     counts = db.booking_counts()
@@ -260,7 +264,30 @@ def bookings_list():
         today=today,
         door_warning_ids=door_warning_ids,
         search=search,
+        show_archived=show_archived,
     )
+
+
+@bp.route("/bookings/<int:booking_id>/archive", methods=["POST"])
+def archive_booking_route(booking_id):
+    """Archive (soft-hide) a booking from the active list."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+    db.archive_booking(booking_id, actor="internal")
+    flash(f"Booking archived: {booking['act_name']}.", "success")
+    return redirect(request.referrer or url_for("bookings.bookings_list"))
+
+
+@bp.route("/bookings/<int:booking_id>/unarchive", methods=["POST"])
+def unarchive_booking_route(booking_id):
+    """Restore an archived booking to the active list."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+    db.unarchive_booking(booking_id, actor="internal")
+    flash(f"Booking restored from archive: {booking['act_name']}.", "success")
+    return redirect(request.referrer or url_for("bookings.bookings_list"))
 
 
 @bp.route("/bookings/new", methods=["GET", "POST"])
@@ -710,6 +737,120 @@ def availability_json():
         statuses[d] = "booked"
 
     return jsonify({"statuses": statuses, "venue": venue})
+
+
+# ─── "Something else" inquiry form (filming, practice, private event) ───────
+
+def _parse_other_public_form(form):
+    """Parse the simpler 'something else' inquiry form (non-gig)."""
+    def _opt(key, default=None):
+        v = (form.get(key) or "").strip()
+        return v if v else default
+
+    def _opt_int(key):
+        v = _opt(key)
+        try:
+            return int(v) if v else None
+        except ValueError:
+            return None
+
+    contact_name = _opt("contact_name")
+    if not contact_name:
+        raise ValueError("Your name is required.")
+
+    contact_email = _opt("contact_email")
+    if not contact_email or "@" not in contact_email:
+        raise ValueError("A valid email address is required.")
+
+    event_date = _opt("event_date")
+    if not event_date:
+        raise ValueError("Please pick an event date.")
+    if event_date < _today_iso():
+        raise ValueError("Please pick a future date.")
+
+    event_type = _opt("event_type", "Other")
+    if event_type not in OTHER_FORM_EVENT_TYPES:
+        event_type = "Other"
+
+    # No "act_name" field on this form — auto-construct from type + contact
+    title = _opt("title") or f"{event_type} — {contact_name}"
+
+    try:
+        dow = datetime.strptime(event_date, "%Y-%m-%d").strftime("%A")
+    except Exception:
+        dow = None
+
+    return {
+        "venue":               "Backroom",
+        "event_date":          event_date,
+        "day_of_week":         dow,
+        "door_time":           None,
+        "start_time":          None,
+        "end_time":            None,
+        "status":              "inquiry",
+        "event_type":          event_type,
+        "act_name":            title,
+        "contact_name":        contact_name,
+        "contact_email":       contact_email,
+        "contact_phone":       _opt("contact_phone"),
+        "expected_attendance": _opt_int("expected_attendance"),
+        "description":         _opt("description"),
+        "media_links":         None,
+        "ticketing":           None,
+        "ticket_price":        None,
+        "ticket_link":         None,
+        "door_person":         None,
+        "door_fee_required":   0,
+        "venue_fee_required":  0,  # non-gig fees handled case-by-case
+        "announcement_date":   None,
+        "support_act":         None,
+        "promo_ok":            None,
+        "notes":               None,
+        "source":              "web-other",
+    }
+
+
+@bp.route("/book/other", methods=["GET"])
+def book_other_form():
+    """Public 'something else' inquiry form (filming, practice, private event)."""
+    return render_template(
+        "book_other.html",
+        event_types=OTHER_FORM_EVENT_TYPES,
+        form_data={},
+    )
+
+
+@bp.route("/book/other", methods=["POST"])
+def book_other_submit():
+    """Handle 'something else' inquiry form submission."""
+    try:
+        data = _parse_other_public_form(request.form)
+        bid = db.save_booking(data)
+        booking = db.get_booking(bid)
+        db.add_booking_audit(bid, "band", "created",
+                             "Submitted via 'something else' public form")
+
+        try:
+            import bookings_email
+            base_url = request.host_url.rstrip("/")
+            bookings_email.send_booking_ack(booking, base_url)
+        except Exception as email_err:
+            print(f"[bookings] Auto-ack email failed: {email_err}")
+
+        flash("Your inquiry has been received! We'll be in touch within a few days.",
+              "success")
+        return redirect(url_for("bookings.book_portal", token=booking["public_token"]))
+
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        flash(f"Something went wrong — please try again. ({e})", "danger")
+
+    return render_template(
+        "book_other.html",
+        event_types=OTHER_FORM_EVENT_TYPES,
+        form_data=request.form,
+    )
 
 
 @bp.route("/book/<token>")

@@ -76,6 +76,46 @@ def eu_date(value):
     return s
 
 
+def pretty_date(value):
+    """Format a date as 'DD-Mmm-YYYY' (e.g. '05-May-2026') for the bookings list."""
+    from datetime import datetime as _dt, date as _date
+    if value in (None, "", "None"):
+        return ""
+    if isinstance(value, _dt):
+        return value.strftime("%d-%b-%Y")
+    if isinstance(value, _date):
+        return value.strftime("%d-%b-%Y")
+    s = str(value).strip()
+    iso_match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", s)
+    if iso_match:
+        try:
+            d = _date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+            return d.strftime("%d-%b-%Y")
+        except ValueError:
+            pass
+    return s
+
+
+def day_name(value):
+    """Return the day-of-week name (e.g. 'Tuesday') for an ISO date string or date object."""
+    from datetime import datetime as _dt, date as _date
+    if value in (None, "", "None"):
+        return ""
+    if isinstance(value, _dt):
+        return value.strftime("%A")
+    if isinstance(value, _date):
+        return value.strftime("%A")
+    s = str(value).strip()
+    iso_match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", s)
+    if iso_match:
+        try:
+            d = _date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+            return d.strftime("%A")
+        except ValueError:
+            pass
+    return ""
+
+
 def eu_month(value):
     """Format an ISO date as 'mmm yyyy' (e.g. 'Apr 2026'). For headers
     and summary blocks where a full date is unnecessary."""
@@ -308,6 +348,8 @@ def create_app():
     app.jinja_env.filters["pdf_basename"] = pdf_basename
     app.jinja_env.filters["eu_date"] = eu_date
     app.jinja_env.filters["eu_month"] = eu_month
+    app.jinja_env.filters["pretty_date"] = pretty_date
+    app.jinja_env.filters["day_name"] = day_name
 
     # Initialize database
     with app.app_context():
