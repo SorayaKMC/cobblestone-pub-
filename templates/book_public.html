@@ -75,7 +75,7 @@
         </a>
         <div>
             <span class="cobblestone-heading text-white" style="font-size:1.2rem;">The Cobblestone</span>
-            <span class="text-secondary small d-block" style="font-size:.75rem;line-height:1;">Backroom &amp; Upstairs Bookings</span>
+            <span class="text-secondary small d-block" style="font-size:.75rem;line-height:1;">Backroom Bookings</span>
         </div>
     </div>
 </nav>
@@ -228,7 +228,7 @@
                 </div>
                 <div class="col-sm-4 col-md-auto">
                     <i class="bi bi-telephone me-1 text-muted"></i>Booking enquiries:
-                    <a href="tel:+353894770682">+353 89 477 06 82</a>
+                    <a href="tel:+353857362447">+353 85 736 2447</a>
                 </div>
                 <div class="col-sm-4 col-md-auto">
                     <i class="bi bi-envelope me-1 text-muted"></i>
@@ -255,8 +255,10 @@
                     <div class="d-flex gap-2 mb-3">
                         <button type="button" class="btn btn-sm btn-dark w-50" id="vbtn-backroom"
                                 onclick="setVenue('Backroom')">Backroom</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary w-50" id="vbtn-upstairs"
-                                onclick="setVenue('Upstairs')">Upstairs</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-50 disabled"
+                                id="vbtn-upstairs" disabled
+                                title="Upstairs bookings coming soon"
+                                style="opacity:.55;cursor:not-allowed;">Upstairs <span class="small">(soon)</span></button>
                     </div>
 
                     <!-- Month nav -->

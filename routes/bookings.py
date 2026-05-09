@@ -20,7 +20,7 @@ bp = Blueprint("bookings", __name__)
 # ─── Constants exposed to templates ─────────────────────────────────────────
 EVENT_TYPES = ["Gig", "Class", "Private Hire", "Rehearsal", "Filming", "Other"]
 STATUSES = ["inquiry", "tentative", "confirmed", "completed", "cancelled"]
-VENUES = ["Backroom", "Upstairs"]
+VENUES = ["Backroom"]  # V0: Upstairs disabled — re-add to re-enable
 
 STATUS_LABELS = {
     "inquiry":   "Inquiry",
@@ -328,6 +328,19 @@ def confirm_booking(booking_id):
 
     # Re-fetch booking with updated status for emails / calendar
     updated = db.get_booking(booking_id)
+
+    # Generate Square door fee payment link before email so band can pay in advance
+    if updated["door_fee_required"] and not updated["door_fee_payment_link"]:
+        try:
+            import square_client
+            url, _ = square_client.create_door_fee_payment_link(
+                booking_id, updated["act_name"], updated["event_date"],
+            )
+            if url:
+                db.set_door_fee_payment_link(booking_id, url)
+                updated = db.get_booking(booking_id)
+        except Exception as e:
+            print(f"[bookings] Door fee payment link creation failed: {e}")
 
     # Create Google Calendar event — non-blocking
     cal_event_id = None
