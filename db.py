@@ -1894,11 +1894,19 @@ def set_door_fee_payment_link(booking_id, url):
 def _generate_series_dates(start_date_str, end_date_str, recurrence):
     """Return a list of YYYY-MM-DD strings for a recurring series.
 
-    recurrence — 'weekly' | 'biweekly' | 'monthly' | 'weekly_skip_first'
-    'weekly_skip_first' means weekly except the first occurrence of that
-    weekday in each calendar month (e.g. Balaclavas: every Wed except the
-    first Wed of the month). For any weekday, the first occurrence in a
-    month always falls on day-of-month 1-7.
+    recurrence:
+      'weekly'              — every 7 days starting from start_date
+      'biweekly'            — every 14 days
+      'monthly'             — same day-of-month, advancing month by month
+      'weekly_skip_first'   — weekly except the first occurrence of that
+                              weekday in each calendar month (e.g. Balaclavas:
+                              every Wed except first Wed). Day-of-month 1-7
+                              identifies the first occurrence of any weekday.
+      'monthly_first_weekday' — first occurrence of start_date's weekday in
+                                each month (e.g. first Sunday for Larry's
+                                Stretched, first Tuesday for Piper's Club).
+                                start_date itself should be a 'first weekday'
+                                of its month.
     Dates are inclusive of start_date; stops before or on end_date.
     """
     from datetime import timedelta
@@ -1922,6 +1930,23 @@ def _generate_series_dates(start_date_str, end_date_str, recurrence):
             else:
                 dates.append(current.isoformat())
             current += delta
+    elif recurrence == "monthly_first_weekday":
+        # First occurrence of start_date's weekday in each month
+        weekday = start.weekday()  # 0=Mon ... 6=Sun
+        year, month = start.year, start.month
+        while True:
+            first = date(year, month, 1)
+            offset = (weekday - first.weekday()) % 7
+            d = first + timedelta(days=offset)
+            if d > end:
+                break
+            if d >= start:
+                dates.append(d.isoformat())
+            # advance to next month
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
     else:
         # Monthly: same day-of-month, advancing month by month
         import calendar as _cal
