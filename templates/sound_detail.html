@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ booking.act_name }} — Cobblestone Sound</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f0f2f5; }
+        .cobblestone-heading { font-family: 'Playfair Display', Georgia, serif; font-weight: 800; }
+        .info-row { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #6c757d; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+        .info-value { font-size: .95rem; color: #1c1c2e; word-break: break-word; }
+        .info-value.muted { color: #aaa; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark py-2">
+    <div class="container-lg d-flex align-items-center gap-3">
+        <a href="/sound" class="text-white text-decoration-none">
+            <i class="bi bi-arrow-left me-1"></i> All gigs
+        </a>
+        <div class="vr opacity-25"></div>
+        <span class="cobblestone-heading text-white" style="font-size:1.05rem;">Cobblestone Sound</span>
+    </div>
+</nav>
+
+<div class="container-lg py-3" style="max-width:760px;">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <h4 class="mb-1">{{ booking.act_name }}</h4>
+                    <div class="text-muted">
+                        {{ booking.event_date | pretty_date }} · {{ booking.day_of_week or (booking.event_date | day_name) }}
+                    </div>
+                </div>
+                {% if booking.venue_fee_paid_at %}
+                    <span class="badge bg-success fs-6">
+                        <i class="bi bi-check-circle me-1"></i>Fee paid
+                    </span>
+                {% else %}
+                    <form method="POST" action="/sound/{{ booking.id }}/mark-fee-paid"
+                          onsubmit="return confirm('Mark venue fee (€150) as paid for this gig?');">
+                        <button class="btn btn-success btn-sm">
+                            <i class="bi bi-cash-coin me-1"></i>Mark fee paid
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Gig details -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-title mb-3"><i class="bi bi-info-circle me-1"></i>Details</h6>
+
+            <div class="info-row">
+                <div class="info-label">Door time</div>
+                <div class="info-value {% if not booking.door_time %}muted{% endif %}">{{ booking.door_time or 'TBC' }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Music starts</div>
+                <div class="info-value {% if not booking.start_time %}muted{% endif %}">{{ booking.start_time or 'TBC' }}</div>
+            </div>
+            {% if booking.end_time %}
+            <div class="info-row">
+                <div class="info-label">End time</div>
+                <div class="info-value">{{ booking.end_time }}</div>
+            </div>
+            {% endif %}
+            <div class="info-row">
+                <div class="info-label">Support act</div>
+                <div class="info-value {% if not booking.support_act %}muted{% endif %}">{{ booking.support_act or 'None confirmed' }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Door person</div>
+                <div class="info-value {% if not booking.door_person %}muted{% endif %}">
+                    {{ booking.door_person or 'Not set yet' }}
+                    {% if booking.door_fee_required %}<span class="badge bg-warning text-dark ms-2">Door person needed</span>{% endif %}
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Expected attendance</div>
+                <div class="info-value {% if not booking.expected_attendance %}muted{% endif %}">{{ booking.expected_attendance or '—' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-title mb-3"><i class="bi bi-person me-1"></i>Contact</h6>
+            <div class="info-row">
+                <div class="info-label">Name</div>
+                <div class="info-value {% if not booking.contact_name %}muted{% endif %}">{{ booking.contact_name or 'Not provided' }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Email</div>
+                <div class="info-value">
+                    {% if booking.contact_email %}
+                        <a href="mailto:{{ booking.contact_email }}">{{ booking.contact_email }}</a>
+                    {% else %}<span class="muted">Not provided</span>{% endif %}
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Phone</div>
+                <div class="info-value">
+                    {% if booking.contact_phone %}
+                        <a href="tel:{{ booking.contact_phone }}">{{ booking.contact_phone }}</a>
+                    {% else %}<span class="muted">Not provided</span>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bio + media -->
+    {% if booking.description or booking.media_links %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-title mb-3"><i class="bi bi-text-paragraph me-1"></i>About the act</h6>
+            {% if booking.description %}
+            <p class="mb-3" style="font-size:.92rem;">{{ booking.description }}</p>
+            {% endif %}
+            {% if booking.media_links %}
+            <div class="info-row">
+                <div class="info-label">Media / links</div>
+                <div class="info-value" style="font-size:.85rem; white-space: pre-wrap;">{{ booking.media_links }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Attachments (poster, tech rider) -->
+    {% if attachments %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-title mb-3"><i class="bi bi-paperclip me-1"></i>Attachments</h6>
+            <ul class="list-unstyled mb-0">
+                {% for a in attachments %}
+                <li class="mb-2">
+                    <a href="/bookings/{{ booking.id }}/attachment/{{ a.id }}">
+                        <i class="bi bi-file-earmark me-1"></i>{{ a.filename }}
+                    </a>
+                    <span class="text-muted small">({{ a.kind }})</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent emails -->
+    {% if booking.contact_email %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="card-title mb-0"><i class="bi bi-envelope me-1"></i>Recent emails</h6>
+                <a href="https://mail.google.com/mail/u/0/#search/from%3A{{ booking.contact_email | urlencode }}+OR+to%3A{{ booking.contact_email | urlencode }}"
+                   target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Open in Gmail
+                </a>
+            </div>
+            {% if email_snippets %}
+                <ul class="list-unstyled small mb-0">
+                    {% for m in email_snippets[:3] %}
+                    <li class="mb-2 pb-2 border-bottom">
+                        <div class="d-flex justify-content-between" style="font-size:.72rem;">
+                            <span class="text-muted">{{ m.date[:16] if m.date else '' }}</span>
+                            <span class="text-muted">{{ m.sender }}</span>
+                        </div>
+                        {% if m.subject %}<div class="fw-semibold" style="font-size:.85rem;">{{ m.subject }}</div>{% endif %}
+                        <div class="text-muted" style="font-size:.82rem;line-height:1.35;">{{ m.snippet }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted small mb-0">
+                    No cached emails. Click "Open in Gmail" to view this band's thread.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Notes -->
+    {% if booking.notes %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-title mb-3"><i class="bi bi-sticky me-1"></i>Notes</h6>
+            <p class="mb-0" style="font-size:.9rem; white-space: pre-wrap;">{{ booking.notes }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

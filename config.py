@@ -21,6 +21,11 @@ AUTH_ENABLED = bool(AUTH_USERNAME and AUTH_PASSWORD)
 # If not set, defaults to the main AUTH_PASSWORD
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "") or AUTH_PASSWORD or "unlock2026"
 
+# Engineer (Shane) login — separate from manager auth, scoped to /sound
+ENGINEER_AUTH_USERNAME = os.getenv("ENGINEER_AUTH_USERNAME", "shane")
+ENGINEER_AUTH_PASSWORD = os.getenv("ENGINEER_AUTH_PASSWORD", "")
+ENGINEER_AUTH_ENABLED  = bool(ENGINEER_AUTH_PASSWORD)
+
 LOCATION_IDS = {
     "back_room": "LVTMD7JYHNV9E",
     "main_bar": "L72Q03M0KGGFR",

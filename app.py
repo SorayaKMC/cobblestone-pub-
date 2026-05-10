@@ -381,6 +381,24 @@ def create_app():
             # Cron endpoints — protected by their own key check, not Basic Auth
             if request.path == "/admin/run-reminders":
                 return None
+            # Public landing at root — index() decides what to render based on auth
+            if request.path == "/":
+                return None
+            # Engineer view — its own credential set, checked in the route handler
+            if request.path.startswith("/sound"):
+                auth = request.authorization
+                # Accept manager OR engineer creds for /sound
+                if auth and check_auth(auth.username, auth.password):
+                    return None
+                if (config.ENGINEER_AUTH_ENABLED and auth
+                        and auth.username == config.ENGINEER_AUTH_USERNAME
+                        and auth.password == config.ENGINEER_AUTH_PASSWORD):
+                    return None
+                return Response(
+                    "Please log in to access the sound engineer view.",
+                    401,
+                    {"WWW-Authenticate": 'Basic realm="Cobblestone Sound Engineer"'},
+                )
             auth = request.authorization
             if not auth or not check_auth(auth.username, auth.password):
                 return Response(
@@ -390,19 +408,26 @@ def create_app():
                 )
 
     # Register blueprints
-    from routes import settings, payroll, dashboard, pto, bookkeeping, bookings
+    from routes import settings, payroll, dashboard, pto, bookkeeping, bookings, sound
     app.register_blueprint(settings.bp)
     app.register_blueprint(payroll.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(pto.bp)
     app.register_blueprint(bookkeeping.bp)
     app.register_blueprint(bookings.bp)
+    app.register_blueprint(sound.bp)
 
     @app.route("/")
     def index():
         from datetime import datetime
         from routes.dashboard import _get_week_sales_with_daily
         import square_client as sq
+
+        # Unauthenticated visitor → public landing (band routing + manager sign-in)
+        if config.AUTH_ENABLED:
+            auth = request.authorization
+            if not auth or not check_auth(auth.username, auth.password):
+                return render_template("public_landing.html")
 
         week_net = None
         week_label = ""
