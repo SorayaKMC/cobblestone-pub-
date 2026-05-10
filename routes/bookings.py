@@ -1079,12 +1079,33 @@ def book_portal(token):
         except Exception as e:
             print(f"[portal] Payment link generation failed for #{booking['id']}: {e}")
 
+    # If this contact has other active bookings, surface a multi-gig link
+    # so they can jump to the contact portal and see all of them in one place.
+    other_count = 0
+    contact_portal_url = None
+    if booking["contact_email"]:
+        siblings = [
+            b for b in db.list_bookings_for_email(
+                booking["contact_email"],
+                include_past=False,
+                include_archived=False,
+            )
+            if b["id"] != booking["id"]
+            and b["status"] not in ("cancelled", "completed")
+        ]
+        if siblings:
+            other_count = len(siblings)
+            ctoken = db.get_or_create_contact_token(booking["contact_email"])
+            contact_portal_url = url_for("bookings.contact_portal", token=ctoken)
+
     return render_template(
         "book_portal.html",
         booking=booking,
         attachments=db.get_booking_attachments(booking["id"]),
         status_labels=STATUS_LABELS,
         status_badges=STATUS_BADGES,
+        other_count=other_count,
+        contact_portal_url=contact_portal_url,
     )
 
 
