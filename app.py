@@ -375,8 +375,11 @@ def create_app():
             # Allow static files and health checks without auth
             if request.endpoint in ("static", "healthz"):
                 return None
-            # Public booking form + band portal + Square webhooks (no auth required)
-            if request.path.startswith("/book") or request.path.startswith("/webhooks"):
+            # Public booking form + band portal + multi-gig contact portal
+            # + Square webhooks (no auth required)
+            if (request.path.startswith("/book")
+                    or request.path.startswith("/portal")
+                    or request.path.startswith("/webhooks")):
                 return None
             # Cron endpoints — protected by their own key check, not Basic Auth
             if request.path == "/admin/run-reminders":
