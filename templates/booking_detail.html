@@ -204,10 +204,24 @@
                     {% endif %}
                     {% if booking.status != 'cancelled' %}
                     <form method="POST" action="/bookings/{{ booking.id }}/status"
-                          onsubmit="return confirm('Cancel this booking?');">
+                          onsubmit="return confirm('Cancel this booking? (No email sent)');">
                         <input type="hidden" name="status" value="cancelled">
-                        <button class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-x-circle me-1"></i>Cancel Booking</button>
+                        <button class="btn btn-outline-danger btn-sm w-100"
+                                title="Cancels without sending any email">
+                            <i class="bi bi-x-circle me-1"></i>Cancel Booking (silent)
+                        </button>
                     </form>
+                    {% if booking.contact_email %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/status"
+                          onsubmit="return confirm('Cancel this booking AND send the band a polite decline email with a rebook link?');">
+                        <input type="hidden" name="status" value="cancelled">
+                        <input type="hidden" name="send_decline_email" value="1">
+                        <button class="btn btn-danger btn-sm w-100"
+                                title="Cancels and emails the band the date-taken decline with a rebook link">
+                            <i class="bi bi-envelope-x me-1"></i>Cancel + Email Decline
+                        </button>
+                    </form>
+                    {% endif %}
                     {% endif %}
                     {% if booking.archived_at %}
                     <form method="POST" action="/bookings/{{ booking.id }}/unarchive">

@@ -554,7 +554,14 @@ def edit_booking(booking_id):
 
 @bp.route("/bookings/<int:booking_id>/status", methods=["POST"])
 def change_status(booking_id):
-    """Move a booking through the status pipeline."""
+    """Move a booking through the status pipeline.
+
+    Form params:
+      status — new status (required)
+      send_decline_email — if '1' AND new_status='cancelled', send the
+                           date-taken-decline email to the band.
+                           Default: silent (no email).
+    """
     booking = db.get_booking(booking_id)
     if not booking:
         abort(404)
@@ -564,6 +571,8 @@ def change_status(booking_id):
         return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
     note = request.form.get("note", "").strip() or None
     actor = request.form.get("actor", "internal")
+    send_decline_email = request.form.get("send_decline_email") == "1"
+
     db.update_booking_status(booking_id, new_status, actor=actor, detail=note)
 
     # If cancelling, remove the Calendar event
@@ -574,7 +583,24 @@ def change_status(booking_id):
         except Exception as e:
             print(f"[bookings] Calendar delete failed: {e}")
 
-    flash(f"Status set to {STATUS_LABELS.get(new_status, new_status)}.", "success")
+    # Optional: send the date-taken-decline email when cancelling
+    decline_email_sent = False
+    if new_status == "cancelled" and send_decline_email and booking["contact_email"]:
+        try:
+            import bookings_email
+            updated = db.get_booking(booking_id)
+            decline_email_sent = bookings_email.send_date_taken_decline(
+                updated, request.host_url.rstrip("/")
+            )
+        except Exception as e:
+            print(f"[bookings] Decline email failed: {e}")
+
+    msg = f"Status set to {STATUS_LABELS.get(new_status, new_status)}"
+    if decline_email_sent:
+        msg += ", decline email sent"
+    elif new_status == "cancelled" and send_decline_email and not booking["contact_email"]:
+        msg += " (no email — booking has no contact email)"
+    flash(msg + ".", "success")
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
 
