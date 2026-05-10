@@ -1,88 +1,95 @@
 # Cobblestone Backroom — Shane's Quick Reference
 
-A pocket guide to the new bookings system. Most days you won't need
-much — just a glance at what's coming up. Anything weird, ring Soraya
-or Tomás.
+A pocket guide to your view of the new bookings system. Most days you
+won't need much — just a glance at what's coming up. Anything weird,
+ring Soraya or Tomás.
 
 ---
 
 ## Logging in
 
-**URL:** `https://bookings.cobblestonepub.ie`
+**URL:** `https://bookings.cobblestonepub.ie/sound`
 
-**Username and password:** sent to you separately — save them in your
-phone or password manager. Same login as Tomás and Soraya use.
+**Username:** `shane`
+**Password:** sent to you separately — save it in your phone or
+password manager.
+
+This is your own login — separate from Soraya/Tomás. You'll only see
+the gigs view; the rest of the manager portal isn't visible to you,
+which keeps things tidy.
 
 If the URL says "this site can't be reached" the first day, give it
 an hour for DNS to settle, or use the backup URL:
-`https://cobblestone-pub.onrender.com`
+`https://cobblestone-pub.onrender.com/sound`
 
 ---
 
-## Finding your upcoming gigs
+## Your upcoming gigs
 
-1. After logging in you land on a dashboard. **Click the green
-   "Confirmed upcoming" tile** (it's the big number in the middle of
-   the top row)
-2. That filters the list to confirmed gigs only — your queue
-3. They're sorted by date, soonest first
-4. Click any row to open the full booking
+After logging in, you land directly on your list — confirmed gigs
+for the next ~4 months, sorted by date with month dividers.
+
+Each row shows:
+
+- **Date + day of week**
+- **Act name**
+- **Door time + music start time**
+- **Contact email** (band's main contact)
+- **Door person TBC** badge — if a gig within 7 days has no door
+  person assigned yet (Tomás's job to sort, but useful to know)
+- **Fee paid / Fee outstanding** badge — quick view of which gigs
+  you've already been settled on
+
+Click any row to open the full detail page.
 
 ---
 
-## What to look for on a booking
+## What's on the gig detail page
 
-When you open a gig (`/bookings/<id>`), the bits that matter to you
-are in the **Details** panel:
+When you tap into a gig, you see everything that matters to you:
 
-| Field | What |
+| Section | What it shows |
 |---|---|
-| **Door time** | When doors open to the public |
-| **Start time** | Music kicks off — your sound check should wrap before this |
-| **Support act** | If they've named one — extra act to set up for |
-| **Door person** | Set / not set — if blank or "TBC", the band may not have a door person sorted yet |
-| **Contact email / phone** | The band's contact for sound check coordination |
-| **Description** | Bio or promo — gives you a sense of the act |
-| **Media links** | Spotify / Bandcamp / YouTube — useful for previewing their sound |
-
-If they've **uploaded a poster or tech rider**, it shows in the
-Attachments section of the page.
-
-The **Recent emails** panel on the right shows the last few
-exchanges between Tomás and the band — gives you context on
-anything already discussed (door person decisions, support acts,
-etc.).
+| **Top header** | Act + date + day, plus the **"Mark fee paid"** button (or a "Fee paid ✓" badge if it's already settled) |
+| **Details** | Door time, music start, support act, door person, expected attendance |
+| **Contact** | Band's contact name, email (clickable to email them), phone (tap to call) |
+| **About the act** | Bio + media links (Spotify / Bandcamp / etc.) |
+| **Attachments** | Posters, tech riders the band has uploaded |
+| **Recent emails** | Last few exchanges between Tomás and the band — for context |
+| **Notes** | Anything Tomás has scribbled on the booking |
 
 ---
 
 ## Coordinating sound check / load-in
 
-You're CC'd on the original confirmation email automatically — so
-the band has your email and phone from day 1. But if you want to
-reach out first:
+You're CC'd on the band's confirmation email automatically — they
+have your email and phone from day 1. But if you want to reach out
+first:
 
-1. Open the booking
-2. Copy the contact email
-3. Use your own email or WhatsApp — usual flow
+1. Open the gig
+2. Tap the band's email or phone (clickable)
+3. Use your usual flow (email / WhatsApp)
 4. Confirm sound check time, load-in / load-out, any tech needs
 
-There's no "log my conversation with the band" feature — keep
-your own notes as you do now.
+There's no "log my conversation with the band" feature in the app —
+keep your own notes as you do now.
 
 ---
 
 ## Marking your fee as paid
 
-When the band pays you (currently they pay you directly on the
-night for the venue fee that includes your services):
+When the band pays you on the night (currently you're paid directly
+for the venue fee that includes your services):
 
-1. Open the booking
-2. Click **Mark venue fee paid** in the actions sidebar
-3. That removes the gig from the "Outstanding fees" tile so
-   management knows it's settled
+1. Open the gig
+2. Tap the green **"Mark fee paid"** button at the top right
+3. Confirm the popup
 
-If the band ever hands payment to the bar instead of you, the
-manager on shift will mark it instead.
+Done. The badge flips to **"Fee paid ✓"** and management's
+"Outstanding fees" counter drops by one.
+
+If you forget on the night, no problem — mark it next time you're at
+your phone.
 
 ---
 
@@ -117,23 +124,22 @@ Tomás: *(his contact)*
 
 ---
 
-## Please don't touch (yet)
+## What you can and can't do
 
-These actions affect the live system in ways that ripple out — leave
-them to Tomás and Soraya:
+**You can:**
+- Read everything on your gigs list
+- Mark fee paid (the only write action you have)
+- Click links to email / phone the band
 
-- **Approve / Confirm** — triggers emails to the band
-- **Cancel Booking** — sends a cancellation email
-- **Archive** — hides the booking from the active list
-- **Status dropdown** changes (inquiry → tentative → confirmed etc.)
-- **Send portal link** — emails the band again
-- **Squarespace block** — that's the publishing flow
+**You can't (and that's by design — keeps you focused):**
+- See or change booking statuses
+- Cancel or archive bookings
+- See past gigs (cutoff is today onwards)
+- See payroll, PTO, bookkeeping, KPIs, etc.
+- Edit any field on a booking
 
-You can safely:
-- Read everything
-- Mark venue fee paid (your fee)
-- Mark door fee paid (if you happen to be settling cash on the night)
-- Add a free-text note to a booking (Notes field, save with Edit)
+If a booking does need editing (wrong time, wrong band name), tell
+Tomás — he has full access.
 
 ---
 
