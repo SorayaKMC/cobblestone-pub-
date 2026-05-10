@@ -7,7 +7,7 @@
 {% set form_action = '/bookings/' ~ booking.id ~ '/edit' if not is_new else '/bookings/new' %}
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <a href="/bookings" class="btn btn-sm btn-outline-secondary">
+    <a href="{{ back_url or '/bookings' }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back to bookings
     </a>
     {% if not is_new %}
@@ -170,7 +170,7 @@
                         <button type="submit" class="btn btn-primary btn-sm">
                             <i class="bi bi-check-lg me-1"></i>{{ 'Create Booking' if is_new else 'Save Changes' }}
                         </button>
-                        <a href="/bookings" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                        <a href="{{ back_url or '/bookings' }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
                     </div>
                 </form>
             </div>

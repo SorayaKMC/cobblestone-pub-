@@ -10,7 +10,7 @@ import os
 import re
 from datetime import date, datetime
 from flask import (Blueprint, render_template, request, redirect, url_for,
-                   flash, abort, jsonify, send_file)
+                   flash, abort, jsonify, send_file, session)
 import config
 import db
 
@@ -213,6 +213,10 @@ def bookings_api_events():
 @bp.route("/bookings")
 def bookings_list():
     """Master tracker view - filterable list of all bookings."""
+    # Remember this URL (path + query string) so the detail page's
+    # "Back to bookings" link returns here with filters intact.
+    session["last_bookings_url"] = request.full_path.rstrip("?")
+
     status   = request.args.get("status", "")
     venue    = request.args.get("venue", "")
     evtype   = request.args.get("event_type", "")
@@ -424,6 +428,7 @@ def booking_detail(booking_id):
         today=_today_iso(),
         squarespace_block=_squarespace_block(booking),
         email_snippets=_load_email_snippets_for(booking["contact_email"]),
+        back_url=session.get("last_bookings_url", "/bookings"),
     )
 
 
