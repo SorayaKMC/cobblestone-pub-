@@ -381,6 +381,24 @@ def init_db():
         cursor.execute("ALTER TABLE bookings ADD COLUMN info_sheet_read_at TIMESTAMP")
     if "archived_at" not in bk_cols:
         cursor.execute("ALTER TABLE bookings ADD COLUMN archived_at TIMESTAMP")
+    if "blocks_public_calendar" not in bk_cols:
+        # Default 1 = blocks (existing behavior). Manager unticks for daytime-only events.
+        cursor.execute(
+            "ALTER TABLE bookings ADD COLUMN blocks_public_calendar INTEGER NOT NULL DEFAULT 1"
+        )
+
+    # Contact tokens — one row per unique contact email, used by the multi-gig
+    # portal so a contact with several bookings has a single URL that lists them all
+    cursor.execute(
+        """CREATE TABLE IF NOT EXISTS contact_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contact_email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            token TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )"""
+    )
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_contact_tokens_token ON contact_tokens(token)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_contact_tokens_email ON contact_tokens(contact_email)")
 
     # Seed default categories if table is empty
     count = cursor.execute("SELECT COUNT(*) FROM employee_categories").fetchone()[0]
@@ -1503,6 +1521,7 @@ _BOOKING_FIELDS = (
     "expected_attendance", "description", "media_links",
     "ticketing", "ticket_price", "ticket_link",
     "door_person", "door_fee_required", "venue_fee_required",
+    "blocks_public_calendar",
     "announcement_date", "support_act", "promo_ok", "notes", "source",
 )
 
@@ -1510,6 +1529,67 @@ _BOOKING_FIELDS = (
 def _new_booking_token():
     """Generate a URL-safe public booking token."""
     return _secrets.token_urlsafe(16)
+
+
+def get_or_create_contact_token(email):
+    """Return the contact_token for this email, creating one if missing.
+
+    The token is a permanent identifier for an email address used by the
+    multi-gig portal at /portal/<token>. Email comparison is case-insensitive.
+    """
+    if not email:
+        return None
+    email = email.strip().lower()
+    if not email:
+        return None
+    conn = get_db()
+    row = conn.execute(
+        "SELECT token FROM contact_tokens WHERE LOWER(contact_email) = ?",
+        (email,),
+    ).fetchone()
+    if row:
+        token = row["token"]
+        conn.close()
+        return token
+    token = _secrets.token_urlsafe(16)
+    conn.execute(
+        "INSERT INTO contact_tokens (contact_email, token) VALUES (?, ?)",
+        (email, token),
+    )
+    conn.commit()
+    conn.close()
+    return token
+
+
+def get_contact_email_by_token(token):
+    """Reverse lookup: token → email (or None if invalid token)."""
+    if not token:
+        return None
+    conn = get_db()
+    row = conn.execute(
+        "SELECT contact_email FROM contact_tokens WHERE token = ?",
+        (token,),
+    ).fetchone()
+    conn.close()
+    return row["contact_email"] if row else None
+
+
+def list_bookings_for_email(email, include_past=False, include_archived=False):
+    """All bookings (newest event_date first) for a given contact email."""
+    if not email:
+        return []
+    sql = "SELECT * FROM bookings WHERE LOWER(contact_email) = ?"
+    params = [email.strip().lower()]
+    if not include_archived:
+        sql += " AND archived_at IS NULL"
+    if not include_past:
+        sql += " AND event_date >= ?"
+        params.append(date.today().isoformat())
+    sql += " ORDER BY event_date ASC"
+    conn = get_db()
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return rows
 
 
 def list_bookings(status=None, venue=None, start_date=None, end_date=None,
@@ -1602,21 +1682,29 @@ def save_booking(data, booking_id=None):
     """Insert a new booking or update an existing one. Returns the booking id.
 
     On insert, generates a unique public_token if one isn't supplied.
-    `data` is a dict with keys from _BOOKING_FIELDS.
+    `data` is a dict with keys from _BOOKING_FIELDS. Missing fields with
+    sensible NOT-NULL defaults are filled in here.
     """
     conn = get_db()
     now = datetime.now().isoformat()
 
+    # Defaults for NOT-NULL fields when data dict doesn't supply them
+    def _val(f):
+        v = data.get(f)
+        if v is None and f == "blocks_public_calendar":
+            return 1  # default = blocks (existing behavior)
+        return v
+
     if booking_id:
         sets = ", ".join(f"{f}=?" for f in _BOOKING_FIELDS)
-        params = [data.get(f) for f in _BOOKING_FIELDS] + [now, booking_id]
+        params = [_val(f) for f in _BOOKING_FIELDS] + [now, booking_id]
         conn.execute(f"UPDATE bookings SET {sets}, updated_at=? WHERE id=?", params)
         new_id = booking_id
     else:
         token = data.get("public_token") or _new_booking_token()
         cols = ["public_token"] + list(_BOOKING_FIELDS) + ["updated_at"]
         placeholders = ",".join("?" * len(cols))
-        values = [token] + [data.get(f) for f in _BOOKING_FIELDS] + [now]
+        values = [token] + [_val(f) for f in _BOOKING_FIELDS] + [now]
         cursor = conn.execute(
             f"INSERT INTO bookings ({','.join(cols)}) VALUES ({placeholders})", values
         )

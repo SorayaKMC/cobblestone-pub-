@@ -93,6 +93,7 @@ def _parse_form(form):
         "door_person":         _opt("door_person"),
         "door_fee_required":   1 if form.get("door_fee_required") else 0,
         "venue_fee_required":  1 if form.get("venue_fee_required") else 0,
+        "blocks_public_calendar": 0 if form.get("non_blocking") else 1,
         "announcement_date":   _opt("announcement_date"),
         "support_act":         _opt("support_act"),
         "promo_ok":            _opt("promo_ok"),
@@ -841,7 +842,12 @@ def book_submit():
 
 @bp.route("/book/availability.json")
 def availability_json():
-    """Return date→status map for the availability calendar (no auth required)."""
+    """Return date→status map for the availability calendar (no auth required).
+
+    Bookings flagged blocks_public_calendar=0 (e.g. afternoon-only events
+    like Dublin Jazz CoOp's Sunday 3pm slot) are excluded from the public
+    availability view — that date is still bookable for an evening gig.
+    """
     venue = request.args.get("venue", "Backroom")
     today = _today_iso()
 
@@ -853,6 +859,10 @@ def availability_json():
 
     statuses = {}
     for b in rows:
+        # Skip non-blocking bookings (manager has flagged this as a partial-day
+        # event that doesn't conflict with a full-evening gig)
+        if not b["blocks_public_calendar"]:
+            continue
         d = b["event_date"]
         s = b["status"]
         # confirmed wins over tentative/hold — never downgrade
@@ -980,6 +990,35 @@ def book_other_submit():
         "book_other.html",
         event_types=OTHER_FORM_EVENT_TYPES,
         form_data=request.form,
+    )
+
+
+@bp.route("/portal/<token>")
+def contact_portal(token):
+    """Multi-gig portal — one URL per email, lists ALL the contact's upcoming bookings.
+
+    Used in portal-intro emails so a contact (e.g. Dublin Jazz Coop with 8
+    monthly slots) gets ONE email with ONE link that shows all their
+    upcoming dates. Each gig in the list deep-links to its own per-booking
+    portal at /book/<booking_token> for poster upload etc.
+    """
+    email = db.get_contact_email_by_token(token)
+    if not email:
+        return render_template(
+            "book_portal_multi.html",
+            email=None,
+            bookings=[],
+            status_labels=STATUS_LABELS,
+            status_badges=STATUS_BADGES,
+        ), 404
+
+    bookings = db.list_bookings_for_email(email, include_past=False, include_archived=False)
+    return render_template(
+        "book_portal_multi.html",
+        email=email,
+        bookings=bookings,
+        status_labels=STATUS_LABELS,
+        status_badges=STATUS_BADGES,
     )
 
 

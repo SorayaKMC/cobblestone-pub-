@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if email %}Your Cobblestone Bookings{% else %}Portal not found{% endif %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f0f2f5; }
+        .cobblestone-heading { font-family: 'Playfair Display', Georgia, serif; font-weight: 800; }
+        .gig-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            padding: 16px 20px;
+            margin-bottom: 10px;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: all .12s;
+        }
+        .gig-card:hover {
+            color: inherit;
+            box-shadow: 0 2px 8px rgba(13,110,253,.15);
+            border-left: 3px solid #16a34a;
+            padding-left: 17px;
+        }
+        .gig-card .date { font-weight: 700; color: #1c1c2e; font-size: .95rem; }
+        .gig-card .day  { color: #6c757d; font-size: .85rem; }
+        .gig-card .act  { font-weight: 600; color: #1c1c2e; font-size: 1.05rem; margin-top: 4px; }
+        .gig-card .meta { color: #6c757d; font-size: .85rem; margin-top: 2px; }
+        .month-divider {
+            margin: 18px 0 10px;
+            color: #6c757d;
+            font-size: .85rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark py-2">
+    <div class="container-lg d-flex align-items-center gap-3">
+        <a href="https://cobblestonepub.ie" target="_blank" rel="noopener">
+            <img src="/static/cobblestone-logo.jpg" alt="Cobblestone Pub"
+                 style="height:40px;width:auto;border-radius:4px;">
+        </a>
+        <div>
+            <span class="cobblestone-heading text-white" style="font-size:1.1rem;">The Cobblestone</span>
+            <span class="text-secondary small d-block" style="font-size:.72rem;line-height:1;">Your bookings</span>
+        </div>
+    </div>
+</nav>
+
+<div class="container-lg py-3" style="max-width:760px;">
+
+    {% if not email %}
+        <div class="text-center py-5">
+            <i class="bi bi-question-circle fs-1 text-muted"></i>
+            <h4 class="mt-3">Portal link not recognised</h4>
+            <p class="text-muted">
+                This link doesn't match any contact in our system. If you've changed
+                email recently, try the original portal link from your booking
+                confirmation email.
+            </p>
+            <p class="text-muted small">
+                Need help? Email <a href="mailto:bookings@cobblestonepub.ie">bookings@cobblestonepub.ie</a>
+                or call <a href="tel:+353857362447">+353 85 736 2447</a>.
+            </p>
+        </div>
+    {% else %}
+        <div class="mb-3 mt-2">
+            <h5 class="mb-1">
+                <i class="bi bi-calendar-check me-1"></i>Your upcoming Cobblestone bookings
+            </h5>
+            <p class="text-muted small mb-0">
+                Showing {{ bookings|length }} upcoming gig{{ 's' if bookings|length != 1 else '' }} for <strong>{{ email }}</strong>.
+                Tap any gig to upload a poster, view full details, or pay your door fee.
+            </p>
+        </div>
+
+        {% if not bookings %}
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-calendar-x fs-1"></i>
+                <p class="mt-3 mb-0">No upcoming bookings.</p>
+                <p class="small">If you've just submitted an inquiry, it may still be under review.</p>
+            </div>
+        {% endif %}
+
+        {% set ns = namespace(last_month='') %}
+        {% for b in bookings %}
+            {% set this_month = b.event_date[:7] %}
+            {% if this_month != ns.last_month %}
+                <div class="month-divider">
+                    {% set _y = b.event_date[:4]|int %}
+                    {% set _m = b.event_date[5:7]|int %}
+                    {{ ['', 'January','February','March','April','May','June','July','August','September','October','November','December'][_m] }} {{ _y }}
+                </div>
+                {% set ns.last_month = this_month %}
+            {% endif %}
+
+            <a href="/book/{{ b.public_token }}" class="gig-card">
+                <div class="row g-2 align-items-start">
+                    <div class="col-3 col-md-2">
+                        <div class="date">{{ b.event_date | pretty_date }}</div>
+                        <div class="day">{{ b.day_of_week or (b.event_date | day_name) }}</div>
+                    </div>
+                    <div class="col-9 col-md-10">
+                        <div class="act">{{ b.act_name }}</div>
+                        <div class="meta">
+                            <span class="badge bg-{{ status_badges.get(b.status, 'secondary') }}">{{ status_labels.get(b.status, b.status) }}</span>
+                            {% if b.door_time %} &nbsp;<i class="bi bi-door-open me-1"></i>Doors {{ b.door_time }}{% endif %}
+                            {% if b.start_time %} &nbsp;·&nbsp; <i class="bi bi-music-note me-1"></i>Music {{ b.start_time }}{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+        {% endfor %}
+
+        <div class="card mt-4">
+            <div class="card-body small text-muted">
+                <strong>Quick reminders:</strong>
+                <ul class="mb-0 mt-2">
+                    <li>Venue fee €150 (incl. sound engineer + bartender) payable to Shane on the night</li>
+                    <li>Door person €50 if needed — let us know 2 weeks in advance</li>
+                    <li>Ticketing: <a href="https://www.eventbrite.ie/" target="_blank">Eventbrite</a> / <a href="https://www.tickettailor.com/" target="_blank">Ticket Tailor</a> (your responsibility)</li>
+                    <li>Access via Red Cow Lane, through the Cobblestone Pub</li>
+                </ul>
+            </div>
+        </div>
+
+        <p class="text-center text-muted mt-4 mb-3" style="font-size:.82rem;">
+            Questions? <a href="mailto:bookings@cobblestonepub.ie" class="text-muted">bookings@cobblestonepub.ie</a>
+            &nbsp;·&nbsp;
+            <a href="tel:+353857362447" class="text-muted">+353 85 736 2447</a>
+        </p>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

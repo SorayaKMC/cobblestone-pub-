@@ -1148,6 +1148,157 @@ https://cobblestonepub.ie
     return _send(booking["contact_email"], subject, html, text)
 
 
+def send_contact_portal_intro(email, base_url=None):
+    """Send ONE portal-intro email per contact, listing all their upcoming bookings.
+
+    Uses the contact-level token (one URL per email, lists all gigs).
+    Replaces the per-booking send_portal_intro for the migration blast so a
+    contact with many bookings (e.g. Dublin Jazz Coop) gets one email, not eight.
+
+    Returns True on success, False on failure / no upcoming bookings / no email.
+    """
+    import db
+    if not email:
+        return False
+    bookings = db.list_bookings_for_email(email, include_past=False, include_archived=False)
+    if not bookings:
+        return False
+
+    base         = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
+    contact_tok  = db.get_or_create_contact_token(email)
+    portal_url   = f"{base}/portal/{contact_tok}"
+
+    # Take the contact_name from the first booking that has one
+    name = "there"
+    for b in bookings:
+        if b["contact_name"]:
+            name = b["contact_name"]
+            break
+
+    n = len(bookings)
+    subject = (f"Cobblestone Pub — your booking portal ({n} upcoming gig{'s' if n != 1 else ''})"
+               if n > 1 else f"Cobblestone Pub — your booking portal")
+
+    # Build the HTML list of gigs
+    from datetime import datetime as _dt
+    rows_html = []
+    rows_text = []
+    for b in bookings:
+        try:
+            d = _dt.strptime(b["event_date"], "%Y-%m-%d")
+            date_str = d.strftime("%a, %-d %b %Y")
+        except Exception:
+            date_str = b["event_date"]
+        rows_html.append(
+            f'<tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:14px;">'
+            f'<strong>{date_str}</strong> — {b["act_name"]}</td></tr>'
+        )
+        rows_text.append(f"  • {date_str} — {b['act_name']}")
+    gig_rows_html = "\n".join(rows_html)
+    gig_rows_text = "\n".join(rows_text)
+
+    intro_text = (
+        f"You have <strong>{n} upcoming bookings</strong> at the Cobblestone Pub:" if n > 1
+        else "Your upcoming booking at the Cobblestone Pub:"
+    )
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#fff;border-radius:8px;overflow:hidden;
+                    box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr>
+          <td style="background:#1c1c2e;padding:28px 32px;">
+            <h2 style="margin:0;color:#fff;font-size:22px;">🍺 Cobblestone Pub</h2>
+            <p style="margin:4px 0 0;color:#aaa;font-size:13px;">Backroom Bookings</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 16px;font-size:16px;">Hi {name},</p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333;">
+              We've set up a new booking portal for the Cobblestone Pub.
+              {intro_text}
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#f8f8f8;border:1px solid #e5e7eb;border-radius:8px;padding:8px 16px;margin:0 0 24px;">
+              <tr><td style="padding:8px 0;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  {gig_rows_html}
+                </table>
+              </td></tr>
+            </table>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#333;">
+              You can view {'all of them' if n > 1 else 'it'}, upload posters or bios,
+              and check details via your portal. Bookmark this link — it's yours to keep:
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+              <tr>
+                <td style="background:#16a34a;border-radius:6px;">
+                  <a href="{portal_url}"
+                     style="display:block;padding:14px 28px;color:#fff;
+                            text-decoration:none;font-weight:bold;font-size:15px;">
+                    View {'all your bookings' if n > 1 else 'your booking'} →
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 20px;font-size:13px;color:#777;text-align:center;">
+              <a href="{portal_url}" style="color:#2563eb;">{portal_url}</a>
+            </p>
+            <p style="margin:0 0 8px;font-size:14px;color:#555;">
+              If you have any questions just reply to this email or contact us at
+              <a href="tel:+353857362447" style="color:#555;">+353 85 736 2447</a>.
+            </p>
+            <p style="margin:24px 0 0;font-size:15px;color:#333;">
+              Looking forward to {'seeing you' if n > 1 else 'it'}!<br>
+              <strong>The Cobblestone staff</strong>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f8f8;padding:16px 32px;
+                     border-top:1px solid #eee;font-size:12px;color:#999;">
+            77 King St N, Smithfield, Dublin 7 &nbsp;·&nbsp;
+            <a href="https://cobblestonepub.ie" style="color:#999;">cobblestonepub.ie</a>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    text = f"""Hi {name},
+
+We've set up a new booking portal for the Cobblestone Pub. {'You have ' + str(n) + ' upcoming bookings:' if n > 1 else 'Your upcoming booking:'}
+
+{gig_rows_text}
+
+View {'all of them' if n > 1 else 'it'}, upload posters/bios, and check details:
+{portal_url}
+
+Bookmark this link — it's yours to keep.
+
+Any questions? Just reply to this email or call us on +353 85 736 2447.
+
+Looking forward to seeing you!
+The Cobblestone Pub team
+
+--
+77 King St N, Smithfield, Dublin 7
+https://cobblestonepub.ie
+"""
+
+    return _send(email, subject, html, text)
+
+
 def send_two_week_reminder(booking, base_url=None):
     """Send a 2-weeks-out checklist email to the band.
 

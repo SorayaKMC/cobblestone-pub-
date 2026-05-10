@@ -147,6 +147,15 @@
                                        {% if booking and booking.door_fee_required %}checked{% endif %}>
                                 <label class="form-check-label small" for="dfee">Door person fee €50 required</label>
                             </div>
+                            <div class="form-check">
+                                <input type="checkbox" name="non_blocking" class="form-check-input" id="nonblock" value="1"
+                                       {% if booking and not booking.blocks_public_calendar %}checked{% endif %}>
+                                <label class="form-check-label small" for="nonblock"
+                                       title="For partial-day events (e.g. afternoon-only Jazz Coop). The date stays bookable on the public form for an evening gig.">
+                                    Doesn't block other bookings on this date
+                                    <span class="text-muted">(daytime / partial-day)</span>
+                                </label>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small">Status</label>

@@ -172,30 +172,50 @@ def main():
         print("Aborted.")
         return
 
+    # Dedupe by contact email — one email per contact, listing all their gigs
+    by_email = {}
+    for b in bookings:
+        e = (b["contact_email"] or "").strip().lower()
+        if not e:
+            continue
+        by_email.setdefault(e, []).append(b)
+
+    print(f"Grouped into {len(by_email)} unique contact email(s).\n")
+    for email, group in sorted(by_email.items()):
+        n = len(group)
+        suffix = f" + {n-1} more" if n > 1 else ""
+        first = group[0]
+        print(f"  {email}  →  {first['event_date']} {first['act_name']}{suffix}")
+
     print()
     sent = failed = 0
-    for b in bookings:
-        print(f"  Sending to {b['contact_email']} ({b['act_name']}, {b['event_date']}) ... ", end="", flush=True)
+    contact_emails = sorted(by_email.keys())
+    for email in contact_emails:
+        group = by_email[email]
+        print(f"  Sending to {email} ({len(group)} booking{'s' if len(group) != 1 else ''}) ... ",
+              end="", flush=True)
         try:
-            ok = bookings_email.send_portal_intro(b, base_url)
+            ok = bookings_email.send_contact_portal_intro(email, base_url)
             if ok:
-                db.add_booking_audit(
-                    b["id"], "system", "email_sent",
-                    "Portal intro email sent via bookings_send_portal_links.py",
-                )
-                print("sent ✓")
+                # Audit-log on every booking so re-runs detect this contact was already emailed
+                for b in group:
+                    db.add_booking_audit(
+                        b["id"], "system", "email_sent",
+                        "Portal intro email sent via bookings_send_portal_links.py",
+                    )
+                print(f"sent ✓")
                 sent += 1
             else:
-                print("FAILED (check SMTP config)")
+                print("FAILED (check SMTP config or no upcoming bookings)")
                 failed += 1
         except Exception as e:
             print(f"ERROR: {e}")
             failed += 1
 
-        if args.delay > 0 and b != bookings[-1]:
+        if args.delay > 0 and email != contact_emails[-1]:
             time.sleep(args.delay)
 
-    print(f"\nDone. Sent: {sent}  Failed: {failed}")
+    print(f"\nDone. Contacts emailed: {sent}  Failed: {failed}")
     if failed:
         print("Check SMTP settings — SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD must be set as env vars.")
 
