@@ -1756,31 +1756,37 @@ def add_booking_attachment(booking_id, kind, filename, file_path):
 
 
 def booking_counts():
-    """Return summary counts for the tracker top bar."""
+    """Return summary counts for the tracker top bar. Excludes archived rows."""
     today = date.today().isoformat()
     cutoff = (date.today() + timedelta(days=7)).isoformat()
     conn = get_db()
     inquiry = conn.execute(
-        "SELECT COUNT(*) FROM bookings WHERE status='inquiry' AND event_date >= ?",
+        "SELECT COUNT(*) FROM bookings WHERE status='inquiry' AND event_date >= ? AND archived_at IS NULL",
         (today,),
     ).fetchone()[0]
     tentative = conn.execute(
-        "SELECT COUNT(*) FROM bookings WHERE status='tentative' AND event_date >= ?",
+        "SELECT COUNT(*) FROM bookings WHERE status='tentative' AND event_date >= ? AND archived_at IS NULL",
+        (today,),
+    ).fetchone()[0]
+    hold = conn.execute(
+        "SELECT COUNT(*) FROM bookings WHERE status='hold' AND event_date >= ? AND archived_at IS NULL",
         (today,),
     ).fetchone()[0]
     confirmed_upcoming = conn.execute(
-        "SELECT COUNT(*) FROM bookings WHERE status='confirmed' AND event_date >= ?",
+        "SELECT COUNT(*) FROM bookings WHERE status='confirmed' AND event_date >= ? AND archived_at IS NULL",
         (today,),
     ).fetchone()[0]
     unpaid_fees = conn.execute(
         """SELECT COUNT(*) FROM bookings
            WHERE status IN ('confirmed','completed')
+             AND archived_at IS NULL
              AND ((venue_fee_required=1 AND venue_fee_paid_at IS NULL)
                   OR (door_fee_required=1 AND door_fee_paid_at IS NULL))""",
     ).fetchone()[0]
     needs_publishing = conn.execute(
         """SELECT COUNT(*) FROM bookings
            WHERE status='confirmed' AND event_date >= ?
+             AND archived_at IS NULL
              AND squarespace_published_at IS NULL""",
         (today,),
     ).fetchone()[0]
@@ -1788,6 +1794,7 @@ def booking_counts():
         """SELECT COUNT(*) FROM bookings
            WHERE status='confirmed'
              AND event_date >= ? AND event_date <= ?
+             AND archived_at IS NULL
              AND (door_person IS NULL OR door_person = '')""",
         (today, cutoff),
     ).fetchone()[0]
@@ -1795,6 +1802,7 @@ def booking_counts():
     return {
         "inquiry": inquiry,
         "tentative": tentative,
+        "hold": hold,
         "confirmed_upcoming": confirmed_upcoming,
         "unpaid_fees": unpaid_fees,
         "needs_publishing": needs_publishing,
@@ -1812,6 +1820,7 @@ def get_bookings_needing_door_confirmation(days_ahead=7):
         """SELECT * FROM bookings
            WHERE status='confirmed'
              AND event_date >= ? AND event_date <= ?
+             AND archived_at IS NULL
              AND (door_person IS NULL OR door_person = '')
            ORDER BY event_date ASC""",
         (today, cutoff),

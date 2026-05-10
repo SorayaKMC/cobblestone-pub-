@@ -22,11 +22,12 @@ bp = Blueprint("bookings", __name__)
 EVENT_TYPES = ["Gig", "Class", "Private Hire", "Rehearsal", "Filming", "Other"]
 # Subset shown on the public "something else" form (everything except Gig + Class)
 OTHER_FORM_EVENT_TYPES = ["Filming", "Rehearsal", "Private Hire", "Other"]
-STATUSES = ["inquiry", "tentative", "confirmed", "completed", "cancelled"]
+STATUSES = ["inquiry", "hold", "tentative", "confirmed", "completed", "cancelled"]
 VENUES = ["Backroom"]  # V0: Upstairs disabled — re-add to re-enable
 
 STATUS_LABELS = {
     "inquiry":   "Inquiry",
+    "hold":      "Hold",
     "tentative": "Tentative",
     "confirmed": "Confirmed",
     "completed": "Completed",
@@ -36,6 +37,7 @@ STATUS_LABELS = {
 # Bootstrap badge classes per status, used by the templates
 STATUS_BADGES = {
     "inquiry":   "warning",
+    "hold":      "primary",
     "tentative": "info",
     "confirmed": "success",
     "completed": "secondary",
@@ -114,6 +116,7 @@ _VENUE_COLORS = {
 }
 _STATUS_BG_OVERRIDE = {
     "inquiry":   "#fd7e14",   # orange — needs review
+    "hold":      "#6610f2",   # purple — held for someone, not yet booked
     "tentative": None,         # use venue colour but lighter (handled in JS)
     "confirmed": None,         # use venue colour
     "completed": "#6c757d",   # muted
@@ -334,6 +337,69 @@ def _load_email_snippets_for(contact_email):
         return data.get(contact_email.strip().lower(), [])
     except Exception:
         return []
+
+
+@bp.route("/bookings/quick-hold", methods=["POST"])
+def quick_hold():
+    """Create a 'hold' booking — a soft reservation for a date.
+
+    Lighter-weight than a full booking. Just date + label + optional contact.
+    Used when a band has texted/called and we want to reserve the date
+    while we wait for them to commit.
+    """
+    held_for = (request.form.get("held_for") or "").strip()
+    event_date = (request.form.get("event_date") or "").strip()
+    contact_email = (request.form.get("contact_email") or "").strip() or None
+    contact_phone = (request.form.get("contact_phone") or "").strip() or None
+    notes = (request.form.get("notes") or "").strip() or None
+
+    if not held_for:
+        flash("Held for: a name or band is required.", "danger")
+        return redirect(url_for("bookings.bookings_list"))
+    if not event_date:
+        flash("Event date is required.", "danger")
+        return redirect(url_for("bookings.bookings_list"))
+    if event_date < _today_iso():
+        flash("Cannot hold a date in the past.", "danger")
+        return redirect(url_for("bookings.bookings_list"))
+
+    try:
+        dow = datetime.strptime(event_date, "%Y-%m-%d").strftime("%A")
+    except Exception:
+        dow = None
+
+    data = {
+        "venue":               "Backroom",
+        "event_date":          event_date,
+        "day_of_week":         dow,
+        "door_time":           None,
+        "start_time":          None,
+        "end_time":            None,
+        "status":              "hold",
+        "event_type":          "Gig",  # default — manager can edit
+        "act_name":            held_for,
+        "contact_name":        None,
+        "contact_email":       contact_email,
+        "contact_phone":       contact_phone,
+        "expected_attendance": None,
+        "description":         None,
+        "media_links":         None,
+        "ticketing":           None,
+        "ticket_price":        None,
+        "ticket_link":         None,
+        "door_person":         None,
+        "door_fee_required":   0,
+        "venue_fee_required":  1,
+        "announcement_date":   None,
+        "support_act":         None,
+        "promo_ok":            None,
+        "notes":               notes,
+        "source":              "quick-hold",
+    }
+    bid = db.save_booking(data)
+    db.add_booking_audit(bid, "internal", "created", f"Quick hold for {held_for}")
+    flash(f"Hold created for {held_for} on {event_date}. Convert to a full booking when they confirm.", "success")
+    return redirect(url_for("bookings.booking_detail", booking_id=bid))
 
 
 @bp.route("/bookings/<int:booking_id>")
@@ -735,7 +801,7 @@ def availability_json():
     today = _today_iso()
 
     rows = db.list_bookings(
-        status=["confirmed", "tentative"],
+        status=["confirmed", "tentative", "hold"],
         venue=venue,
         start_date=today,
     )
@@ -744,11 +810,11 @@ def availability_json():
     for b in rows:
         d = b["event_date"]
         s = b["status"]
-        # confirmed wins over tentative — never downgrade
+        # confirmed wins over tentative/hold — never downgrade
         if s == "confirmed":
             statuses[d] = "booked"
-        elif s == "tentative" and statuses.get(d) != "booked":
-            statuses[d] = "tentative"
+        elif s in ("tentative", "hold") and statuses.get(d) != "booked":
+            statuses[d] = "tentative"  # holds appear to public as tentative (not bookable)
 
     # Overlay blackout dates — they always show as "booked"
     blackouts = db.get_blackout_dates_set(venue=venue, from_date=today)
