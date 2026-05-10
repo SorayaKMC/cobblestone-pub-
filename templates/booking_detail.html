@@ -182,6 +182,13 @@
                             <i class="bi bi-check-circle me-1"></i>Confirm &amp; Email Band
                         </button>
                     </form>
+                    <form method="POST" action="/bookings/{{ booking.id }}/confirm"
+                          onsubmit="return confirm('Confirm this booking WITHOUT sending any emails (band confirmation or decline emails to other inquiries)?\n\nUse this when the band already knows about their gig — e.g. migrating an existing booking.');">
+                        <input type="hidden" name="silent" value="1">
+                        <button class="btn btn-outline-success btn-sm w-100" title="Confirms without sending any emails — useful for migrating existing bookings">
+                            <i class="bi bi-envelope-slash me-1"></i>Confirm (silent — no emails)
+                        </button>
+                    </form>
                     {% endif %}
                     {% if booking.status not in ('tentative','confirmed','completed') %}
                     <form method="POST" action="/bookings/{{ booking.id }}/status">

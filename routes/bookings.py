@@ -428,13 +428,21 @@ def booking_detail(booking_id):
 
 @bp.route("/bookings/<int:booking_id>/confirm", methods=["POST"])
 def confirm_booking(booking_id):
-    """Confirm a booking: set status, stamp confirmation time, send email."""
+    """Confirm a booking: set status, stamp confirmation time, optionally email.
+
+    Form params:
+      silent — if '1', skip ALL outbound emails (band confirmation + auto-decline
+               emails to competing inquiries). Status/calendar/audit still update.
+               Used for migration / cleanup where bands already have their info.
+    """
+    silent = request.form.get("silent") == "1"
+
     booking = db.get_booking(booking_id)
     if not booking:
         abort(404)
 
-    db.update_booking_status(booking_id, "confirmed", actor="internal",
-                             detail="Confirmed via Quick Actions")
+    detail = "Confirmed via Quick Actions (silent — no emails sent)" if silent else "Confirmed via Quick Actions"
+    db.update_booking_status(booking_id, "confirmed", actor="internal", detail=detail)
     db.update_booking_field(booking_id, "confirmation_sent_at",
                             datetime.now().isoformat(), actor="internal")
 
@@ -442,7 +450,8 @@ def confirm_booking(booking_id):
     updated = db.get_booking(booking_id)
 
     # Generate Square door fee payment link before email so band can pay in advance
-    if updated["door_fee_required"] and not updated["door_fee_payment_link"]:
+    # (skip for silent confirms — not needed when bands already have arrangements)
+    if not silent and updated["door_fee_required"] and not updated["door_fee_payment_link"]:
         try:
             import square_client
             url, _ = square_client.create_door_fee_payment_link(
@@ -454,7 +463,7 @@ def confirm_booking(booking_id):
         except Exception as e:
             print(f"[bookings] Door fee payment link creation failed: {e}")
 
-    # Create Google Calendar event — non-blocking
+    # Create Google Calendar event — non-blocking (always — calendar visibility matters)
     cal_event_id = None
     try:
         import calendar_client
@@ -465,9 +474,9 @@ def confirm_booking(booking_id):
     except Exception as e:
         print(f"[bookings] Calendar event creation failed: {e}")
 
-    # Send confirmation email — non-blocking
+    # Send confirmation email — skip if silent
     email_sent = False
-    if updated["contact_email"]:
+    if not silent and updated["contact_email"]:
         try:
             import bookings_email
             email_sent = bookings_email.send_booking_confirmation(
@@ -478,6 +487,7 @@ def confirm_booking(booking_id):
             print(f"[bookings] Confirmation email failed: {e}")
 
     # Auto-decline any competing inquiry/tentative bookings for the same date+venue
+    # If silent: still cancel competing bookings (clean state) but don't email them
     declined_count = 0
     try:
         import bookings_email as _be
@@ -490,28 +500,37 @@ def confirm_booking(booking_id):
                 cancelled_by="pub",
                 actor="internal",
                 detail=f"Auto-declined: booking #{booking_id} ({updated['act_name']}) "
-                       f"confirmed for this date",
+                       f"confirmed for this date" + (" (silent)" if silent else ""),
             )
-            try:
-                _be.send_date_taken_decline(comp, request.host_url.rstrip("/"))
-            except Exception as e:
-                print(f"[bookings] Decline email failed for #{comp['id']}: {e}")
+            if not silent:
+                try:
+                    _be.send_date_taken_decline(comp, request.host_url.rstrip("/"))
+                except Exception as e:
+                    print(f"[bookings] Decline email failed for #{comp['id']}: {e}")
             declined_count += 1
     except Exception as e:
         print(f"[bookings] Auto-decline step failed: {e}")
 
     # Build flash message
     parts = ["Booking confirmed"]
-    if email_sent:
+    if silent:
+        parts.append("silent — no emails sent")
+    elif email_sent:
         parts.append("confirmation email sent")
     if cal_event_id:
         parts.append("Google Calendar event created")
     if declined_count:
-        parts.append(
-            f"{declined_count} competing inquir{'y' if declined_count == 1 else 'ies'} "
-            f"auto-declined and notified"
-        )
-    flash(". ".join(parts) + ". ✓", "success" if email_sent else "warning")
+        if silent:
+            parts.append(
+                f"{declined_count} competing inquir{'y' if declined_count == 1 else 'ies'} "
+                f"auto-declined (no emails sent)"
+            )
+        else:
+            parts.append(
+                f"{declined_count} competing inquir{'y' if declined_count == 1 else 'ies'} "
+                f"auto-declined and notified"
+            )
+    flash(". ".join(parts) + ". ✓", "success" if (email_sent or silent) else "warning")
 
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
