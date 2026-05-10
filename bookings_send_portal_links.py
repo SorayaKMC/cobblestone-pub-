@@ -62,6 +62,13 @@ def parse_args():
                         help="Only include bookings on or before this date.")
     parser.add_argument("--include-all", action="store_true",
                         help="Include bookings that already have confirmation_sent_at set.")
+    parser.add_argument("--include-already-introed", action="store_true",
+                        help="Include bookings that already received a portal-intro "
+                             "(by default, skipped via audit log check).")
+    parser.add_argument("--min-days-out", type=int, default=14,
+                        help="Skip bookings within this many days from today "
+                             "(default 14 — bands close to their gig don't need a "
+                             "portal-intro mid-prep). Set to 0 to include all.")
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL,
                         help=f"Base URL for portal links (default: {DEFAULT_BASE_URL}).")
     parser.add_argument("--delay", type=float, default=2.0,
@@ -69,23 +76,46 @@ def parse_args():
     return parser.parse_args()
 
 
+def _already_received_portal_intro(booking_id):
+    """Check the audit log for a prior portal-intro email send."""
+    conn = db.get_db()
+    row = conn.execute(
+        """SELECT id FROM booking_audit
+           WHERE booking_id = ?
+             AND actor = 'system'
+             AND action = 'email_sent'
+             AND detail LIKE '%Portal intro%'
+           LIMIT 1""",
+        (booking_id,),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
 def main():
+    from datetime import timedelta
     args = parse_args()
 
     db.init_db()
 
     statuses = [s.strip() for s in args.status.split(",") if s.strip()]
-    min_date = args.min_date or date.today().isoformat()
+    today = date.today()
+    # Effective min date: max of user-supplied --min-date and today + min-days-out
+    user_min = args.min_date or today.isoformat()
+    threshold = (today + timedelta(days=args.min_days_out)).isoformat()
+    min_date = max(user_min, threshold)
     max_date = args.max_date or None
     base_url = args.base_url.rstrip("/")
 
     print(f"\n{'DRY RUN — ' if args.dry_run else ''}Cobblestone portal link mailer")
-    print(f"  Statuses  : {', '.join(statuses)}")
-    print(f"  From date : {min_date}")
+    print(f"  Statuses             : {', '.join(statuses)}")
+    print(f"  From date            : {min_date}")
     if max_date:
-        print(f"  To date   : {max_date}")
-    print(f"  Base URL  : {base_url}")
-    print(f"  Skip already-emailed: {not args.include_all}")
+        print(f"  To date              : {max_date}")
+    print(f"  Min days out         : {args.min_days_out} (skipping gigs sooner than {threshold})")
+    print(f"  Base URL             : {base_url}")
+    print(f"  Skip already-emailed : {not args.include_all}")
+    print(f"  Skip already-introed : {not args.include_already_introed}")
     print()
 
     # Fetch candidates
@@ -99,14 +129,25 @@ def main():
     # Filter: must have an email address
     bookings = [b for b in bookings if b["contact_email"]]
 
-    # Filter: skip already-emailed unless --include-all
+    # Filter: skip already-emailed (legacy confirmation_sent_at check) unless --include-all
     if not args.include_all:
         skipped_already = [b for b in bookings if b["confirmation_sent_at"]]
         bookings = [b for b in bookings if not b["confirmation_sent_at"]]
         if skipped_already:
-            print(f"  Skipping {len(skipped_already)} booking(s) that already received a "
-                  f"confirmation email (use --include-all to include them):")
+            print(f"  Skipping {len(skipped_already)} booking(s) with confirmation_sent_at set "
+                  f"(use --include-all to include them):")
             for b in skipped_already:
+                print(f"    #{b['id']:>4}  {b['event_date']}  {b['act_name']}")
+            print()
+
+    # Filter: skip bookings that already got a portal intro (per audit log)
+    if not args.include_already_introed:
+        skipped_introed = [b for b in bookings if _already_received_portal_intro(b["id"])]
+        bookings = [b for b in bookings if not _already_received_portal_intro(b["id"])]
+        if skipped_introed:
+            print(f"  Skipping {len(skipped_introed)} booking(s) that already received "
+                  f"a portal intro (use --include-already-introed to re-send):")
+            for b in skipped_introed:
                 print(f"    #{b['id']:>4}  {b['event_date']}  {b['act_name']}")
             print()
 
