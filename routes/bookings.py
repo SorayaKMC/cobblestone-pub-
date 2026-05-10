@@ -547,6 +547,19 @@ def edit_booking(booking_id):
         db.save_booking(data, booking_id=booking_id)
         db.add_booking_audit(booking_id, "internal", "edited",
                              f"Updated via detail page")
+
+        # Refresh the Google Calendar event so changes flow through
+        # (times, contact details, support act, ticketing, notes — all of it)
+        updated = db.get_booking(booking_id)
+        if updated["google_calendar_event_id"] and updated["status"] == "confirmed":
+            try:
+                import calendar_client
+                calendar_client.update_calendar_event(
+                    updated, updated["google_calendar_event_id"]
+                )
+            except Exception as e:
+                print(f"[bookings] Calendar update failed: {e}")
+
         flash("Booking updated.", "success")
     except Exception as e:
         flash(f"Could not update booking: {e}", "danger")
@@ -574,13 +587,20 @@ def change_status(booking_id):
     actor = request.form.get("actor", "internal")
     send_decline_email = request.form.get("send_decline_email") == "1"
 
+    old_status = booking["status"]
     db.update_booking_status(booking_id, new_status, actor=actor, detail=note)
 
-    # If cancelling, remove the Calendar event
-    if new_status == "cancelled" and booking["google_calendar_event_id"]:
+    # Calendar sync on status change:
+    #  - cancelled            → delete event (always)
+    #  - confirmed → anything → delete event (don't leave a confirmed-looking
+    #                            event on the calendar for a tentative/hold/inquiry)
+    leaving_confirmed = (old_status == "confirmed" and new_status != "confirmed")
+    if (new_status == "cancelled" or leaving_confirmed) and booking["google_calendar_event_id"]:
         try:
             import calendar_client
-            calendar_client.delete_calendar_event(booking, booking["google_calendar_event_id"])
+            if calendar_client.delete_calendar_event(booking, booking["google_calendar_event_id"]):
+                db.update_booking_field(booking_id, "google_calendar_event_id",
+                                        None, actor="internal")
         except Exception as e:
             print(f"[bookings] Calendar delete failed: {e}")
 
