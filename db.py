@@ -1628,38 +1628,55 @@ def save_booking(data, booking_id=None):
 
 
 def update_booking_status(booking_id, new_status, actor="system", detail=None):
-    """Set status and write an audit row. Returns True on success."""
+    """Set status and write an audit row. Auto-archives on cancellation.
+    Returns True on success."""
     conn = get_db()
     now = datetime.now().isoformat()
-    conn.execute(
-        "UPDATE bookings SET status=?, updated_at=? WHERE id=?",
-        (new_status, now, booking_id),
-    )
+    if new_status == "cancelled":
+        # Auto-archive cancelled bookings — keeps the active list clean
+        conn.execute(
+            "UPDATE bookings SET status=?, archived_at=?, updated_at=? WHERE id=?",
+            (new_status, now, now, booking_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE bookings SET status=?, updated_at=? WHERE id=?",
+            (new_status, now, booking_id),
+        )
     conn.execute(
         "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
         (booking_id, actor, f"status:{new_status}", detail),
     )
+    if new_status == "cancelled":
+        conn.execute(
+            "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+            (booking_id, actor, "archived", "Auto-archived on cancellation"),
+        )
     conn.commit()
     conn.close()
     return True
 
 
 def cancel_booking(booking_id, cancelled_by="pub", actor="internal", detail=None):
-    """Cancel a booking and record who initiated the cancellation.
+    """Cancel a booking, record who initiated, and auto-archive.
 
     cancelled_by — 'band' | 'pub' | 'system'
-    Writes an audit row automatically.
+    Writes audit rows automatically.
     """
     conn = get_db()
     now = datetime.now().isoformat()
     conn.execute(
-        "UPDATE bookings SET status='cancelled', cancelled_by=?, updated_at=? WHERE id=?",
-        (cancelled_by, now, booking_id),
+        "UPDATE bookings SET status='cancelled', cancelled_by=?, archived_at=?, updated_at=? WHERE id=?",
+        (cancelled_by, now, now, booking_id),
     )
     conn.execute(
         "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
         (booking_id, actor, "status:cancelled",
          detail or f"Cancelled by {cancelled_by}"),
+    )
+    conn.execute(
+        "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+        (booking_id, actor, "archived", "Auto-archived on cancellation"),
     )
     conn.commit()
     conn.close()
@@ -2064,12 +2081,19 @@ def cancel_series_remaining(series_id, actor="internal"):
     for row in rows:
         bid = row["id"]
         conn.execute(
-            "UPDATE bookings SET status='cancelled', cancelled_by='pub', updated_at=? WHERE id=?",
-            (now, bid),
+            """UPDATE bookings
+               SET status='cancelled', cancelled_by='pub',
+                   archived_at=?, updated_at=?
+               WHERE id=?""",
+            (now, now, bid),
         )
         conn.execute(
             "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
             (bid, actor, "status:cancelled", f"Cancelled via series #{series_id} cancel-remaining"),
+        )
+        conn.execute(
+            "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+            (bid, actor, "archived", "Auto-archived on cancellation"),
         )
 
     conn.commit()
