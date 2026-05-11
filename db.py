@@ -11,10 +11,16 @@ import config
 
 
 def get_db():
-    """Get a database connection with row factory."""
-    conn = sqlite3.connect(config.DATABASE_PATH)
+    """Get a database connection with row factory.
+
+    Uses WAL mode + a 30-second busy_timeout so concurrent writers
+    (e.g. a long-running maintenance script vs. a public form POST)
+    queue and wait instead of erroring with 'database is locked'.
+    """
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")   # 30s — wait, don't immediately fail
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
