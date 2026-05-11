@@ -269,6 +269,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
 // When supplier is chosen, auto-fill VAT rate + category
 const supplierSelect = document.getElementById('supplier_select');
@@ -439,3 +442,4 @@ document.getElementById('calc_btn').addEventListener('click', function() {
 });
 </script>
 {% endblock %}
+
