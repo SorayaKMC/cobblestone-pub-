@@ -35,7 +35,8 @@ ONE_OFF_GIGS = [
 
 HOLDS = [
     ("2026-05-24", "Roisin Gaffney hold",   "hold", "gaffneyrp18@gmail.com",  "Calendar import — hold"),
-    ("2026-06-25", "Pride hold",            "hold", None,                      "Calendar import — hold"),
+    ("2026-06-25", "Pride hold",            "hold", None,                      "Calendar import — hold (day 1 of 2)"),
+    ("2026-06-26", "Pride hold",            "hold", None,                      "Calendar import — hold (day 2 of 2)"),
     ("2026-09-17", "Sally Hold",            "hold", None,                      "Calendar import — hold"),
     ("2026-09-18", "Hold date Kelda",       "hold", None,                      "Calendar import — hold"),
     ("2026-09-19", "Sally Hold",            "hold", None,                      "Calendar import — hold"),

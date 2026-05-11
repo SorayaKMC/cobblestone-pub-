@@ -63,24 +63,48 @@ def _calendar_service(venue="Backroom"):
 
 
 def _booking_to_event(booking):
-    """Convert a booking row to a Google Calendar event dict."""
+    """Convert a booking row to a Google Calendar event dict.
+
+    If the booking has no times set (door_time, start_time, end_time all
+    null/empty), the event is created as an ALL-DAY event. This is what
+    we want for holds, tbc placeholders, and any booking where times
+    haven't been agreed yet. Once any time is set, it becomes a timed
+    event with sensible defaults filling the other fields.
+    """
     from datetime import datetime as _dt, timedelta
 
     event_date  = booking["event_date"]          # YYYY-MM-DD
-    start_time  = booking["start_time"] or "20:00"
-    door_time   = booking["door_time"]  or "19:00"
+    start_time  = booking["start_time"]
+    door_time   = booking["door_time"]
     end_time    = booking["end_time"]
+    has_any_time = bool(start_time) or bool(door_time) or bool(end_time)
 
-    # Build RFC3339 datetimes — assume Europe/Dublin local time
     tz = "Europe/Dublin"
-    start_dt = _dt.strptime(f"{event_date} {start_time}", "%Y-%m-%d %H:%M")
-    if end_time:
-        end_dt = _dt.strptime(f"{event_date} {end_time}", "%Y-%m-%d %H:%M")
-    else:
-        end_dt = start_dt + timedelta(hours=3)
 
-    def _fmt(dt):
-        return dt.strftime("%Y-%m-%dT%H:%M:%S")
+    if has_any_time:
+        # Timed event — fill in missing pieces with sensible defaults
+        eff_start = start_time or "20:00"
+        start_dt = _dt.strptime(f"{event_date} {eff_start}", "%Y-%m-%d %H:%M")
+        if end_time:
+            end_dt = _dt.strptime(f"{event_date} {end_time}", "%Y-%m-%d %H:%M")
+        else:
+            end_dt = start_dt + timedelta(hours=3)
+
+        def _fmt(dt):
+            return dt.strftime("%Y-%m-%dT%H:%M:%S")
+
+        event_time_block = {
+            "start": {"dateTime": _fmt(start_dt), "timeZone": tz},
+            "end":   {"dateTime": _fmt(end_dt),   "timeZone": tz},
+        }
+    else:
+        # All-day event — Google's spec needs end.date = start.date + 1 day
+        end_date_obj = _dt.strptime(event_date, "%Y-%m-%d") + timedelta(days=1)
+        end_date_str = end_date_obj.strftime("%Y-%m-%d")
+        event_time_block = {
+            "start": {"date": event_date},
+            "end":   {"date": end_date_str},
+        }
 
     act   = booking["act_name"]
     venue = booking["venue"]
@@ -158,8 +182,7 @@ def _booking_to_event(booking):
         "summary": f"{act} | {venue} — Cobblestone Pub",
         "location": f"Cobblestone Pub — {venue}, 77 King St N, Smithfield, Dublin 7",
         "description": "\n".join(parts),
-        "start": {"dateTime": _fmt(start_dt), "timeZone": tz},
-        "end":   {"dateTime": _fmt(end_dt),   "timeZone": tz},
+        **event_time_block,   # start + end (timed or all-day)
         "colorId": "2",   # Sage green — easy to spot in the calendar
         "extendedProperties": {
             "private": {
