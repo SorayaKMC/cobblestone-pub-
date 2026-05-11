@@ -1646,3 +1646,104 @@ def band_contacts():
         contacts=contacts,
         today=_today_iso(),
     )
+
+
+def _portal_intro_already_sent(booking_ids):
+    """Return True if any of these bookings has a portal-intro send in its audit log."""
+    if not booking_ids:
+        return False
+    placeholders = ",".join("?" * len(booking_ids))
+    conn = db.get_db()
+    row = conn.execute(
+        f"""SELECT 1 FROM booking_audit
+            WHERE booking_id IN ({placeholders})
+              AND action = 'email_sent'
+              AND detail LIKE '%Portal intro%'
+            LIMIT 1""",
+        booking_ids,
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+@bp.route("/bookings/portal-intros")
+def portal_intros():
+    """List each unique contact email with a 'Send portal intro' button.
+
+    Lets the manager send the multi-gig portal-intro email one-by-one
+    through the UI instead of running bookings_send_portal_links.py.
+    """
+    today = _today_iso()
+    # Confirmed + tentative + hold are all eligible for portal-intro mailing
+    bookings = db.list_bookings(
+        status=("confirmed", "tentative", "hold"),
+        start_date=today,
+        limit=5000,
+    )
+    bookings = [b for b in bookings if b["contact_email"]]
+
+    # Group by lowercase email
+    by_email = {}
+    for b in bookings:
+        e = b["contact_email"].strip().lower()
+        by_email.setdefault(e, []).append(b)
+
+    # Build contact rows for template
+    contact_rows = []
+    for email, group in sorted(by_email.items()):
+        group.sort(key=lambda b: b["event_date"])
+        first_name = next((b["contact_name"] for b in group if b["contact_name"]), None)
+        already_sent = _portal_intro_already_sent([b["id"] for b in group])
+        contact_rows.append({
+            "email":           email,
+            "display_email":   group[0]["contact_email"],  # original casing
+            "contact_name":    first_name,
+            "gig_count":       len(group),
+            "first_date":      group[0]["event_date"],
+            "last_date":       group[-1]["event_date"],
+            "acts":            ", ".join(sorted({b["act_name"] for b in group if b["act_name"]})),
+            "already_sent":    already_sent,
+            "booking_ids":     [b["id"] for b in group],
+        })
+
+    # Sort: not-yet-sent first, then alphabetical by email
+    contact_rows.sort(key=lambda r: (r["already_sent"], r["email"]))
+
+    return render_template(
+        "portal_intros.html",
+        contacts=contact_rows,
+        total_pending=sum(1 for r in contact_rows if not r["already_sent"]),
+        total_sent=sum(1 for r in contact_rows if r["already_sent"]),
+    )
+
+
+@bp.route("/bookings/portal-intros/send", methods=["POST"])
+def send_portal_intro_to_contact():
+    """Send the multi-gig portal-intro email to one contact email."""
+    email = (request.form.get("email") or "").strip().lower()
+    if not email:
+        flash("No email address supplied.", "danger")
+        return redirect(url_for("bookings.portal_intros"))
+
+    try:
+        import bookings_email
+        ok = bookings_email.send_contact_portal_intro(
+            email, request.host_url.rstrip("/")
+        )
+        if not ok:
+            flash(f"Failed to send to {email} — no upcoming bookings or SMTP error.",
+                  "warning")
+            return redirect(url_for("bookings.portal_intros"))
+
+        # Audit-log on every booking for this email so the page knows it's been sent
+        bookings = db.list_bookings_for_email(email, include_past=False, include_archived=False)
+        for b in bookings:
+            db.add_booking_audit(
+                b["id"], "internal", "email_sent",
+                "Portal intro email sent manually via /bookings/portal-intros",
+            )
+        flash(f"Portal intro sent to {email}. ✓", "success")
+    except Exception as e:
+        flash(f"Email failed: {e}", "danger")
+
+    return redirect(url_for("bookings.portal_intros"))
