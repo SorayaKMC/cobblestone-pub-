@@ -259,6 +259,61 @@ view) and click into a booking, the **"Back to bookings"** button
 remembers the filter and returns you to the same view. Works
 through any number of edits/status changes inside the detail page.
 
+### Residency Gigs — the in-house regulars
+
+For events that happen at the Backroom on a recurring basis and
+don't follow the normal booking workflow — Balaclavas, Caoimhe's
+Monday dance class, Larry's Night, Pipers' Club, Dublin Jazz Coop
+— use the **event_type "Residency Gigs"**. This gives them:
+
+- A pink badge in the bookings list (so they read at a glance)
+- A pink colour on the Google Calendar event
+- Light-pink row tinting in the bookings list
+- **Drops out of the "Door person TBC" KPI tile** and warning
+  badges — these don't need a door person, so they shouldn't
+  trigger the alert
+- A **"Hide residency gigs"** filter on the bookings list — flip
+  this on when you want to focus on actual external gigs
+
+Fees, door person, and other fields stay editable — these are
+defaults, not locked. Override per-booking if a residency night
+ever does need fees or a door person.
+
+**To create a new residency series:**
+1. `/bookings/series/new`
+2. Pick **Event Type: Residency Gigs** from the dropdown
+3. Fill in act name, recurrence pattern, start/end dates
+4. Submit — all generated bookings inherit the Residency Gigs tag
+
+**Dublin Jazz Coop is special** — they happen on Sunday
+afternoons (3pm-6pm), so they're flagged **non-blocking** on the
+public form (an evening gig can still book the same Sunday). Each
+Jazz Coop booking carries a note:
+
+> Sunday afternoon residency — room is occupied until 6pm. Any
+> evening soundcheck/load-in on the same date must be after 6pm.
+> Shane handles sound. Jazz Coop manage their own door (no door
+> person needed).
+
+When confirming a Sunday-evening booking on a Jazz Coop date,
+add a note to that booking's description so the band knows about
+the 6pm load-in cutoff.
+
+### Squarespace listing — 3-state dropdown
+
+On the booking detail page, the **Squarespace listing** dropdown
+has three options:
+
+| State | Meaning |
+|---|---|
+| **Not listed** | Default — gig not yet on the website |
+| **Listed — info pending** | On the site but waiting for info (ticket link, poster, etc.) |
+| **Listed — complete** | Fully published, nothing missing |
+
+KPI tiles match: "Not on Squarespace" + "Listing info pending"
+both surface bookings that need your attention. Saves on change
+— no extra click.
+
 ---
 
 ## Scenarios
@@ -372,4 +427,4 @@ fully set up yet).
 
 ---
 
-_Last updated: 10 May 2026 (eve of go-live)._
+_Last updated: 11 May 2026 (launch day — go-live)._
