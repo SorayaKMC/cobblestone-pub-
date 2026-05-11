@@ -386,6 +386,20 @@ def init_db():
         cursor.execute(
             "ALTER TABLE bookings ADD COLUMN blocks_public_calendar INTEGER NOT NULL DEFAULT 1"
         )
+    if "squarespace_listing_status" not in bk_cols:
+        # 3-state replacement for the binary squarespace_published_at:
+        #   'not_listed' — default, hasn't been added to the website yet
+        #   'partial'    — listed but waiting for info (ticket link, poster, etc.)
+        #   'live'       — fully published with all info
+        cursor.execute(
+            "ALTER TABLE bookings ADD COLUMN squarespace_listing_status "
+            "TEXT NOT NULL DEFAULT 'not_listed'"
+        )
+        # Backfill: anything previously published becomes 'live'
+        cursor.execute(
+            "UPDATE bookings SET squarespace_listing_status='live' "
+            "WHERE squarespace_published_at IS NOT NULL"
+        )
 
     # Contact tokens — one row per unique contact email, used by the multi-gig
     # portal so a contact with several bookings has a single URL that lists them all
@@ -1521,7 +1535,7 @@ _BOOKING_FIELDS = (
     "expected_attendance", "description", "media_links",
     "ticketing", "ticket_price", "ticket_link",
     "door_person", "door_fee_required", "venue_fee_required",
-    "blocks_public_calendar",
+    "blocks_public_calendar", "squarespace_listing_status",
     "announcement_date", "support_act", "promo_ok", "notes", "source",
 )
 
@@ -1594,10 +1608,12 @@ def list_bookings_for_email(email, include_past=False, include_archived=False):
 
 def list_bookings(status=None, venue=None, start_date=None, end_date=None,
                   event_type=None, search=None, limit=1000,
-                  include_archived=False):
+                  include_archived=False, squarespace_listing_status=None):
     """Get bookings with optional filters. Returns rows ordered by event_date asc.
 
     include_archived — if False (default), excludes rows where archived_at IS NOT NULL.
+    squarespace_listing_status — if set, filters by listing status
+        ('not_listed' / 'partial' / 'live').
     """
     conn = get_db()
     sql = "SELECT * FROM bookings WHERE 1=1"
@@ -1618,6 +1634,9 @@ def list_bookings(status=None, venue=None, start_date=None, end_date=None,
     if event_type:
         sql += " AND event_type = ?"
         params.append(event_type)
+    if squarespace_listing_status:
+        sql += " AND squarespace_listing_status = ?"
+        params.append(squarespace_listing_status)
     if start_date:
         sql += " AND event_date >= ?"
         params.append(start_date)
@@ -1892,7 +1911,14 @@ def booking_counts():
         """SELECT COUNT(*) FROM bookings
            WHERE status='confirmed' AND event_date >= ?
              AND archived_at IS NULL
-             AND squarespace_published_at IS NULL""",
+             AND squarespace_listing_status='not_listed'""",
+        (today,),
+    ).fetchone()[0]
+    listing_partial = conn.execute(
+        """SELECT COUNT(*) FROM bookings
+           WHERE status='confirmed' AND event_date >= ?
+             AND archived_at IS NULL
+             AND squarespace_listing_status='partial'""",
         (today,),
     ).fetchone()[0]
     door_unconfirmed = conn.execute(
@@ -1911,6 +1937,7 @@ def booking_counts():
         "confirmed_upcoming": confirmed_upcoming,
         "unpaid_fees": unpaid_fees,
         "needs_publishing": needs_publishing,
+        "listing_partial": listing_partial,
         "door_unconfirmed": door_unconfirmed,
     }
 

@@ -137,12 +137,27 @@
         </div>
     </div>
     <div class="col-md col-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="text-muted small">Need website listing</div>
-                <div class="h3 mb-0 {% if counts.needs_publishing > 0 %}text-warning{% else %}text-secondary{% endif %}">{{ counts.needs_publishing }}</div>
+        <a href="/bookings?view=upcoming&status=confirmed&squarespace_listing_status=not_listed" class="text-decoration-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Not on Squarespace</div>
+                    <div class="h3 mb-0 {% if counts.needs_publishing > 0 %}text-warning{% else %}text-secondary{% endif %}">{{ counts.needs_publishing }}</div>
+                </div>
             </div>
-        </div>
+        </a>
+    </div>
+    <div class="col-md col-6">
+        <a href="/bookings?view=upcoming&status=confirmed&squarespace_listing_status=partial" class="text-decoration-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Listing info pending</div>
+                    <div class="h3 mb-0 {% if counts.listing_partial > 0 %}text-warning{% else %}text-secondary{% endif %}">
+                        {{ counts.listing_partial }}
+                        {% if counts.listing_partial > 0 %}<i class="bi bi-exclamation-square-fill fs-5 ms-1"></i>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </a>
     </div>
     <div class="col-md col-6">
         <a href="/bookings?view=upcoming&status=confirmed" class="text-decoration-none">

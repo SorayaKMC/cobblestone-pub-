@@ -294,24 +294,31 @@
                 </div>
                 {% endif %}
                 <hr>
+                {% set _ss_status = booking.squarespace_listing_status or 'not_listed' %}
+                {% set _ss_icon = {'not_listed': 'bi-square', 'partial': 'bi-exclamation-square-fill', 'live': 'bi-check-square-fill'} %}
+                {% set _ss_color = {'not_listed': 'text-muted', 'partial': 'text-warning', 'live': 'text-success'} %}
                 <form method="POST" action="/bookings/{{ booking.id }}/squarespace" class="m-0">
-                    <button type="submit"
-                            class="btn btn-sm w-100 text-start d-flex align-items-center gap-2
-                                   {{ 'btn-success' if booking.squarespace_published_at else 'btn-outline-secondary' }}"
-                            title="{{ 'Click to unmark' if booking.squarespace_published_at else 'Click to mark as done' }}">
-                        {% if booking.squarespace_published_at %}
-                            <i class="bi bi-check-square-fill fs-5"></i>
-                            <span>
-                                Squarespace event created
-                                <span class="fw-normal opacity-75" style="font-size:.75rem;">
-                                    — {{ booking.squarespace_published_at[:10] }}
-                                </span>
+                    <label class="form-label small fw-semibold mb-1 d-flex align-items-center gap-2">
+                        <i class="bi {{ _ss_icon[_ss_status] }} fs-5 {{ _ss_color[_ss_status] }}"></i>
+                        Squarespace listing
+                        {% if _ss_status == 'live' and booking.squarespace_published_at %}
+                            <span class="text-muted fw-normal" style="font-size:.7rem;">
+                                ({{ booking.squarespace_published_at[:10] }})
                             </span>
-                        {% else %}
-                            <i class="bi bi-square fs-5 opacity-50"></i>
-                            <span class="text-muted">Squarespace event not yet created</span>
                         {% endif %}
-                    </button>
+                    </label>
+                    <select name="squarespace_listing_status"
+                            class="form-select form-select-sm"
+                            onchange="this.form.submit()">
+                        {% for s in squarespace_listing_statuses %}
+                        <option value="{{ s }}" {% if s == _ss_status %}selected{% endif %}>
+                            {{ squarespace_listing_labels[s] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <noscript>
+                        <button type="submit" class="btn btn-sm btn-outline-primary mt-1">Save</button>
+                    </noscript>
                 </form>
                 <hr>
                 <div class="d-flex align-items-center gap-2 py-1">

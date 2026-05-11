@@ -94,6 +94,7 @@ def _parse_form(form):
         "door_fee_required":   1 if form.get("door_fee_required") else 0,
         "venue_fee_required":  1 if form.get("venue_fee_required") else 0,
         "blocks_public_calendar": 0 if form.get("non_blocking") else 1,
+        "squarespace_listing_status": _opt("squarespace_listing_status", "not_listed"),
         "announcement_date":   _opt("announcement_date"),
         "support_act":         _opt("support_act"),
         "promo_ok":            _opt("promo_ok"),
@@ -224,6 +225,7 @@ def bookings_list():
     end      = request.args.get("end_date", "")
     view     = request.args.get("view", "upcoming")  # upcoming | past | all
     show_archived = request.args.get("show_archived") == "1"
+    ss_listing = request.args.get("squarespace_listing_status", "") or None
 
     today = _today_iso()
     effective_start = start or None
@@ -245,6 +247,7 @@ def bookings_list():
         end_date=effective_end,
         search=search or None,
         include_archived=show_archived,
+        squarespace_listing_status=ss_listing,
     )
 
     counts = db.booking_counts()
@@ -427,6 +430,8 @@ def booking_detail(booking_id):
         venues=VENUES,
         today=_today_iso(),
         squarespace_block=_squarespace_block(booking),
+        squarespace_listing_statuses=SQUARESPACE_LISTING_STATUSES,
+        squarespace_listing_labels=SQUARESPACE_LISTING_LABELS,
         email_snippets=_load_email_snippets_for(booking["contact_email"]),
         back_url=session.get("last_bookings_url", "/bookings"),
     )
@@ -646,16 +651,44 @@ def mark_fee_paid(booking_id, which):
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
 
+SQUARESPACE_LISTING_STATUSES = ("not_listed", "partial", "live")
+SQUARESPACE_LISTING_LABELS = {
+    "not_listed": "Not listed",
+    "partial":    "Listed — info pending",
+    "live":       "Listed — complete",
+}
+
+
 @bp.route("/bookings/<int:booking_id>/squarespace", methods=["POST"])
-def toggle_squarespace_published(booking_id):
-    """Tick / untick the 'Squarespace published' checkbox."""
+def set_squarespace_status(booking_id):
+    """Set the 3-state Squarespace listing status.
+
+    Form param `squarespace_listing_status` must be one of:
+      - 'not_listed' (default)
+      - 'partial'    — listed but waiting for info (ticket link, poster, etc.)
+      - 'live'       — fully published with all info
+    """
     booking = db.get_booking(booking_id)
     if not booking:
         abort(404)
-    is_published = booking["squarespace_published_at"] is not None
-    new_value = None if is_published else datetime.now().isoformat()
-    db.update_booking_field(booking_id, "squarespace_published_at", new_value, actor="internal")
-    flash(f"Squarespace status: {'unpublished' if is_published else 'published'}.", "success")
+    new_status = request.form.get("squarespace_listing_status", "").strip()
+    if new_status not in SQUARESPACE_LISTING_STATUSES:
+        flash(f"Invalid Squarespace status: {new_status}", "danger")
+        return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+    db.update_booking_field(booking_id, "squarespace_listing_status",
+                            new_status, actor="internal")
+
+    # Keep squarespace_published_at in sync so anything still reading the
+    # old timestamp behaves sensibly: set when going live, clear otherwise.
+    if new_status == "live" and not booking["squarespace_published_at"]:
+        db.update_booking_field(booking_id, "squarespace_published_at",
+                                datetime.now().isoformat(), actor="internal")
+    elif new_status != "live" and booking["squarespace_published_at"]:
+        db.update_booking_field(booking_id, "squarespace_published_at",
+                                None, actor="internal")
+
+    flash(f"Squarespace status: {SQUARESPACE_LISTING_LABELS[new_status]}.", "success")
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
 
