@@ -24,17 +24,67 @@ Usage:
 
 import argparse
 import re
+import unicodedata
 from datetime import date
 
 import db
 import calendar_client
 
 
+# Words to ignore when computing similarity — too common to be signal
+STOPWORDS = {
+    "the", "and", "with", "presents", "presented", "live", "at", "in", "on",
+    "of", "by", "for", "from", "to", "a", "an", "is", "no", "have", "their",
+    "own", "door", "person", "needed", "tbc", "back", "bar", "backbar",
+    "cobblestone", "backroom", "upstairs", "night", "nights",
+}
+
+
+def _strip_accents(s):
+    """Caoimhe → caoimhe, ní → ni, etc."""
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
+    )
+
+
+def _tokens(s):
+    """Return a set of meaningful tokens from a string."""
+    if not s:
+        return set()
+    s = _strip_accents(s).lower()
+    # Strip apostrophes BEFORE punctuation→space, so "Piper's" → "pipers"
+    # rather than "piper" + "s". Same for curly quotes.
+    s = s.replace("'", "").replace("’", "")
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    out = set()
+    for t in s.split():
+        if not t:
+            continue
+        if t in STOPWORDS:
+            continue
+        if t.isdigit():
+            continue
+        out.add(t)
+    return out
+
+
+def _similarity(a, b):
+    """Symmetric Jaccard-ish: |common| / min(|a|, |b|).
+
+    Returns 0.0 if either side has no meaningful tokens.
+    """
+    at, bt = _tokens(a), _tokens(b)
+    if not at or not bt:
+        return 0.0
+    common = at & bt
+    return len(common) / min(len(at), len(bt))
+
+
+# (Legacy helper kept for backwards-compat in any external callers)
 def _normalise(s):
-    """Lowercase + strip punctuation + collapse whitespace for fuzzy matching."""
     if not s:
         return ""
-    s = s.lower()
+    s = _strip_accents(s).lower()
     s = re.sub(r"[^a-z0-9 ]", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
@@ -112,6 +162,13 @@ def main():
     ambiguous = []  # (booking, [event, …]) — multi-match
     missing = []    # (booking,) — no match
 
+    # Similarity threshold for token-based fuzzy match. 0.5 = at least half
+    # of the smaller token set must overlap. Tuned to catch
+    # 'Caoimhe ní Maolagáin and Louise Barker' ↔ 'Caoimhe ní Maolagáin and Louise Dancing 5.45-6.30'
+    # 'Mr Irish Bastard' ↔ 'Mr Bastard Two Night Stand'
+    # without false positives like 'People Before Profit' ↔ 'Pbp Night'.
+    SIM_THRESHOLD = 0.5
+
     for b in bookings:
         ev_date = b["event_date"]
         candidates = events_by_date.get(ev_date, [])
@@ -119,24 +176,24 @@ def main():
             missing.append(b)
             continue
 
-        # Match by normalised act_name substring (either direction)
-        act_norm = _normalise(b["act_name"])
-        matches = []
+        # Score every candidate on the same date by token similarity, pick best
+        scored = []
         for e in candidates:
-            sum_norm = _normalise(e.get("summary", ""))
-            if not sum_norm:
-                continue
-            # Match: act name substring of summary OR summary substring of act name
-            # (handles "Caoimhe ní Maolagáin and Louise" vs "Caoimhe ní Maolagáin and Louise Dancing 5.45-6.30, 6.30-7.15")
-            if act_norm in sum_norm or sum_norm in act_norm:
-                matches.append(e)
+            score = _similarity(b["act_name"], e.get("summary", ""))
+            if score >= SIM_THRESHOLD:
+                scored.append((score, e))
 
-        if len(matches) == 1:
-            linked.append((b, matches[0]))
-        elif len(matches) > 1:
-            ambiguous.append((b, matches))
-        else:
+        if not scored:
             missing.append(b)
+            continue
+
+        # Sort by score descending; if there's a clear winner (top score > 2nd-best
+        # by 0.15+), pick it. Otherwise flag ambiguous.
+        scored.sort(key=lambda x: x[0], reverse=True)
+        if len(scored) == 1 or (scored[0][0] - scored[1][0] >= 0.15):
+            linked.append((b, scored[0][1]))
+        else:
+            ambiguous.append((b, [e for _, e in scored]))
 
     # Report
     print(f"  Single-match (link)  : {len(linked):>4}")
