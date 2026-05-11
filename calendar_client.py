@@ -179,7 +179,7 @@ def create_calendar_event(booking):
     Routes to the correct calendar based on booking['venue'].
     Returns the created event ID string, or None on failure / misconfiguration.
     """
-    venue = booking.get("venue", "Backroom")
+    venue = booking["venue"] or "Backroom"
     service = _calendar_service(venue)
     if not service:
         return None
@@ -206,7 +206,7 @@ def update_calendar_event(booking, event_id):
     """
     if not event_id:
         return False
-    venue = booking.get("venue", "Backroom")
+    venue = booking["venue"] or "Backroom"
     service = _calendar_service(venue)
     if not service:
         return False
@@ -233,7 +233,7 @@ def delete_calendar_event(booking, event_id):
     """
     if not event_id:
         return False
-    venue = booking.get("venue", "Backroom")
+    venue = booking["venue"] or "Backroom"
     service = _calendar_service(venue)
     if not service:
         return False

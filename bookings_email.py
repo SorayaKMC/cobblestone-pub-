@@ -1731,13 +1731,13 @@ def send_shane_notification(booking, base_url=None, sender_name=None):
         f"<p style='margin:0 0 16px;font-size:13px;background:#fffbeb;"
         f"border-left:3px solid #f59e0b;padding:12px;border-radius:4px;'>"
         f"<strong>Notes:</strong> {booking['notes']}</p>"
-        if booking.get("notes") else ""
+        if booking["notes"] else ""
     )
     desc_block = (
         f"<p style='margin:0 0 16px;font-size:13px;background:#f0f9ff;"
         f"border-left:3px solid #38bdf8;padding:12px;border-radius:4px;'>"
         f"<strong>Description:</strong> {booking['description']}</p>"
-        if booking.get("description") else ""
+        if booking["description"] else ""
     )
 
     html = f"""
@@ -1816,7 +1816,7 @@ Door person:  {door_line}
 Contact:      {booking['contact_name']  or '—'}
 Email:        {booking['contact_email'] or '—'}
 Phone:        {booking['contact_phone'] or '—'}
-{"Notes:        " + booking['notes'] if booking.get('notes') else ""}
+{"Notes:        " + booking['notes'] if booking['notes'] else ""}
 
 Questions? Reply here or email bookings@cobblestonepub.ie.
 
