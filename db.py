@@ -1718,6 +1718,8 @@ def save_booking(data, booking_id=None):
         v = data.get(f)
         if v is None and f == "blocks_public_calendar":
             return 1  # default = blocks (existing behavior)
+        if v is None and f == "squarespace_listing_status":
+            return "not_listed"  # default — gig not yet on the website
         return v
 
     if booking_id:
