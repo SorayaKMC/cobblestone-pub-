@@ -37,7 +37,8 @@ Everything else is bonus.
 | **Tentative** | Bookings on hold pending more info | Weekly |
 | **Confirmed upcoming** | Locked-in future gigs | Reference |
 | **Outstanding fees** | Confirmed/completed gigs with venue or door fee unpaid | End of week |
-| **Need website listing** | Confirmed gigs not yet on Squarespace | Weekly publishing |
+| **Not on Squarespace** | Confirmed gigs not yet listed on the website | Weekly publishing |
+| **Listing info pending** | Listed on Squarespace but waiting for info (ticket link, poster, etc.) | Weekly publishing |
 | **Door person TBC (≤7 days)** | Confirmed gigs in the next week with no door person assigned | Daily check |
 
 (Tile counts exclude archived rows.)
@@ -176,7 +177,7 @@ On the booking detail:
 
 These flip the row out of the "Outstanding fees" KPI tile.
 
-### Send the Squarespace block
+### Publish a gig to Squarespace
 
 When a gig is confirmed and ready to go on the website:
 
@@ -185,9 +186,23 @@ When a gig is confirmed and ready to go on the website:
 3. Click **Copy Squarespace block** — copies a pre-formatted text
    chunk to your clipboard
 4. Open Squarespace → Events → New Event → paste it in
-5. Back in the app, tick **Squarespace published**
+5. Back in the app, set the **Squarespace listing** dropdown:
+   - **Listed — info pending** — if you've created the event but
+     are still waiting on the band for the ticket link, poster, or
+     other final details
+   - **Listed — complete** — when the event is fully published with
+     everything in place
 
-This drops the row out of the "Need website listing" KPI tile.
+The dropdown saves on change (no extra click). Three-state flow:
+
+| State | When |
+|---|---|
+| **Not listed** | Default — gig not yet on Squarespace |
+| **Listed — info pending** | On the site but missing ticket link / poster / final info |
+| **Listed — complete** | Fully published, nothing missing |
+
+The two intermediate states each have their own KPI tile so you can
+chase the gaps weekly without losing track.
 
 ### Assign a door person
 
