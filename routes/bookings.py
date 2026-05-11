@@ -900,9 +900,19 @@ def book_submit():
         return redirect(url_for("bookings.book_portal", token=booking["public_token"]))
 
     except ValueError as e:
+        # Validation errors — safe to show to the user (e.g. "date already booked")
         flash(str(e), "danger")
     except Exception as e:
-        flash(f"Something went wrong — please try again. ({e})", "danger")
+        # Internal errors (DB locks, SMTP, etc.) — log the detail, show
+        # something useful and non-scary to the band
+        print(f"[bookings] Public form submission failed: {type(e).__name__}: {e}")
+        flash(
+            "Something went wrong while saving your inquiry — please try "
+            "again in a moment. If it keeps failing, email us at "
+            "bookings@cobblestonepub.ie or call +353 85 736 2447 and we'll "
+            "sort it out.",
+            "danger",
+        )
 
     return render_template(
         "book_public.html",
@@ -1056,7 +1066,14 @@ def book_other_submit():
     except ValueError as e:
         flash(str(e), "danger")
     except Exception as e:
-        flash(f"Something went wrong — please try again. ({e})", "danger")
+        print(f"[bookings] /book/other submission failed: {type(e).__name__}: {e}")
+        flash(
+            "Something went wrong while saving your request — please try "
+            "again in a moment. If it keeps failing, email us at "
+            "bookings@cobblestonepub.ie or call +353 85 736 2447 and we'll "
+            "sort it out.",
+            "danger",
+        )
 
     return render_template(
         "book_other.html",
