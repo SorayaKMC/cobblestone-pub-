@@ -22,7 +22,7 @@ import db
 RESIDENCY_PATTERNS = [
     {"label": "Balaclavas",    "pattern": "%balaclavas%"},
     {"label": "Dance Classes", "pattern": "%dance class%",
-     "rename_to": "Dance Classes: Caoimhe ní Maolagáin and Louise Barker"},
+     "rename_to": "Dance Classes: Caoimhe ní Maolagáin and Louise O'Connor"},
     {"label": "Caoimhe (legacy)", "pattern": "%caoimhe%"},
     {"label": "Larry's Night", "pattern": "%larry%"},  # catches 'Larry Night' + 'The Night Larry Got Stretched'
     {"label": "Piper's Club",  "pattern": "%piper%"},
