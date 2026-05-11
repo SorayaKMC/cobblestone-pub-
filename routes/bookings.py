@@ -19,7 +19,9 @@ bp = Blueprint("bookings", __name__)
 
 
 # ─── Constants exposed to templates ─────────────────────────────────────────
-EVENT_TYPES = ["Gig", "Class", "Private Hire", "Rehearsal", "Filming", "Other"]
+EVENT_TYPES = ["Gig", "Residency Gigs", "Class", "Private Hire", "Rehearsal", "Filming", "Other"]
+RESIDENCY_EVENT_TYPE = "Residency Gigs"
+RESIDENCY_COLOR = "#e91e63"   # pink — in-house residencies (Balaclavas, Caoimhe, Larry, Pipers)
 # Subset shown on the public "something else" form (everything except Gig + Class)
 OTHER_FORM_EVENT_TYPES = ["Filming", "Rehearsal", "Private Hire", "Other"]
 STATUSES = ["inquiry", "hold", "tentative", "confirmed", "completed", "cancelled"]
@@ -167,6 +169,11 @@ def bookings_api_events():
         base_color = _VENUE_COLORS.get(bvenue, "#6c757d")
         override = _STATUS_BG_OVERRIDE.get(bstatus)
         color = override if override else base_color
+        # Residency events get their own colour, overriding status colour
+        # (so Balaclavas / Caoimhe / Larry / Pipers read distinctly on the calendar)
+        if b["event_type"] == RESIDENCY_EVENT_TYPE and bstatus == "confirmed":
+            color = RESIDENCY_COLOR
+            base_color = RESIDENCY_COLOR
         title = b["act_name"] or "(untitled)"
         if bstatus != "confirmed":
             title = f"[{STATUS_LABELS.get(bstatus, bstatus)}] {title}"
@@ -225,6 +232,7 @@ def bookings_list():
     end      = request.args.get("end_date", "")
     view     = request.args.get("view", "upcoming")  # upcoming | past | all
     show_archived = request.args.get("show_archived") == "1"
+    hide_residencies = request.args.get("hide_residencies") == "1"
     ss_listing = request.args.get("squarespace_listing_status", "") or None
 
     today = _today_iso()
@@ -249,6 +257,10 @@ def bookings_list():
         include_archived=show_archived,
         squarespace_listing_status=ss_listing,
     )
+
+    # Optional client-side filter: hide residency gigs (Balaclavas, Caoimhe, etc.)
+    if hide_residencies:
+        bookings = [b for b in bookings if b["event_type"] != RESIDENCY_EVENT_TYPE]
 
     counts = db.booking_counts()
 
@@ -277,6 +289,8 @@ def bookings_list():
         door_warning_ids=door_warning_ids,
         search=search,
         show_archived=show_archived,
+        hide_residencies=hide_residencies,
+        residency_event_type=RESIDENCY_EVENT_TYPE,
     )
 
 

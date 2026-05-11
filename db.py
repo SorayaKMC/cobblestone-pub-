@@ -1926,7 +1926,8 @@ def booking_counts():
            WHERE status='confirmed'
              AND event_date >= ? AND event_date <= ?
              AND archived_at IS NULL
-             AND (door_person IS NULL OR door_person = '')""",
+             AND (door_person IS NULL OR door_person = '')
+             AND event_type != 'Residency Gigs'""",
         (today, cutoff),
     ).fetchone()[0]
     conn.close()
@@ -1944,7 +1945,11 @@ def booking_counts():
 
 def get_bookings_needing_door_confirmation(days_ahead=7):
     """Return confirmed bookings within the next `days_ahead` days where
-    door_person has not been set. Used by the daily cron alert."""
+    door_person has not been set. Used by the daily cron alert.
+
+    Excludes Residency Gigs (Balaclavas, Caoimhe, Larry, Pipers) since
+    those are in-house regulars that don't need a door person.
+    """
     today = date.today().isoformat()
     cutoff = (date.today() + timedelta(days=days_ahead)).isoformat()
     conn = get_db()
@@ -1954,6 +1959,7 @@ def get_bookings_needing_door_confirmation(days_ahead=7):
              AND event_date >= ? AND event_date <= ?
              AND archived_at IS NULL
              AND (door_person IS NULL OR door_person = '')
+             AND event_type != 'Residency Gigs'
            ORDER BY event_date ASC""",
         (today, cutoff),
     ).fetchall()
