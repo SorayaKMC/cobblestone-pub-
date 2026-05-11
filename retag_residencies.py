@@ -22,7 +22,7 @@ RESIDENCY_PATTERNS = [
     {"label": "Dance Classes", "pattern": "%dance class%",
      "rename_to": "Dance Classes: Caoimhe ní Maolagáin and Louise Barker"},
     {"label": "Caoimhe (legacy)", "pattern": "%caoimhe%"},
-    {"label": "Larry's Night", "pattern": "%larry%night%"},
+    {"label": "Larry's Night", "pattern": "%larry%"},  # catches 'Larry Night' + 'The Night Larry Got Stretched'
     {"label": "Piper's Club",  "pattern": "%piper%"},
 ]
 
