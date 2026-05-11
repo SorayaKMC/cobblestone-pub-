@@ -20,15 +20,21 @@ The Render service `cobblestone-pub` already runs the new portal at
 **Public-facing:**
 - `/book` — gig inquiry form (Backroom-only for V0; Upstairs hidden)
 - `/book/other` — second form for filming, practice, private events
-- `/book/<token>` — band-facing portal (poster upload, status, etc.)
+- `/book/<token>` — per-booking portal (poster upload, status, etc.)
+- `/portal/<token>` — multi-gig portal (one URL per email; lists all
+  upcoming bookings for that contact). Per-booking pages link here
+  when the contact has more than one active booking.
 
 **Internal:**
 - `/bookings` — tracker list with KPI tiles, status filters, search,
-  archive toggle, Quick Hold modal
+  archive toggle, Quick Hold modal. Filter state persists when you
+  drill into a booking and click Back.
 - `/bookings/calendar` — visual calendar
-- `/bookings/<id>` — detail view with Recent Emails panel,
-  audit log, archive button
+- `/bookings/<id>` — detail view with Recent Emails panel, audit log,
+  archive/unarchive, silent confirm, cancel-with-decline-email,
+  non-blocking flag for partial-day events
 - `/bookings/blackouts`, `/bookings/series`, `/bookings/contacts`
+- `/sound` — Shane's scoped engineer view (separate credentials)
 
 **Email sender:** `bookings@cobblestonepub.ie` via Google Workspace
 SMTP. SPF/DKIM/DMARC active on `cobblestonepub.ie`.
@@ -36,12 +42,24 @@ SMTP. SPF/DKIM/DMARC active on `cobblestonepub.ie`.
 **Data state in the production DB:**
 - ~90 confirmed bookings (63 form-imported + 27 Balaclavas series)
 - ~32 inquiries from form responses (16 needs-review + 16 pending)
+- 13 one-off gigs + 8 holds queued for bulk-import via
+  `import_calendar_only.py` (run on Render Shell tomorrow)
+- Recurring series seeded: Balaclavas (Wednesdays), Larry's (first
+  Sunday monthly), Pipers' Club (first Tuesday from July). Caoimhe
+  Dance (Mondays) added directly to the calendar by Soraya.
 - All upcoming events through Dec 30 2026 mirrored in the
   `bookings@cobblestonepub.ie` Google Calendar (color-coded: sage =
   form-backed, lavender = upstairs, graphite = bar/non-Backroom,
   default yellow = calendar-only)
 - Email-snippet cache covers 57 of those bookings inline on the detail
   page; rest fall back to the "Open in Gmail" deep-link
+
+**Calendar sync behaviour:**
+- Confirming a booking → creates the Calendar event
+- Editing a confirmed booking → auto-refreshes the Calendar event
+  (times, contacts, support act, ticketing, notes)
+- Status change away from confirmed → deletes the Calendar event
+- Cancelling → deletes the Calendar event + auto-archives
 
 ---
 
@@ -73,10 +91,7 @@ Tick each before flipping the announcement switch.
   Take it Sunday evening so we have a clean rollback point.
 
 ### Data
-- [ ] **Adjudicate the 16 needs-review conflicts** in the bookings UI.
-  Each one is a real conflict (Sweet Jayne vs Josh Fortenbery on May
-  22, Allied Irish Bandits vs Limbo Days on Oct 10, etc.). Confirm
-  the winner; cancel + send decline email to the loser.
+- [x] **Adjudicate the 16 needs-review conflicts** in the bookings UI.
 - [ ] **Decide on the 5 calendar conflicts surfaced earlier**:
   - May 16 Brid Sheehan ceili — sound confirmed?
   - May 16 Aislinn (PBP by-election) 3-7pm — same-day conflict with
@@ -85,13 +100,22 @@ Tick each before flipping the announcement switch.
   - Oct 10 Limbo Days vs Allied Irish Bandits — Giada wins (first
     submission, on calendar), apologise to Lee Page
   - Oct 16 Aoife (BAC 7) — confirm matches existing calendar entry
+- [ ] **Run bulk imports on Render Shell** (Monday morning, after
+  the Sunday DB backup):
+  ```bash
+  python3 import_calendar_only.py --confirm
+  python3 archive_cancelled_bookings.py --confirm
+  python3 flag_nonblocking.py --email dublinjazzcoop@gmail.com --confirm
+  ```
+  All idempotent — safe to dry-run first (omit `--confirm`).
 - [ ] **Send portal-intro emails** to confirmed bookings 14+ days out.
   ```bash
   python3 bookings_send_portal_links.py --dry-run
   python3 bookings_send_portal_links.py
   ```
   Default skips bookings within 14 days (mid-prep — don't disturb)
-  and skips already-introed (idempotent).
+  and skips already-introed (idempotent). Now sends ONE email per
+  unique contact email (multi-gig portal), not one per booking.
 
 ### Comms
 - [ ] **Update Squarespace** — replace the existing
@@ -105,10 +129,14 @@ Tick each before flipping the announcement switch.
   ask via phone, the redirect text matches.
 
 ### Soft launch
-- [ ] **Submit a real test inquiry** via `/book` from a personal email
+- [x] **Submit a real test inquiry** via `/book` from a personal email
   → confirm it lands in `/bookings` as Inquiry → click Confirm →
   verify confirmation email + Shane CC + portal link work
-  end-to-end → cancel/delete the test.
+  end-to-end → cancel/delete the test. *(verified 10 May)*
+- [x] **Verify Square €50 door fee payment links** end-to-end —
+  pick a confirmed booking with `door_fee_required=1`, click the pay
+  link from the band portal, confirm the Square page loads with the
+  right amount. *(verified 10 May)*
 - [ ] **Tomás briefed** on the new flow (point him at the manager SOP).
 - [ ] **Camille / Nheaca briefed** if they're handling bookings on
   any nights.
@@ -243,4 +271,4 @@ Don't oversell or apologize for the change — keep it matter-of-fact.
 
 ---
 
-_Last updated: 9 May 2026 (evening before go-live)._
+_Last updated: 10 May 2026 (evening before go-live)._

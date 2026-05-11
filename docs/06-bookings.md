@@ -1,10 +1,20 @@
 # Backroom Bookings
 
+> **For day-to-day workflow, see the dedicated docs:**
+> - [10 — Go-Live Runbook (May 2026)](10-bookings-go-live-may-2026.md)
+> - [11 — Manager SOP](11-bookings-manager-sop.md)
+> - [12 — Shane's Quick Reference](12-shane-quick-reference.md)
+>
+> This file is the high-level system overview.
+
 **URLs:**
-- Public booking form: `/book`
+- Public gig form: `/book`
+- Public other-events form: `/book/other` (filming, rehearsal, private)
 - Admin tracker: `/bookings`
 - Per-booking detail: `/bookings/<id>`
-- Band-facing portal: `/book/<token>` (shared via email)
+- Per-booking band portal: `/book/<token>` (one per booking)
+- Multi-gig contact portal: `/portal/<token>` (one per email)
+- Sound engineer view: `/sound` (Shane's login)
 
 ## What it does
 
@@ -99,5 +109,6 @@ high-level overview.
   service.
 
 For deeper detail on bookings, refer to:
-- `Cobblestone_Bookings_SOP.pdf` (in the project root)
-- `Cobblestone_Manager_Guide.html` (training material)
+- [11 — Manager SOP](11-bookings-manager-sop.md) — primary day-to-day reference
+- [10 — Go-Live Runbook](10-bookings-go-live-may-2026.md) — pre-launch + cutover
+- [12 — Shane's Quick Reference](12-shane-quick-reference.md) — engineer view

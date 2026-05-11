@@ -58,6 +58,9 @@ When you tap into a gig, you see everything that matters to you:
 | **Recent emails** | Last few exchanges between Tomás and the band — for context |
 | **Notes** | Anything Tomás has scribbled on the booking |
 
+The page auto-updates if Tomás changes a confirmed booking — door
+times, contacts, support act, notes. So whatever you see is current.
+
 ---
 
 ## Coordinating sound check / load-in
@@ -144,3 +147,5 @@ Tomás — he has full access.
 ---
 
 _Questions? Ring Soraya or Tomás. Welcome to the new system!_
+
+_Last updated: 10 May 2026._

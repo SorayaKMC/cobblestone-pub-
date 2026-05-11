@@ -59,14 +59,30 @@ Everything else is bonus.
    - "Recent emails" panel — has there been any back-and-forth via
      email already?
 4. Decide:
-   - **Confirm** → "Confirm Booking" button → fires the approval
-     email (band + Shane CC'd) and creates the Google Calendar event
+   - **Confirm Booking** → fires the approval email (band + Shane
+     CC'd), generates a €50 door-fee Square link if applicable, and
+     creates the Google Calendar event
+   - **Confirm (silent — no emails)** → same as above but skips the
+     email + Square link. Useful for re-confirms, internal admin
+     fixes, or bookings where you've already coordinated with the
+     band by phone/email
    - **Tentative** → mark Tentative if you want to soft-hold while
      you check something
-   - **Decline** → "Cancel Booking" → sends decline email with a
-     "Pick another date" link
+   - **Cancel + Email Decline** → sends the "date now taken" decline
+     email with a "Pick another date" link, then archives
+   - **Cancel** (silent) → cancels without sending any email
    - **Archive** → if it's spam or clearly not a fit, archive it (it
      drops out of all your lists)
+
+### Editing a confirmed booking
+
+When you edit a booking that's already confirmed (door time, contact
+details, support act, notes — anything), the **Google Calendar event
+auto-refreshes** with the new info on save. No need to manually
+update the calendar. If you change a confirmed booking back to
+tentative/hold/inquiry, the calendar event is automatically deleted
+so the calendar doesn't show a confirmed-looking event for something
+that isn't.
 
 ### What the confirmation email does
 
@@ -193,15 +209,40 @@ On the booking detail, **Send message** action:
 
 ### Cancel vs archive
 
-- **Cancel** = the gig isn't happening. Sends a cancellation email
-  to the band (or doesn't, if cancelled by the band themselves).
-  Status flips to Cancelled, badge goes black.
+- **Cancel** = the gig isn't happening. Status flips to Cancelled,
+  badge goes black, and the booking is auto-archived. Two flavours:
+  - **Cancel + Email Decline** → sends the "date now taken" email
+  - **Cancel** (default) → silent, no email
 - **Archive** = hide it from the active list (KPI tiles too). The
   data is still there — toggle "Show archived" on the bookings list
   to see them. Use for very old completed gigs, spam inquiries, or
   test bookings you don't want cluttering the queue.
 
-You can archive cancelled bookings to clean up the view.
+Cancelling auto-archives. To unarchive (restore to active list),
+flip on "Show archived" toggle, open the booking, and click
+**Unarchive**.
+
+### Daytime-only / non-blocking events
+
+Some events (e.g. Dublin Jazz Coop's Sunday afternoon sessions,
+private rehearsals before a show) happen during the day and
+shouldn't block an evening gig from booking. On the booking
+detail, tick **"Doesn't block public calendar"** — this keeps
+the booking on your internal views (it shows on `/bookings`,
+counts on KPI tiles, appears on the Google Calendar) but the
+public booking form treats the date as **available**.
+
+To bulk-flag a recurring contact's bookings, use:
+```bash
+python3 flag_nonblocking.py --email someone@example.com --confirm
+```
+
+### Filter persistence
+
+When you filter the bookings list (status, search, date range,
+view) and click into a booking, the **"Back to bookings"** button
+remembers the filter and returns you to the same view. Works
+through any number of edits/status changes inside the detail page.
 
 ---
 
@@ -248,7 +289,32 @@ when both submit fresh:
   by the daily cron (or you can flip it manually)
 - For a no-show specifically, mark **Cancelled** with a note in the
   notes field for future reference
-- Optionally archive after a month
+- Cancelling auto-archives, so it falls out of the active list
+
+### A contact has multiple bookings (e.g. residencies)
+
+For acts/promoters with several gigs (Dublin Jazz Coop has 8+ slots,
+Pipers' Club is monthly, etc.), the system uses one **multi-gig
+portal** per email address at `/portal/<token>`:
+
+- One link per contact email — shows ALL their upcoming bookings
+- Each gig in the list deep-links to its individual `/book/<token>`
+  page (where they upload posters, ack the info sheet, etc.)
+- Used by the **portal-intro mailer** so a contact with 8 dates gets
+  ONE email instead of 8 separate ones
+
+If a band lands on a per-booking page (`/book/<token>`) and they have
+other active bookings under the same email, a blue **"You have N
+other bookings — View all →"** banner appears at the top so they can
+jump to the multi-gig view.
+
+To send portal-intro emails to all confirmed bookings 14+ days out:
+```bash
+python3 bookings_send_portal_links.py --dry-run    # preview
+python3 bookings_send_portal_links.py              # actually send
+```
+
+Idempotent — won't double-send to anyone who's already had one.
 
 ---
 
@@ -280,8 +346,10 @@ Shane (`+353 85 175 8254`).
 | Blackout dates | `/bookings/blackouts` |
 | Band contacts | `/bookings/contacts` |
 | Public gig form | `/book` |
-| Public other form | `/book/other` |
-| Band-facing portal | `/book/<token>` (shared via email) |
+| Public other form | `/book/other` (filming, rehearsal, private hire) |
+| Band per-booking portal | `/book/<token>` (one per booking) |
+| Multi-gig contact portal | `/portal/<token>` (one per email) |
+| Sound engineer view | `/sound` (Shane's login only) |
 
 Production URL: `https://bookings.cobblestonepub.ie` (or
 `https://cobblestone-pub.onrender.com` if the custom domain isn't
@@ -289,4 +357,4 @@ fully set up yet).
 
 ---
 
-_Last updated: 9 May 2026._
+_Last updated: 10 May 2026 (eve of go-live)._
