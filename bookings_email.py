@@ -1577,7 +1577,7 @@ def send_date_taken_decline(booking, base_url=None):
     except Exception:
         date_str = booking["event_date"]
 
-    subject = f"Re: your inquiry for {date_str} — date now taken"
+    subject = f"Re: your inquiry for {date_str} — date unavailable"
 
     html = f"""
 <!DOCTYPE html>
@@ -1603,7 +1603,7 @@ def send_date_taken_decline(booking, base_url=None):
             <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333;">
               Thanks for your interest in playing the Cobblestone Pub.
               Unfortunately <strong>{date_str}</strong> at the <strong>{venue}</strong>
-              has just been confirmed for another event, so we're unable to accommodate
+              is no longer available, so we're unable to accommodate
               <strong>{act}</strong> on that date.
             </p>
             <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#333;">
@@ -1652,8 +1652,8 @@ def send_date_taken_decline(booking, base_url=None):
     text = f"""Hi {name},
 
 Thanks for your interest in playing the Cobblestone Pub. Unfortunately
-{date_str} at the {venue} has just been confirmed for another event,
-so we can't accommodate {act} on that date.
+{date_str} at the {venue} is no longer available, so we can't
+accommodate {act} on that date.
 
 We'd love to have you here — pick a new date using the link below.
 Your details are already saved so you won't need to fill in the form again:
