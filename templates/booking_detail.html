@@ -15,6 +15,11 @@
         <span class="text-muted small">Booking #{{ booking.id }}</span>
         <span class="badge bg-{{ status_badges.get(booking.status, 'secondary') }}">{{ status_labels.get(booking.status, booking.status) }}</span>
         <span class="text-muted small">{{ booking.venue }}</span>
+        {% if booking.created_at %}
+        <span class="text-muted small" title="When the inquiry/booking was submitted">
+            <i class="bi bi-clock-history me-1"></i>Received {{ booking.created_at[:16] | replace('T', ' ') }}
+        </span>
+        {% endif %}
     </div>
     {% endif %}
 </div>
