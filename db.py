@@ -1816,7 +1816,10 @@ def update_booking_field(booking_id, field, value, actor="system"):
         "venue_fee_paid_at", "door_fee_paid_at",
         "venue_fee_payment_id", "door_fee_payment_id",
         "confirmation_sent_at", "squarespace_published_at",
-        "google_calendar_event_id", "notes",
+        "squarespace_listing_status",
+        "google_calendar_event_id", "notes", "description",
+        "promo_folder_url",
+        "door_fee_required",
     }
     if field not in safe:
         raise ValueError(f"Field '{field}' not allowed for direct update")
