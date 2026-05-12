@@ -20,11 +20,17 @@
             <i class="bi bi-clock-history me-1"></i>Received {{ booking.created_at[:16] | replace('T', ' ') }}
         </span>
         {% endif %}
-        {# Legacy pricing badge — confirmed bookings created BEFORE the 6-week cutoff #}
-        {% if booking.status == 'confirmed' and booking.created_at and booking.created_at[:10] < legacy_cutoff_date %}
+        {# Legacy pricing badge — confirmed bookings that predate the door-fee policy:
+           either source='form-import' (migrated from the original form, by definition
+           pre-policy) OR created_at older than 6 weeks (natively-created bookings
+           that aged past the cutoff). #}
+        {% if booking.status == 'confirmed' and (
+                booking.source == 'form-import' or
+                (booking.created_at and booking.created_at[:10] < legacy_cutoff_date)
+             ) %}
         <span class="badge"
               style="background:#1c1c2e;color:#fff;"
-              title="Booked under previous pricing (created {{ booking.created_at[:10] }}, before the 6-week cutoff of {{ legacy_cutoff_date }}). No €50 door person fee applies.">
+              title="Booked under previous pricing{% if booking.source == 'form-import' %} (migrated from the original booking form){% else %} (created {{ booking.created_at[:10] }}, before the 6-week cutoff of {{ legacy_cutoff_date }}){% endif %}. No €50 door person fee applies.">
             <i class="bi bi-slash-circle me-1"></i>NO doorperson fee
         </span>
         {% endif %}

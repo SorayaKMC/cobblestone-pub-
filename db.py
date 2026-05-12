@@ -2005,15 +2005,19 @@ def auto_complete_past_bookings():
 
 
 def auto_clear_legacy_door_fees():
-    """Set door_fee_required=0 on confirmed bookings older than 6 weeks.
+    """Set door_fee_required=0 on legacy confirmed bookings.
 
-    Policy: confirmed bookings whose created_at is more than 6 weeks
-    before today predate the new €50 door-person-fee policy. They're
-    grandfathered — no door fee charged, no Square link generated,
-    no 'Door person TBC' warning shown.
+    Policy: bookings predating the new €50 door-person-fee policy are
+    grandfathered — no door fee charged, no Square link generated, no
+    'Door person TBC' warning shown.
 
-    Called nightly by the /admin/run-reminders cron alongside
-    auto_complete_past_bookings. Returns the number of rows updated.
+    Two ways a booking qualifies as 'legacy':
+      • source = 'form-import'  → migrated from the original booking
+        form (all such rows are by definition pre-policy)
+      • created_at older than 6 weeks  → natively-created bookings
+        that have aged past the rolling cutoff
+
+    Called nightly by /admin/run-reminders. Returns rows updated.
     """
     cutoff = (date.today() - timedelta(weeks=6)).isoformat()
     now = datetime.now().isoformat()
@@ -2023,7 +2027,10 @@ def auto_clear_legacy_door_fees():
            WHERE status='confirmed'
              AND door_fee_required=1
              AND archived_at IS NULL
-             AND substr(created_at, 1, 10) < ?""",
+             AND (
+                 source = 'form-import'
+                 OR substr(created_at, 1, 10) < ?
+             )""",
         (now, cutoff),
     )
     count = cur.rowcount
@@ -2031,19 +2038,20 @@ def auto_clear_legacy_door_fees():
     # change is traceable.
     if count:
         affected = conn.execute(
-            """SELECT id FROM bookings
+            """SELECT id, source FROM bookings
                WHERE status='confirmed' AND door_fee_required=0
                  AND archived_at IS NULL
-                 AND substr(created_at, 1, 10) < ?
+                 AND (source = 'form-import' OR substr(created_at, 1, 10) < ?)
                  AND updated_at = ?""",
             (cutoff, now),
         ).fetchall()
         for row in affected:
+            why = ("form-import legacy" if row["source"] == "form-import"
+                   else f"created before {cutoff}")
             conn.execute(
                 "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
                 (row["id"], "system", "door_fee_cleared",
-                 f"Auto-cleared door_fee_required (legacy booking, "
-                 f"created before {cutoff})."),
+                 f"Auto-cleared door_fee_required ({why})."),
             )
     conn.commit()
     conn.close()

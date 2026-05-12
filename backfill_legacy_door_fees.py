@@ -34,25 +34,29 @@ def main():
 
     cutoff = (date.today() - timedelta(weeks=6)).isoformat()
     rows = conn.execute(
-        """SELECT id, event_date, act_name, contact_email, created_at,
+        """SELECT id, event_date, act_name, contact_email, created_at, source,
                   door_fee_required, door_fee_paid_at
            FROM bookings
            WHERE status='confirmed'
              AND door_fee_required=1
              AND archived_at IS NULL
-             AND substr(created_at, 1, 10) < ?
+             AND (
+                 source = 'form-import'
+                 OR substr(created_at, 1, 10) < ?
+             )
            ORDER BY event_date""",
         (cutoff,),
     ).fetchall()
 
     print(f"\nBackfill — clear door_fee_required on legacy confirmed bookings")
-    print(f"Cutoff: created before {cutoff} (6 weeks ago)\n")
+    print(f"Rule: source='form-import' OR created before {cutoff} (6 weeks ago)\n")
     print(f"Found {len(rows)} booking(s) that need door_fee_required cleared:")
     print()
     for r in rows:
+        why = "form-import" if r["source"] == "form-import" else f"created {r['created_at'][:10]}"
         paid_note = " ⚠ already-paid door fee on file" if r["door_fee_paid_at"] else ""
-        print(f"  #{r['id']:>4}  created {r['created_at'][:10]}  event {r['event_date']}  "
-              f"{r['act_name'][:40]}{paid_note}")
+        print(f"  #{r['id']:>4}  [{why:<18}]  event {r['event_date']}  "
+              f"{(r['act_name'] or '')[:40]}{paid_note}")
 
     if not rows:
         print("Nothing to backfill. ✓")
