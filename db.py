@@ -406,6 +406,14 @@ def init_db():
             "UPDATE bookings SET squarespace_listing_status='live' "
             "WHERE squarespace_published_at IS NOT NULL"
         )
+    if "promo_folder_url" not in bk_cols:
+        # URL to the band's promo folder in Google Drive (e.g.
+        # https://drive.google.com/drive/folders/<id>). Populated for
+        # legacy bookings via mirror_legacy_drive_folders.py, and for
+        # future bookings by the auto-mirror on band uploads (Phase 2).
+        cursor.execute(
+            "ALTER TABLE bookings ADD COLUMN promo_folder_url TEXT"
+        )
 
     # Contact tokens — one row per unique contact email, used by the multi-gig
     # portal so a contact with several bookings has a single URL that lists them all
@@ -1542,6 +1550,7 @@ _BOOKING_FIELDS = (
     "ticketing", "ticket_price", "ticket_link",
     "door_person", "door_fee_required", "venue_fee_required",
     "blocks_public_calendar", "squarespace_listing_status",
+    "promo_folder_url",
     "announcement_date", "support_act", "promo_ok", "notes", "source",
 )
 
