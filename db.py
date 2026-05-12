@@ -2004,6 +2004,52 @@ def auto_complete_past_bookings():
     return count
 
 
+def auto_clear_legacy_door_fees():
+    """Set door_fee_required=0 on confirmed bookings older than 6 weeks.
+
+    Policy: confirmed bookings whose created_at is more than 6 weeks
+    before today predate the new €50 door-person-fee policy. They're
+    grandfathered — no door fee charged, no Square link generated,
+    no 'Door person TBC' warning shown.
+
+    Called nightly by the /admin/run-reminders cron alongside
+    auto_complete_past_bookings. Returns the number of rows updated.
+    """
+    cutoff = (date.today() - timedelta(weeks=6)).isoformat()
+    now = datetime.now().isoformat()
+    conn = get_db()
+    cur = conn.execute(
+        """UPDATE bookings SET door_fee_required=0, updated_at=?
+           WHERE status='confirmed'
+             AND door_fee_required=1
+             AND archived_at IS NULL
+             AND substr(created_at, 1, 10) < ?""",
+        (now, cutoff),
+    )
+    count = cur.rowcount
+    # Also write an audit-log entry for each affected booking, so the
+    # change is traceable.
+    if count:
+        affected = conn.execute(
+            """SELECT id FROM bookings
+               WHERE status='confirmed' AND door_fee_required=0
+                 AND archived_at IS NULL
+                 AND substr(created_at, 1, 10) < ?
+                 AND updated_at = ?""",
+            (cutoff, now),
+        ).fetchall()
+        for row in affected:
+            conn.execute(
+                "INSERT INTO booking_audit (booking_id, actor, action, detail) VALUES (?, ?, ?, ?)",
+                (row["id"], "system", "door_fee_cleared",
+                 f"Auto-cleared door_fee_required (legacy booking, "
+                 f"created before {cutoff})."),
+            )
+    conn.commit()
+    conn.close()
+    return count
+
+
 def set_info_sheet_read(booking_id):
     """Stamp info_sheet_read_at on a booking when the band acknowledges reading it."""
     conn = get_db()

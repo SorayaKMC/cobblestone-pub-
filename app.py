@@ -587,6 +587,12 @@ def create_app():
         # ── Auto-complete past bookings ───────────────────────────────────
         completed_count = db.auto_complete_past_bookings()
 
+        # ── Auto-clear legacy door fees ───────────────────────────────────
+        legacy_door_count = db.auto_clear_legacy_door_fees()
+        if legacy_door_count:
+            print(f"[run-reminders] Cleared door_fee_required on "
+                  f"{legacy_door_count} legacy confirmed booking(s).")
+
         # ── Door-person alert (7-day window) ─────────────────────────────
         door_pending = db.get_bookings_needing_door_confirmation(days_ahead=7)
         door_alert_sent = False
