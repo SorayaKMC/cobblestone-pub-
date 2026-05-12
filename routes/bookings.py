@@ -1216,6 +1216,50 @@ def book_upload(token):
     return redirect(url_for("bookings.book_portal", token=token))
 
 
+@bp.route("/book/<token>/edit", methods=["POST"])
+def book_edit_description(token):
+    """Band-side: update the event description.
+
+    Only the description field is editable from the band portal. Date,
+    times, contact info etc are manager-controlled — bands change those
+    via email/phone with the venue.
+    """
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+    if booking["status"] in ("cancelled", "completed"):
+        flash("This booking is no longer accepting changes.", "warning")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    new_desc = (request.form.get("description") or "").strip() or None
+    old_desc = booking["description"]
+    if new_desc == old_desc:
+        flash("No changes to save.", "info")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    db.update_booking_field(booking["id"], "description", new_desc, actor="band")
+    db.add_booking_audit(
+        booking["id"], "band", "edited",
+        f"Description updated via portal "
+        f"(was: {(old_desc or '')[:60]!r} → now: {(new_desc or '')[:60]!r})",
+    )
+
+    # If confirmed and linked to a calendar event, refresh the description
+    # in Google Calendar so the new bio flows through.
+    if booking["status"] == "confirmed" and booking["google_calendar_event_id"]:
+        try:
+            import calendar_client
+            updated = db.get_booking(booking["id"])
+            calendar_client.update_calendar_event(
+                updated, booking["google_calendar_event_id"]
+            )
+        except Exception as e:
+            print(f"[bookings] Calendar refresh after band edit failed: {e}")
+
+    flash("Description updated — thanks! ✓", "success")
+    return redirect(url_for("bookings.book_portal", token=token))
+
+
 @bp.route("/book/<token>/ack-info-sheet", methods=["POST"])
 def ack_info_sheet(token):
     """Band acknowledges they have read the info sheet / tech spec."""
