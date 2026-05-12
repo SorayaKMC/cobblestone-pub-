@@ -48,6 +48,10 @@ GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 GOOGLE_DRIVE_INVOICES_FOLDER_ID = os.getenv("GOOGLE_DRIVE_INVOICES_FOLDER_ID", "")
 # Google Drive folder ID where supplier statements (not invoices) are filed
 GOOGLE_DRIVE_STATEMENTS_FOLDER_ID = os.getenv("GOOGLE_DRIVE_STATEMENTS_FOLDER_ID", "")
+# Google Drive parent folder where band promo posters are auto-mirrored.
+# Structure: <PROMOS_PARENT>/<YYYY-MM>/<YYYY-MM-DD — Act Name>/
+# Optional — if unset, band uploads only save to Render's local disk.
+GOOGLE_DRIVE_PROMOS_PARENT_ID = os.getenv("GOOGLE_DRIVE_PROMOS_PARENT_ID", "")
 # Google Sheet ID for the weekly tips spreadsheet (one tab per week)
 TIPS_SHEET_ID = os.getenv(
     "TIPS_SHEET_ID",

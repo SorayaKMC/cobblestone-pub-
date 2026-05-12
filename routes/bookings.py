@@ -1212,6 +1212,24 @@ def book_upload(token):
     db.add_booking_attachment(booking_id, kind, f.filename, filepath)
     db.add_booking_audit(booking_id, "band", "uploaded", f"{kind}: {f.filename}")
 
+    # Auto-mirror to Google Drive for future-dated bookings (best-effort —
+    # never blocks the upload from succeeding locally).
+    try:
+        import drive_client
+        folder_url = drive_client.mirror_promo_upload(
+            booking, filepath, f.filename, f.mimetype,
+        )
+        if folder_url and not booking["promo_folder_url"]:
+            db.update_booking_field(
+                booking_id, "promo_folder_url", folder_url, actor="system",
+            )
+            db.add_booking_audit(
+                booking_id, "system", "promo_folder_linked",
+                f"Drive folder linked via auto-mirror: {folder_url}",
+            )
+    except Exception as e:
+        print(f"[bookings] Drive mirror failed for #{booking_id}: {e}")
+
     flash(f"'{f.filename}' uploaded successfully.", "success")
     return redirect(url_for("bookings.book_portal", token=token))
 
