@@ -432,6 +432,26 @@ def booking_detail(booking_id):
         flash("Booking not found.", "danger")
         return redirect(url_for("bookings.bookings_list"))
 
+    # Same-date conflict detector: surface ANY other active booking on the
+    # same event_date so the manager sees it before they hit Confirm.
+    # Includes inquiry/tentative/hold/confirmed (excludes cancelled +
+    # archived). Residencies show up here too — usually informational
+    # (Jazz Coop afternoon vs an evening gig is fine; Caoimhe Monday
+    # class vs an evening Monday gig is a real conflict in the Backroom).
+    conn = db.get_db()
+    same_day_rows = conn.execute(
+        """SELECT id, act_name, status, event_type, blocks_public_calendar,
+                  door_time, start_time, contact_email
+           FROM bookings
+           WHERE event_date = ?
+             AND id != ?
+             AND archived_at IS NULL
+             AND status != 'cancelled'
+           ORDER BY status, act_name""",
+        (booking["event_date"], booking_id),
+    ).fetchall()
+    conn.close()
+
     return render_template(
         "booking_detail.html",
         booking=booking,
@@ -448,6 +468,8 @@ def booking_detail(booking_id):
         squarespace_listing_labels=SQUARESPACE_LISTING_LABELS,
         email_snippets=_load_email_snippets_for(booking["contact_email"]),
         back_url=session.get("last_bookings_url", "/bookings"),
+        same_day_bookings=same_day_rows,
+        residency_event_type=RESIDENCY_EVENT_TYPE,
     )
 
 

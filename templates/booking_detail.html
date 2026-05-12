@@ -24,6 +24,44 @@
     {% endif %}
 </div>
 
+{# ── Same-day conflict warning ────────────────────────────────────────── #}
+{% if same_day_bookings %}
+<div class="alert alert-warning d-flex flex-wrap align-items-start mb-3" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-4 me-2 flex-shrink-0 mt-1"></i>
+    <div class="flex-grow-1">
+        <strong>Heads up — there {{ 'is' if same_day_bookings|length == 1 else 'are' }}
+        {{ same_day_bookings|length }} other booking{{ 's' if same_day_bookings|length != 1 else '' }}
+        on {{ booking.event_date }}:</strong>
+        <ul class="mb-0 mt-1 ps-3" style="font-size:.9rem;">
+        {% for o in same_day_bookings %}
+            <li>
+                <a href="/bookings/{{ o.id }}" class="text-decoration-none fw-semibold">{{ o.act_name }}</a>
+                <span class="badge bg-{{ status_badges.get(o.status, 'secondary') }} ms-1" style="font-size:.7rem;">
+                    {{ status_labels.get(o.status, o.status) }}
+                </span>
+                {% if o.event_type == residency_event_type %}
+                    <span class="badge ms-1" style="background-color:#e91e63;color:#fff;font-size:.7rem;">Residency</span>
+                {% endif %}
+                {% if not o.blocks_public_calendar %}
+                    <span class="badge bg-info text-dark ms-1" style="font-size:.7rem;">Doesn't block calendar</span>
+                {% endif %}
+                {% if o.door_time or o.start_time %}
+                    <span class="text-muted small ms-1">
+                        {% if o.door_time %}doors {{ o.door_time }}{% endif %}
+                        {% if o.start_time %}{% if o.door_time %}/{% endif %} show {{ o.start_time }}{% endif %}
+                    </span>
+                {% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+        <div class="text-muted small mt-2">
+            <i class="bi bi-info-circle me-1"></i>
+            Review these before confirming. Residencies + "Doesn't block calendar" entries (like Dublin Jazz Coop afternoons) are usually OK alongside an evening gig — anything else is likely a real conflict.
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="row g-3">
     <!-- Main column: edit form -->
     <div class="col-lg-8">
@@ -191,13 +229,22 @@
                 <h6 class="card-title mb-3">Quick Actions</h6>
                 <div class="d-grid gap-2">
                     {% if booking.status != 'confirmed' %}
-                    <form method="POST" action="/bookings/{{ booking.id }}/confirm">
+                    {% set _conflict_msg = '' %}
+                    {% if same_day_bookings %}
+                        {% set _conflict_msg = '⚠️ There ' ~ ('is' if same_day_bookings|length == 1 else 'are') ~ ' ' ~ same_day_bookings|length ~ ' other booking(s) on ' ~ booking.event_date ~ ':\n\n' %}
+                        {% for o in same_day_bookings %}
+                            {% set _conflict_msg = _conflict_msg ~ '  • ' ~ o.act_name ~ ' [' ~ status_labels.get(o.status, o.status) ~ ']\n' %}
+                        {% endfor %}
+                        {% set _conflict_msg = _conflict_msg ~ '\nProceed with confirming this booking anyway?' %}
+                    {% endif %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/confirm"
+                          {% if _conflict_msg %}onsubmit="return confirm({{ _conflict_msg | tojson }});"{% endif %}>
                         <button class="btn btn-success btn-sm w-100">
                             <i class="bi bi-check-circle me-1"></i>Confirm &amp; Email Band
                         </button>
                     </form>
                     <form method="POST" action="/bookings/{{ booking.id }}/confirm"
-                          onsubmit="return confirm('Confirm this booking WITHOUT sending any emails (band confirmation or decline emails to other inquiries)?\n\nUse this when the band already knows about their gig — e.g. migrating an existing booking.');">
+                          onsubmit="return confirm({% if _conflict_msg %}{{ _conflict_msg | tojson }}{% else %}'Confirm this booking WITHOUT sending any emails (band confirmation or decline emails to other inquiries)?\n\nUse this when the band already knows about their gig — e.g. migrating an existing booking.'{% endif %});">
                         <input type="hidden" name="silent" value="1">
                         <button class="btn btn-outline-success btn-sm w-100" title="Confirms without sending any emails — useful for migrating existing bookings">
                             <i class="bi bi-envelope-slash me-1"></i>Confirm (silent — no emails)
