@@ -109,10 +109,29 @@ def _booking_to_event(booking):
     act   = booking["act_name"]
     venue = booking["venue"]
 
+    # Legacy detector — confirmed bookings that predate the €50 door-fee policy:
+    # either migrated from the original form (source='form-import') OR more than
+    # 6 weeks old (rolling cutoff). These don't pay a door person fee.
+    is_legacy_no_door_fee = False
+    try:
+        if (booking["status"] or "") == "confirmed":
+            if (booking["source"] or "") == "form-import":
+                is_legacy_no_door_fee = True
+            elif booking["created_at"]:
+                cutoff = (_dt.now().date() - timedelta(weeks=6)).isoformat()
+                if booking["created_at"][:10] < cutoff:
+                    is_legacy_no_door_fee = True
+    except Exception:
+        pass
+
     # Build a rich structured description
     parts = [
         f"📍 {venue} — Cobblestone Pub, 77 King St N, Smithfield, Dublin 7",
         f"🎭 {booking['event_type'] or 'Gig'}",
+    ]
+    if is_legacy_no_door_fee:
+        parts.append("🚫 NO DOORPERSON FEE — legacy booking (predates €50 door-fee policy)")
+    parts += [
         "",
         "── TIMES ──────────────────────────────────────",
         f"Doors:  {booking['door_time'] or 'TBC'}",
@@ -136,7 +155,9 @@ def _booking_to_event(booking):
     # Door person
     dp = booking["door_person"]
     dp_fee = booking["door_fee_required"]
-    if dp == "pub":
+    if is_legacy_no_door_fee:
+        parts.append("Door person: NO FEE — legacy booking (no €50 charge on the night)")
+    elif dp == "pub":
         parts.append("Door person: Pub provided (€50 — band to pay on night)")
     elif dp == "own":
         parts.append("Door person: Band providing their own")
