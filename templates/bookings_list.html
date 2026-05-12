@@ -318,6 +318,13 @@
                                     <i class="bi bi-exclamation-triangle-fill"></i> Door person TBC
                                 </span>
                             {% endif %}
+                            {% if b.status == 'confirmed' and b.created_at and b.created_at[:10] < legacy_cutoff_date %}
+                                <span class="badge ms-1"
+                                      style="background:#1c1c2e;color:#fff;"
+                                      title="Booked under previous pricing (created {{ b.created_at[:10] }}). No €50 door person fee applies.">
+                                    <i class="bi bi-slash-circle"></i> NO doorperson fee
+                                </span>
+                            {% endif %}
                             {% if b.contact_email %}<div class="text-muted small">{{ b.contact_email }}</div>{% endif %}
                         </td>
                         <td><span class="small">{{ b.event_type }}</span></td>

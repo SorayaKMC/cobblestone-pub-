@@ -109,6 +109,17 @@ def _today_iso():
     return date.today().isoformat()
 
 
+def _legacy_no_door_fee_cutoff():
+    """Confirmed bookings whose created_at is BEFORE this date are flagged
+    as legacy — they booked under the old pricing (no €50 door person fee).
+
+    6 weeks back from today; rolls forward each day so the policy line
+    moves with time.
+    """
+    from datetime import timedelta
+    return (date.today() - timedelta(weeks=6)).isoformat()
+
+
 # ─── Routes ─────────────────────────────────────────────────────────────────
 
 # Hex colours per venue, used by the calendar view. Status modulates this:
@@ -291,6 +302,7 @@ def bookings_list():
         show_archived=show_archived,
         hide_residencies=hide_residencies,
         residency_event_type=RESIDENCY_EVENT_TYPE,
+        legacy_cutoff_date=_legacy_no_door_fee_cutoff(),
     )
 
 
@@ -470,6 +482,7 @@ def booking_detail(booking_id):
         back_url=session.get("last_bookings_url", "/bookings"),
         same_day_bookings=same_day_rows,
         residency_event_type=RESIDENCY_EVENT_TYPE,
+        legacy_cutoff_date=_legacy_no_door_fee_cutoff(),
     )
 
 
