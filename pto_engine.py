@@ -41,22 +41,60 @@ def _shifts_grouped_by_date(timecards, team_member_id=None):
     return {d: h for d, h in by_date.items() if h > 0}
 
 
+def _last_n_active_weeks_shifts(by_date, n=13):
+    """From a {date: hours} dict, return shift hours from the n most recent
+    ISO weeks that contained at least one shift. Vacation weeks (no shifts)
+    are skipped entirely — we look further back instead.
+
+    This is what makes the 13-week rolling avg vacation-resistant: if an
+    employee takes 3 weeks off, we still average over 13 weeks of actual
+    work activity, not 10 weeks of work + 3 weeks of nothing.
+    """
+    from datetime import datetime as _dt
+    by_week = {}  # (iso_year, iso_week) → [hours, hours, ...]
+    for date_iso, hours in by_date.items():
+        try:
+            d = _dt.strptime(date_iso, "%Y-%m-%d")
+            iso_year, iso_week, _ = d.isocalendar()
+            key = (iso_year, iso_week)
+            by_week.setdefault(key, []).append(hours)
+        except Exception:
+            continue
+
+    # Sort weeks by recency descending, keep only the top n active weeks
+    sorted_weeks = sorted(by_week.items(), key=lambda kv: kv[0], reverse=True)
+    top_n = sorted_weeks[:n]
+
+    # Flatten into a single list of shift-hours
+    return [h for _, hours_list in top_n for h in hours_list]
+
+
 def calculate_13_week_avg_shift(team_member_id, end_date):
     """Calculate the 13-week rolling average shift length for an employee.
 
     A 'shift' is one workday — split shifts (e.g. lunch service + dinner
     service with a break in between) are summed into a single shift.
 
+    Vacation handling: we count the most recent 13 weeks where the
+    employee actually had at least one shift, skipping past empty weeks.
+    So 3 weeks off doesn't drag the avg toward whatever's at the back of
+    a fixed 13-calendar-week window — we look further back to keep the
+    sample size honest.
+
     Args:
         team_member_id: Square team member ID
         end_date: 'YYYY-MM-DD' - the end of the period to look back from
 
     Returns Decimal average hours per shift, or DEFAULT_SHIFT_HOURS if
-    insufficient data (fewer than 5 shifts in the lookback window).
+    insufficient data (fewer than 5 shifts found in the lookback window).
     """
     from datetime import datetime, timedelta
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-    start_dt = end_dt - timedelta(weeks=13)
+    # Look back 26 weeks so we can skip past vacation and still find 13
+    # active weeks. Anyone on vacation longer than that is an edge case
+    # and will fall back to DEFAULT_SHIFT_HOURS — which is the right
+    # behaviour (we don't have enough recent data to estimate accurately).
+    start_dt = end_dt - timedelta(weeks=26)
     start_str = start_dt.strftime("%Y-%m-%d")
 
     try:
@@ -65,7 +103,7 @@ def calculate_13_week_avg_shift(team_member_id, end_date):
         return DEFAULT_SHIFT_HOURS
 
     by_date = _shifts_grouped_by_date(timecards, team_member_id)
-    shift_hours = list(by_date.values())
+    shift_hours = _last_n_active_weeks_shifts(by_date, n=13)
 
     if len(shift_hours) < 5:
         return DEFAULT_SHIFT_HOURS
@@ -94,7 +132,10 @@ def calculate_13_week_avg_shift_batch(employee_ids, end_date):
         return {}
 
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-    start_dt = end_dt - timedelta(weeks=13)
+    # Look back 26 weeks (same buffer as the single-employee path) so
+    # vacation weeks don't pull the average down — we skip them when
+    # picking the 13 most recent active weeks.
+    start_dt = end_dt - timedelta(weeks=26)
     start_str = start_dt.strftime("%Y-%m-%d")
 
     try:
@@ -124,7 +165,8 @@ def calculate_13_week_avg_shift_batch(employee_ids, end_date):
 
     result = {}
     for tm_id in employee_ids:
-        shift_hours = [h for h in by_emp_date.get(tm_id, {}).values() if h > 0]
+        by_date = {d: h for d, h in by_emp_date.get(tm_id, {}).items() if h > 0}
+        shift_hours = _last_n_active_weeks_shifts(by_date, n=13)
         if len(shift_hours) < 5:
             result[tm_id] = DEFAULT_SHIFT_HOURS
         else:
