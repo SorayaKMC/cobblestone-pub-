@@ -36,6 +36,15 @@ RESIDENCY_PATTERNS = [
                       "Any evening soundcheck/load-in on the same date must be after 6pm. "
                       "Shane handles sound. Jazz Coop manage their own door (no door person needed).")
     },
+    {"label": "Flying Monkeys", "pattern": "%flying monkeys%",
+     "field_updates": {
+         "door_person": "none",   # no door person required
+         # venue_fee_required stays — Shane is needed for sound
+     },
+     "notes_to_set": ("Monthly in-house residency. Shane handles sound (€150 "
+                      "venue fee applies — pays Shane on the night). "
+                      "No door person required.")
+    },
 ]
 
 TARGET_EVENT_TYPE = "Residency Gigs"
