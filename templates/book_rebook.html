@@ -58,7 +58,7 @@
     <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
         <i class="bi bi-calendar-x fs-4 me-3 flex-shrink-0"></i>
         <div>
-            <strong>{{ booking.event_date }} is no longer available</strong> —
+            <strong>{{ booking.event_date | pretty_date }} is no longer available</strong> —
             {{ booking.venue }}, Cobblestone Pub has been confirmed for another event on that date.
             Pick a new date below — your details are already saved.
         </div>

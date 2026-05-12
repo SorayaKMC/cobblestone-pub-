@@ -134,7 +134,7 @@
             <div class="row g-3 small">
                 <div class="col-6 col-md-3">
                     <div class="text-muted mb-1">Date</div>
-                    <div class="fw-semibold">{{ booking.event_date }}</div>
+                    <div class="fw-semibold">{{ booking.event_date | pretty_date }}</div>
                     {% if booking.day_of_week %}
                     <div class="text-muted">{{ booking.day_of_week }}</div>
                     {% endif %}
@@ -270,7 +270,7 @@
                 <div>
                     <div class="fw-semibold small">Inquiry submitted</div>
                     <div class="text-muted" style="font-size:.82rem;">
-                        Submitted on {{ booking.created_at[:10] }}
+                        Submitted on {{ booking.created_at[:10] | pretty_date }}
                     </div>
                 </div>
             </div>
@@ -501,7 +501,7 @@
                     <div class="modal-body">
                         <p class="mb-3">
                             Are you sure you want to cancel your booking on
-                            <strong>{{ booking.event_date }}</strong>?
+                            <strong>{{ booking.event_date | pretty_date }}</strong>?
                             This action can't be undone.
                         </p>
                         <label class="form-label small fw-semibold">

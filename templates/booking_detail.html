@@ -17,7 +17,7 @@
         <span class="text-muted small">{{ booking.venue }}</span>
         {% if booking.created_at %}
         <span class="text-muted small" title="When the inquiry/booking was submitted">
-            <i class="bi bi-clock-history me-1"></i>Received {{ booking.created_at[:16] | replace('T', ' ') }}
+            <i class="bi bi-clock-history me-1"></i>Received {{ booking.created_at[:10] | pretty_date }} {{ booking.created_at[11:16] }}
         </span>
         {% endif %}
         {# Legacy pricing badge — confirmed bookings that predate the door-fee policy:
@@ -45,7 +45,7 @@
     <div class="flex-grow-1">
         <strong>Heads up — there {{ 'is' if same_day_bookings|length == 1 else 'are' }}
         {{ same_day_bookings|length }} other booking{{ 's' if same_day_bookings|length != 1 else '' }}
-        on {{ booking.event_date }}:</strong>
+        on {{ booking.event_date | pretty_date }}:</strong>
         <ul class="mb-0 mt-1 ps-3" style="font-size:.9rem;">
         {% for o in same_day_bookings %}
             <li>
@@ -245,7 +245,7 @@
                     {% if booking.status != 'confirmed' %}
                     {% set _conflict_msg = '' %}
                     {% if same_day_bookings %}
-                        {% set _conflict_msg = '⚠️ There ' ~ ('is' if same_day_bookings|length == 1 else 'are') ~ ' ' ~ same_day_bookings|length ~ ' other booking(s) on ' ~ booking.event_date ~ ':\n\n' %}
+                        {% set _conflict_msg = '⚠️ There ' ~ ('is' if same_day_bookings|length == 1 else 'are') ~ ' ' ~ same_day_bookings|length ~ ' other booking(s) on ' ~ (booking.event_date | pretty_date) ~ ':\n\n' %}
                         {% for o in same_day_bookings %}
                             {% set _conflict_msg = _conflict_msg ~ '  • ' ~ o.act_name ~ ' [' ~ status_labels.get(o.status, o.status) ~ ']\n' %}
                         {% endfor %}
@@ -488,7 +488,7 @@
                     <input type="text" name="subject"
                            class="form-control form-control-sm mb-2"
                            placeholder="Subject" required
-                           value="Re: {{ booking.act_name }} — {{ booking.event_date }}">
+                           value="Re: {{ booking.act_name }} — {{ booking.event_date | pretty_date }}">
                     <textarea name="body" rows="4"
                               class="form-control form-control-sm mb-2"
                               placeholder="Your message to {{ booking.contact_name or booking.contact_email }}..."

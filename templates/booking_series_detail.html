@@ -44,7 +44,7 @@
                         {% for b in bookings %}
                         <tr class="{{ 'text-muted' if b.status == 'cancelled' else '' }}">
                             <td class="small">
-                                {{ b.event_date }}
+                                {{ b.event_date | pretty_date }}
                                 {% if b.event_date == today %}
                                     <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Today</span>
                                 {% elif b.event_date < today %}
