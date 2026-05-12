@@ -219,33 +219,30 @@ def get_timecards(start_date, end_date):
         declared_cash_tip (Decimal)
 
     Caching:
-      - Completed weeks (end_date < today): cached forever — timecards
-        for past weeks don't change.
-      - Current/recent weeks: cached for 5 minutes — fresh enough for
-        the payroll page, avoids hammering Square on every navigation.
+      - All weeks (past, current, future): cached for 15 minutes.
+        Past-week timecards CAN change — managers retroactively edit or
+        delete shifts (e.g. trimming missed-clock-out duplicates) — so
+        we no longer cache completed weeks forever. 15 min is short
+        enough that any post-edit page reload (or Peter Excel download)
+        picks up the change, while still avoiding hammering Square on
+        rapid back-to-back navigation.
+        The /payroll/refresh button busts this cache explicitly for the
+        selected week to force an immediate re-pull.
     """
     import db as _db
     from datetime import datetime as _dt, timedelta as _td
 
     cache_key = f"square_timecards_{start_date}_{end_date}"
-    today = _dt.now().date()
-    try:
-        end_d = _dt.strptime(end_date, "%Y-%m-%d").date()
-    except ValueError:
-        end_d = today
 
-    # Read cache
+    # Read cache — single freshness rule regardless of completed/current
     cached, synced_at = _db.get_cache(cache_key)
-    if cached is not None:
-        if end_d < today:  # completed week
-            return [_deserialize_timecard(tc) for tc in cached]
-        if synced_at:
-            try:
-                synced_dt = _dt.fromisoformat(synced_at)
-                if (_dt.now() - synced_dt).total_seconds() < 300:  # 5 min
-                    return [_deserialize_timecard(tc) for tc in cached]
-            except Exception:
-                pass
+    if cached is not None and synced_at:
+        try:
+            synced_dt = _dt.fromisoformat(synced_at)
+            if (_dt.now() - synced_dt).total_seconds() < 900:  # 15 min
+                return [_deserialize_timecard(tc) for tc in cached]
+        except Exception:
+            pass
 
     body = {
         "query": {

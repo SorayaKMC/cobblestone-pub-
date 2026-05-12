@@ -387,6 +387,19 @@ def refresh_week():
         return redirect(url_for("payroll.payroll_page"))
 
     try:
+        # Bust the timecards cache for this week so the next page load
+        # (and any Peter Excel download) pulls fresh from Square. The
+        # "completed weeks cache forever" rule assumed timecards never
+        # change post-week, but managers DO edit/delete shifts after the
+        # fact (e.g. trimming missed-clock-out duplicates). Without this,
+        # the cached value sticks and the Peter Excel can diverge from
+        # what the page shows.
+        cache_key = f"square_timecards_{start_date}_{end_date}"
+        conn = db.get_db()
+        conn.execute("DELETE FROM cache_metadata WHERE cache_key = ?", (cache_key,))
+        conn.commit()
+        conn.close()
+
         team_members = square_client.get_team_members()
         categories = db.get_employee_categories()
         recalc_count = 0
@@ -399,8 +412,8 @@ def refresh_week():
             except Exception as e:
                 print(f"[payroll-refresh] {cat['family_name']}: {e}")
         flash(
-            f"Refreshed {iso_week} from Square. Recalculated PTO for "
-            f"{recalc_count} employees.",
+            f"Refreshed {iso_week} from Square (timecards cache cleared). "
+            f"Recalculated PTO for {recalc_count} employees.",
             "success",
         )
     except Exception as e:
