@@ -86,6 +86,39 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    {# ─── European date helper ──────────────────────────────────────────
+       Browser-native <input type="date"> displays in OS locale (often
+       MM/DD/YYYY in en-US installs). We add a small unambiguous helper
+       beside each date input showing 'DD-Mmm-YYYY' format. Updates
+       automatically as the user picks a different date.
+    #}
+    <script>
+    (function() {
+        const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        function format(iso) {
+            if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
+            const [y, m, d] = iso.split('-');
+            return `${d}-${MONTHS[parseInt(m, 10) - 1]}-${y}`;
+        }
+        function attachHelper(input) {
+            if (input.dataset.euHelperAttached) return;
+            input.dataset.euHelperAttached = '1';
+            const helper = document.createElement('small');
+            helper.className = 'text-muted ms-2';
+            helper.style.fontSize = '.75rem';
+            helper.style.whiteSpace = 'nowrap';
+            helper.textContent = format(input.value);
+            input.insertAdjacentElement('afterend', helper);
+            input.addEventListener('change', () => { helper.textContent = format(input.value); });
+            input.addEventListener('input',  () => { helper.textContent = format(input.value); });
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('input[type="date"]').forEach(attachHelper);
+        });
+    })();
+    </script>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
