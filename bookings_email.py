@@ -418,7 +418,7 @@ def send_booking_confirmation(booking, base_url=None):
                   <table cellpadding="0" cellspacing="0" style="margin-top:16px;">
                     <tr>
                       <td style="padding-right:10px;">
-                        <a href="https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet-2.pdf"
+                        <a href="https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet.pdf"
                            style="display:inline-block;background:#1c1c2e;color:#fff;
                                   padding:10px 18px;border-radius:6px;text-decoration:none;
                                   font-size:13px;font-weight:bold;">
@@ -552,7 +552,7 @@ Times: {times_str}
 📍 Access via Red Cow Lane — enter through the Cobblestone Pub.
    Free parking after 7pm & Sundays.
 
-📄 Info Sheet: https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet-2.pdf
+📄 Info Sheet: https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet.pdf
 🎛️ Tech Spec:  https://www.cobblestonepub.ie/s/Cobblestone-Backroom-Tech-Spec.pdf
 ──────────────────────────────────────────────────────────────────
 
