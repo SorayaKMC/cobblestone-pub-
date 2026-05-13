@@ -144,6 +144,68 @@ _STATUS_BG_OVERRIDE = {
 }
 
 
+DOOR_PERSON_LABELS = {
+    "pub":  "Pub-provided (€50)",
+    "own":  "Bringing own",
+    "none": "Not needed",
+    "tbc":  "TBC",
+}
+
+
+@bp.route("/bookings/week-sheet")
+def week_sheet():
+    """Printable weekly run sheet — confirmed gigs for door / FOH use.
+
+    Defaults to the Monday-of-current-week through Sunday window.
+    Query param ?start=YYYY-MM-DD picks any other week (auto-snaps to Mon).
+    """
+    from datetime import timedelta
+    start_str = request.args.get("start", "")
+    if start_str:
+        try:
+            anchor = datetime.strptime(start_str, "%Y-%m-%d").date()
+        except ValueError:
+            anchor = date.today()
+    else:
+        anchor = date.today()
+    # Snap to Monday of that week (Python: Monday=0)
+    week_start = anchor - timedelta(days=anchor.weekday())
+    week_end   = week_start + timedelta(days=6)
+
+    rows = db.list_bookings(
+        status="confirmed",
+        start_date=week_start.isoformat(),
+        end_date=week_end.isoformat(),
+    )
+
+    # Group bookings by date, keep all 7 days even if empty
+    by_date = {(week_start + timedelta(days=i)).isoformat(): [] for i in range(7)}
+    for r in rows:
+        d = dict(r)
+        if d["event_date"] in by_date:
+            by_date[d["event_date"]].append(d)
+
+    days = [
+        {
+            "date":     date.fromisoformat(d),
+            "iso":      d,
+            "bookings": by_date[d],
+        }
+        for d in sorted(by_date)
+    ]
+
+    return render_template(
+        "week_sheet.html",
+        days=days,
+        week_start=week_start,
+        week_end=week_end,
+        prev_start=(week_start - timedelta(days=7)).isoformat(),
+        next_start=(week_start + timedelta(days=7)).isoformat(),
+        this_week_start=(date.today() - timedelta(days=date.today().weekday())).isoformat(),
+        door_person_labels=DOOR_PERSON_LABELS,
+    )
+
+
 @bp.route("/bookings/calendar")
 def bookings_calendar():
     """Month/week/day calendar view of bookings."""

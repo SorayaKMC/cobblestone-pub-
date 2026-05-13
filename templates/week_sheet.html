@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Week sheet — {{ week_start.strftime('%-d %b') }} to {{ week_end.strftime('%-d %b') }}{% endblock %}
+{% block page_title %}Weekly run sheet{% endblock %}
+
+{% block content %}
+<style>
+    .week-card {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+    }
+    .week-day-header {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 18px 0 8px;
+        padding-bottom: 4px;
+        border-bottom: 2px solid #1c1c2e;
+    }
+    .week-day-empty {
+        color: #9ca3af;
+        font-style: italic;
+        font-size: 0.85rem;
+        padding: 6px 0 14px;
+    }
+    .gig-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    .gig-meta {
+        font-size: 0.85rem;
+        color: #4b5563;
+    }
+    .gig-row {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.88rem;
+        margin-top: 6px;
+    }
+    .gig-label {
+        color: #6b7280;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        display: block;
+    }
+    .gig-pill {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 600;
+    }
+    .pill-paid    { background: #d1fae5; color: #047857; }
+    .pill-unpaid  { background: #fee2e2; color: #b91c1c; }
+    .pill-info    { background: #e0e7ff; color: #3730a3; }
+
+    /* Print: hide app chrome, tighten spacing, ensure cards don't split */
+    @media print {
+        .sidebar, .week-toolbar, footer { display: none !important; }
+        body { background: white !important; }
+        .main-content, .container, .container-fluid { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+        .d-flex { display: block !important; }
+        .week-card { box-shadow: none; border: 1px solid #999; }
+        .week-day-header { margin-top: 10px; }
+        h1, h2, h3 { page-break-after: avoid; }
+        a { color: #000 !important; text-decoration: none !important; }
+    }
+</style>
+
+<!-- Toolbar (hidden on print) -->
+<div class="week-toolbar d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h4 class="mb-0">
+            <i class="bi bi-printer me-2"></i>Week sheet:
+            {{ week_start.strftime('%a %-d %b') }} – {{ week_end.strftime('%a %-d %b %Y') }}
+        </h4>
+        <span class="text-muted small">Confirmed gigs only.</span>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <a class="btn btn-sm btn-outline-secondary" href="/bookings/week-sheet?start={{ prev_start }}">
+            <i class="bi bi-chevron-left"></i> Previous week
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="/bookings/week-sheet?start={{ this_week_start }}">
+            This week
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="/bookings/week-sheet?start={{ next_start }}">
+            Next week <i class="bi bi-chevron-right"></i>
+        </a>
+        <button class="btn btn-sm btn-primary" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>Print
+        </button>
+        <a class="btn btn-sm btn-outline-secondary" href="/bookings">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+{% for day in days %}
+    <div class="week-day-header">
+        {{ day.date.strftime('%A · %-d %B') }}
+    </div>
+
+    {% if not day.bookings %}
+        <div class="week-day-empty">— no confirmed gigs —</div>
+    {% endif %}
+
+    {% for b in day.bookings %}
+    <div class="week-card">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <p class="gig-title mb-0">{{ b.act_name }}</p>
+                <div class="gig-meta">
+                    {{ b.venue }}{% if b.event_type and b.event_type != 'Gig' %} · {{ b.event_type }}{% endif %}
+                    {% if b.support_act %} · w/ {{ b.support_act }}{% endif %}
+                </div>
+            </div>
+            <div class="text-end">
+                {% if b.expected_attendance %}
+                    <span class="gig-label">Exp. attendance</span>
+                    <strong>{{ b.expected_attendance }}</strong>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="gig-row">
+            <div>
+                <span class="gig-label">Doors</span>
+                <strong>{{ b.door_time or '—' }}</strong>
+            </div>
+            <div>
+                <span class="gig-label">Gig</span>
+                <strong>{{ b.start_time or '—' }}</strong>
+            </div>
+            {% if b.end_time %}
+            <div>
+                <span class="gig-label">End</span>
+                <strong>{{ b.end_time }}</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="gig-row">
+            <div>
+                <span class="gig-label">Door person</span>
+                <strong>{{ door_person_labels.get(b.door_person, b.door_person or 'TBC') }}</strong>
+            </div>
+            {% if b.door_fee_required %}
+            <div>
+                <span class="gig-label">€50 door fee</span>
+                {% if b.door_fee_paid_at %}
+                    <span class="gig-pill pill-paid">Paid {{ b.door_fee_paid_at[:10] }}</span>
+                {% else %}
+                    <span class="gig-pill pill-unpaid">Unpaid</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% if b.venue_fee_required %}
+            <div>
+                <span class="gig-label">€150 venue fee</span>
+                {% if b.venue_fee_paid_at %}
+                    <span class="gig-pill pill-paid">Paid {{ b.venue_fee_paid_at[:10] }}</span>
+                {% else %}
+                    <span class="gig-pill pill-unpaid">Unpaid</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="gig-row">
+            <div>
+                <span class="gig-label">Ticketing</span>
+                <strong>{{ b.ticketing or '—' }}</strong>
+                {% if b.ticket_price %} · {{ b.ticket_price }}{% endif %}
+            </div>
+            {% if b.contact_name or b.contact_phone %}
+            <div>
+                <span class="gig-label">Band contact</span>
+                <strong>{{ b.contact_name or '—' }}</strong>
+                {% if b.contact_phone %} · {{ b.contact_phone }}{% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if b.notes %}
+        <div class="gig-row" style="margin-top:8px;">
+            <div style="flex: 1;">
+                <span class="gig-label">Notes</span>
+                <div style="white-space:pre-wrap;">{{ b.notes }}</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% endfor %}
+
+{% endblock %}
