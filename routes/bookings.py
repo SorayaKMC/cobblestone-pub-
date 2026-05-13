@@ -1392,6 +1392,83 @@ def book_edit_description(token):
     return redirect(url_for("bookings.book_portal", token=token))
 
 
+@bp.route("/book/<token>/edit-times", methods=["POST"])
+def book_edit_times(token):
+    """Band-side: update door_time and/or start_time on a gig.
+
+    On change: writes audit, stamps times_changed_at (raises admin badge +
+    detail banner), emails the pub inbox so staff can mirror to Squarespace
+    + Google Calendar. Blocked for cancelled/completed bookings.
+    """
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+    if booking["status"] in ("cancelled", "completed"):
+        flash("This booking is no longer accepting changes.", "warning")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    new_door  = (request.form.get("door_time")  or "").strip() or None
+    new_start = (request.form.get("start_time") or "").strip() or None
+    old_door  = booking["door_time"]
+    old_start = booking["start_time"]
+
+    if new_door == old_door and new_start == old_start:
+        flash("No changes to save.", "info")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    if new_door != old_door:
+        db.update_booking_field(booking["id"], "door_time", new_door, actor="band")
+    if new_start != old_start:
+        db.update_booking_field(booking["id"], "start_time", new_start, actor="band")
+
+    db.add_booking_audit(
+        booking["id"], "band", "edited",
+        f"Times updated via portal "
+        f"(doors: {old_door or '—'!r} → {new_door or '—'!r}; "
+        f"gig: {old_start or '—'!r} → {new_start or '—'!r})",
+    )
+    db.mark_times_changed(booking["id"])
+
+    # Mirror to Google Calendar so the calendar entry's times match.
+    if booking["status"] == "confirmed" and booking["google_calendar_event_id"]:
+        try:
+            import calendar_client
+            updated = db.get_booking(booking["id"])
+            calendar_client.update_calendar_event(
+                updated, booking["google_calendar_event_id"]
+            )
+        except Exception as e:
+            print(f"[bookings] Calendar refresh after band time edit failed: {e}")
+
+    # Email the pub inbox (best-effort; failures don't block the user-facing save).
+    try:
+        import bookings_email
+        bookings_email.send_times_changed_alert(
+            booking, old_door, new_door, old_start, new_start
+        )
+    except Exception as e:
+        print(f"[bookings] Times-changed alert email failed: {e}")
+
+    flash("Times updated — thanks! We'll confirm shortly. ✓", "success")
+    return redirect(url_for("bookings.book_portal", token=token))
+
+
+@bp.route("/bookings/<int:booking_id>/acknowledge-time-change", methods=["POST"])
+def acknowledge_time_change(booking_id):
+    """Admin: clear the times-changed flag once the change has been actioned
+    (Squarespace + calendar updated, etc.)."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+    db.clear_times_changed(booking_id)
+    db.add_booking_audit(
+        booking_id, "admin", "acknowledged",
+        "Time change acknowledged by admin.",
+    )
+    flash("Time change acknowledged.", "success")
+    return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+
 @bp.route("/book/<token>/ack-info-sheet", methods=["POST"])
 def ack_info_sheet(token):
     """Band acknowledges they have read the info sheet / tech spec."""

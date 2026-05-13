@@ -917,6 +917,95 @@ View booking: {detail_url}
     return _send(staff_email, subject, html, plain)
 
 
+def send_times_changed_alert(booking, old_door, new_door, old_start, new_start, base_url=None):
+    """Alert the pub inbox when a band edits door_time or start_time via the portal.
+
+    Reminds staff to mirror the change to Squarespace + Google Calendar.
+    """
+    staff_email = config.BOOKING_FROM or config.SMTP_USERNAME
+    if not staff_email:
+        return False
+
+    base       = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
+    detail_url = f"{base}/bookings/{booking['id']}"
+    act        = booking["act_name"]
+    event_date = booking["event_date"]
+
+    def _row(label, old, new):
+        if (old or "") == (new or ""):
+            return ""
+        return (
+            f"<tr><td style='color:#6b7280;width:120px;'>{label}</td>"
+            f"<td><span style='color:#9ca3af;text-decoration:line-through;'>"
+            f"{old or '—'}</span> &nbsp;→&nbsp; <strong>{new or '—'}</strong></td></tr>"
+        )
+
+    subject = f"⏰ Times changed by band: {act} ({event_date})"
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#fff;border-radius:8px;overflow:hidden;
+                    box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr>
+          <td style="background:#d97706;padding:28px 32px;">
+            <h2 style="margin:0;color:#fff;font-size:22px;">⏰ Gig times changed by band</h2>
+            <p style="margin:6px 0 0;color:#fde68a;font-size:13px;">
+              Update Squarespace and your calendar to match.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <table width="100%" cellpadding="4" cellspacing="0"
+                   style="font-size:14px;color:#333;margin-bottom:20px;">
+              <tr><td style="color:#6b7280;width:120px;">Act</td><td><strong>{act}</strong></td></tr>
+              <tr><td style="color:#6b7280;">Date</td><td><strong>{event_date}</strong></td></tr>
+              <tr><td style="color:#6b7280;">Venue</td><td>{booking['venue']}</td></tr>
+              {_row("Doors",  old_door,  new_door)}
+              {_row("Gig",    old_start, new_start)}
+            </table>
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background:#1c1c2e;border-radius:6px;">
+                  <a href="{detail_url}"
+                     style="display:block;padding:12px 24px;color:#fff;
+                            text-decoration:none;font-weight:bold;font-size:14px;">
+                    Review &amp; acknowledge →
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    plain = f"""GIG TIMES CHANGED BY BAND
+
+Act:    {act}
+Date:   {event_date}
+Venue:  {booking['venue']}
+
+Doors:  {old_door or '—'}  →  {new_door or '—'}
+Gig:    {old_start or '—'}  →  {new_start or '—'}
+
+Update Squarespace and your calendar to match.
+Review & acknowledge: {detail_url}
+"""
+
+    return _send(staff_email, subject, html, plain)
+
+
 def send_band_cancellation_confirmation(booking, base_url=None):
     """Send a cancellation confirmation to the band after they cancel via the portal."""
     if not booking["contact_email"]:

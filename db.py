@@ -414,6 +414,13 @@ def init_db():
         cursor.execute(
             "ALTER TABLE bookings ADD COLUMN promo_folder_url TEXT"
         )
+    if "times_changed_at" not in bk_cols:
+        # Stamped when a band edits door_time / start_time via the portal.
+        # Surfaces an "unread" alert badge in the admin bookings list +
+        # banner on the booking detail, cleared by the Acknowledge action.
+        cursor.execute(
+            "ALTER TABLE bookings ADD COLUMN times_changed_at TIMESTAMP"
+        )
 
     # Contact tokens — one row per unique contact email, used by the multi-gig
     # portal so a contact with several bookings has a single URL that lists them all
@@ -1820,6 +1827,7 @@ def update_booking_field(booking_id, field, value, actor="system"):
         "google_calendar_event_id", "notes", "description",
         "promo_folder_url",
         "door_fee_required",
+        "door_time", "start_time",
     }
     if field not in safe:
         raise ValueError(f"Field '{field}' not allowed for direct update")
@@ -2067,6 +2075,29 @@ def set_info_sheet_read(booking_id):
     conn.execute(
         "UPDATE bookings SET info_sheet_read_at=?, updated_at=? WHERE id=?",
         (datetime.now().isoformat(), datetime.now().isoformat(), booking_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def mark_times_changed(booking_id):
+    """Stamp times_changed_at — raises the admin alert for this booking."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE bookings SET times_changed_at=?, updated_at=? WHERE id=?",
+        (now, now, booking_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def clear_times_changed(booking_id):
+    """Clear the times-changed alert — called by admin Acknowledge action."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE bookings SET times_changed_at=NULL, updated_at=? WHERE id=?",
+        (datetime.now().isoformat(), booking_id),
     )
     conn.commit()
     conn.close()

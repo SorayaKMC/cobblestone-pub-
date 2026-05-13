@@ -318,6 +318,13 @@
                                     <i class="bi bi-exclamation-triangle-fill"></i> Door person TBC
                                 </span>
                             {% endif %}
+                            {% if b.times_changed_at %}
+                                <span class="badge ms-1"
+                                      style="background:#d97706;color:#fff;"
+                                      title="Band changed door/gig times on {{ b.times_changed_at[:10] }} — open the booking to review and acknowledge">
+                                    <i class="bi bi-clock-history"></i> Times changed
+                                </span>
+                            {% endif %}
                             {% if b.status == 'confirmed' and (
                                     b.source == 'form-import' or
                                     (b.created_at and b.created_at[:10] < legacy_cutoff_date)
