@@ -317,16 +317,40 @@
         <div class="card mb-3">
             <div class="card-body">
                 <h6 class="card-title mb-1">
-                    <i class="bi bi-globe me-1"></i>Squarespace Block
+                    <i class="bi bi-globe me-1"></i>Squarespace Listing
                 </h6>
-                <p class="text-muted small mb-2">Copy this into Squarespace to create the event listing.</p>
-                <textarea id="ss-block" class="form-control form-control-sm mb-2"
-                          rows="10" readonly
-                          style="font-family:monospace;font-size:0.72rem;resize:vertical;">{{ squarespace_block }}</textarea>
-                <button type="button" class="btn btn-sm btn-outline-secondary w-100"
-                        onclick="copySSBlock(this)">
-                    <i class="bi bi-clipboard me-1"></i>Copy to clipboard
+                <p class="text-muted small mb-2">
+                    Click <strong>Copy formatted</strong>, then paste into a Squarespace
+                    <em>Text Block</em>. Headings, bold and links will keep your site's styles.
+                </p>
+
+                <div id="ss-preview"
+                     class="border rounded p-3 mb-2 bg-white"
+                     style="font-size:0.85rem;line-height:1.4;">{{ squarespace_html | safe }}</div>
+
+                <button type="button" class="btn btn-sm btn-primary w-100 mb-2"
+                        onclick="copySSRich(this)">
+                    <i class="bi bi-clipboard-check me-1"></i>Copy formatted (paste into Text Block)
                 </button>
+
+                {% if booking.media_links %}
+                <div class="alert alert-info py-2 px-2 mb-2" style="font-size:0.75rem;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    For embedded video, add a Squarespace <strong>Video Block</strong> separately
+                    with the video URL — Text Blocks can't render embeds.
+                </div>
+                {% endif %}
+
+                <details class="small text-muted">
+                    <summary style="cursor:pointer;">Plain-text version (fallback)</summary>
+                    <textarea id="ss-block" class="form-control form-control-sm mt-2"
+                              rows="8" readonly
+                              style="font-family:monospace;font-size:0.7rem;resize:vertical;">{{ squarespace_block }}</textarea>
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1"
+                            onclick="copySSBlock(this)">
+                        <i class="bi bi-clipboard me-1"></i>Copy plain text
+                    </button>
+                </details>
             </div>
         </div>
         {% endif %}
@@ -615,11 +639,50 @@ function copySSBlock(btn) {
             btn.classList.replace("btn-success", "btn-outline-secondary");
         }, 2500);
     }).catch(function() {
-        // Fallback for older browsers
         var ta = document.getElementById("ss-block");
         ta.select();
         document.execCommand("copy");
     });
+}
+
+async function copySSRich(btn) {
+    const previewEl = document.getElementById("ss-preview");
+    if (!previewEl) return;
+    const html  = previewEl.innerHTML;
+    const plain = previewEl.innerText;
+    const orig  = btn.innerHTML;
+    const flashOk = function() {
+        btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Copied! Paste into a Text Block';
+        btn.classList.replace("btn-primary", "btn-success");
+        setTimeout(function() {
+            btn.innerHTML = orig;
+            btn.classList.replace("btn-success", "btn-primary");
+        }, 3000);
+    };
+    try {
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                "text/html":  new Blob([html],  { type: "text/html"  }),
+                "text/plain": new Blob([plain], { type: "text/plain" }),
+            }),
+        ]);
+        flashOk();
+    } catch (e) {
+        // Fallback: select the preview and use execCommand("copy") — preserves rich text.
+        const range = document.createRange();
+        range.selectNodeContents(previewEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try {
+            document.execCommand("copy");
+            flashOk();
+        } catch (e2) {
+            await navigator.clipboard.writeText(plain);
+            flashOk();
+        }
+        sel.removeAllRanges();
+    }
 }
 </script>
 {% endblock %}

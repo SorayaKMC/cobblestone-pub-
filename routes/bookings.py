@@ -5,6 +5,7 @@ Squarespace block + auto-confirm emails land in Phase 3.
 Square payment links land in Phase 4.
 """
 
+import html as _html
 import json
 import os
 import re
@@ -476,6 +477,7 @@ def booking_detail(booking_id):
         venues=VENUES,
         today=_today_iso(),
         squarespace_block=_squarespace_block(booking),
+        squarespace_html=_squarespace_html_block(booking),
         squarespace_listing_statuses=SQUARESPACE_LISTING_STATUSES,
         squarespace_listing_labels=SQUARESPACE_LISTING_LABELS,
         email_snippets=_load_email_snippets_for(booking["contact_email"]),
@@ -824,6 +826,83 @@ def _squarespace_block(booking):
         f"TAGS:      Live Music · {booking['venue']} · {booking['act_name']}",
         "───────────────────────────────────────────────────────────────",
     ]
+
+    return "\n".join(parts)
+
+
+def _squarespace_html_block(booking):
+    """Return rich-text HTML for the Squarespace listing.
+
+    Designed to be copied to the clipboard as text/html and pasted into a
+    Squarespace Text Block — H2/H3/<strong>/<a> inherit the site's typography.
+
+    Format:
+      <h2>title (act_name)</h2>
+      <h3>subtitle (formatted date, optionally "· with {support}")</h3>
+      <p>description paragraphs</p>
+      <p><a>each media link</a></p>
+      <p><strong>Doors:</strong> ...</p>
+      <p><strong>Gig:</strong> ...</p>
+      <p><strong>Tickets:</strong> €price · Buy tickets   |   At the door</p>
+    """
+    if not booking:
+        return ""
+
+    def esc(v):
+        return _html.escape((v or "").strip())
+
+    # Title (H2)
+    title = esc(booking["act_name"]) or "Live at the Cobblestone Pub"
+
+    # Subtitle (H3) — support act if present, otherwise omit
+    subtitle = esc(booking["support_act"]) if booking["support_act"] else ""
+
+    parts = [f"<h2>{title}</h2>"]
+    if subtitle:
+        parts.append(f"<h3>{subtitle}</h3>")
+
+    # Description — split on blank lines into paragraphs, preserve single line breaks
+    desc = (booking["description"] or "").strip()
+    if desc:
+        for para in re.split(r"\n\s*\n", desc):
+            para = para.strip()
+            if para:
+                parts.append(f"<p>{esc(para).replace(chr(10), '<br>')}</p>")
+
+    # Media links — emit each URL as its own paragraph link
+    if booking["media_links"]:
+        urls = re.findall(r"https?://\S+", booking["media_links"])
+        for url in urls:
+            cleaned = url.rstrip(".,;)\"'")
+            u = esc(cleaned)
+            parts.append(f'<p><a href="{u}">{u}</a></p>')
+
+    # Doors / Gig / Ticket — single paragraph, <br>-separated so each line
+    # behaves like a Shift+Enter soft line break in Squarespace.
+    door  = (booking["door_time"]  or "").strip()
+    start = (booking["start_time"] or "").strip()
+    price = (booking["ticket_price"] or "").strip()
+    link  = (booking["ticket_link"]  or "").strip()
+
+    line_bits = []
+    if door:
+        line_bits.append(f"<strong>Doors:</strong> {esc(door)}")
+    if start:
+        line_bits.append(f"<strong>Gig:</strong> {esc(start)}")
+
+    if link:
+        if price:
+            ticket_bit = f'<strong>Ticket</strong> {esc(price)} <a href="{esc(link)}">here</a>'
+        else:
+            ticket_bit = f'<strong>Ticket</strong> <a href="{esc(link)}">here</a>'
+    elif price:
+        ticket_bit = f"<strong>Ticket</strong> {esc(price)} at the door"
+    else:
+        ticket_bit = "<strong>Ticket</strong> at the door"
+    line_bits.append(ticket_bit)
+
+    if line_bits:
+        parts.append("<p>" + "<br>".join(line_bits) + "</p>")
 
     return "\n".join(parts)
 
