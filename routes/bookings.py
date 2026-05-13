@@ -97,7 +97,11 @@ def _parse_form(form):
         "door_fee_required":   1 if form.get("door_fee_required") else 0,
         "venue_fee_required":  1 if form.get("venue_fee_required") else 0,
         "blocks_public_calendar": 0 if form.get("non_blocking") else 1,
-        "squarespace_listing_status": _opt("squarespace_listing_status", "not_listed"),
+        # Left intentionally without a default — managed by a separate form
+        # on the booking detail page (/bookings/<id>/squarespace). Falling
+        # back to "not_listed" here would silently revert the dropdown every
+        # time someone clicks the main Save button.
+        "squarespace_listing_status": _opt("squarespace_listing_status"),
         "announcement_date":   _opt("announcement_date"),
         "support_act":         _opt("support_act"),
         "promo_ok":            _opt("promo_ok"),

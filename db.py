@@ -1729,13 +1729,23 @@ def save_booking(data, booking_id=None):
     conn = get_db()
     now = datetime.now().isoformat()
 
+    # On UPDATE we want fields not supplied by the caller to keep their
+    # existing value rather than reset to a default — otherwise sub-forms
+    # on the booking detail page (squarespace dropdown, fees, etc.) get
+    # silently wiped every time someone saves the main Booking Details form.
+    existing = {}
+    if booking_id:
+        _row = conn.execute("SELECT * FROM bookings WHERE id=?", (booking_id,)).fetchone()
+        if _row is not None:
+            existing = dict(_row)
+
     # Defaults for NOT-NULL fields when data dict doesn't supply them
     def _val(f):
         v = data.get(f)
         if v is None and f == "blocks_public_calendar":
-            return 1  # default = blocks (existing behavior)
+            return existing.get(f, 1)
         if v is None and f == "squarespace_listing_status":
-            return "not_listed"  # default — gig not yet on the website
+            return existing.get(f) or "not_listed"
         return v
 
     if booking_id:
