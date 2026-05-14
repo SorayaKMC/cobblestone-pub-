@@ -81,11 +81,13 @@ def sound_detail(booking_id):
         flash("That booking isn't a confirmed gig.", "warning")
         return redirect(url_for("sound.sound_list"))
 
+    from routes.bookings import DOOR_PERSON_LABELS
     return render_template(
         "sound_detail.html",
         booking=booking,
         attachments=db.get_booking_attachments(booking_id),
         email_snippets=_load_email_snippets_for(booking["contact_email"]),
+        door_person_labels=DOOR_PERSON_LABELS,
     )
 
 

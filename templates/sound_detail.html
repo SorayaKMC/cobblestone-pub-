@@ -91,7 +91,7 @@
             <div class="info-row">
                 <div class="info-label">Door person</div>
                 <div class="info-value {% if not booking.door_person %}muted{% endif %}">
-                    {{ booking.door_person or 'Not set yet' }}
+                    {{ door_person_labels.get(booking.door_person, booking.door_person) or 'Not set yet' }}
                     {% if booking.door_fee_required %}<span class="badge bg-warning text-dark ms-2">Door person needed</span>{% endif %}
                 </div>
             </div>

@@ -185,6 +185,7 @@
                             <select name="door_person" class="form-select form-select-sm">
                                 <option value="">— select —</option>
                                 <option value="pub" {% if booking and booking.door_person == 'pub' %}selected{% endif %}>Pub-provided (€50)</option>
+                                <option value="pub_no_fee" {% if booking and booking.door_person == 'pub_no_fee' %}selected{% endif %}>Pub-provided (no fee)</option>
                                 <option value="own" {% if booking and booking.door_person == 'own' %}selected{% endif %}>Bringing own</option>
                                 <option value="none" {% if booking and booking.door_person == 'none' %}selected{% endif %}>Not needed</option>
                                 <option value="tbc" {% if booking and booking.door_person == 'tbc' %}selected{% endif %}>TBC</option>

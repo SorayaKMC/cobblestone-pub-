@@ -145,10 +145,11 @@ _STATUS_BG_OVERRIDE = {
 
 
 DOOR_PERSON_LABELS = {
-    "pub":  "Pub-provided (€50)",
-    "own":  "Bringing own",
-    "none": "Not needed",
-    "tbc":  "TBC",
+    "pub":        "Pub-provided (€50)",
+    "pub_no_fee": "Pub-provided (no fee)",
+    "own":        "Bringing own",
+    "none":       "Not needed",
+    "tbc":        "TBC",
 }
 
 
