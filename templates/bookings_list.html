@@ -332,10 +332,10 @@
                                     <i class="bi bi-ticket-perforated"></i> Ticket info changed
                                 </span>
                             {% endif %}
-                            {% if b.status == 'confirmed' and b.door_person in ('pub', 'pub_no_fee', 'own') %}
+                            {% if b.status == 'confirmed' and b.door_person in ('pub', 'pub_no_fee') %}
                                 <span class="badge ms-1"
                                       style="background:#0d6efd;color:#fff;"
-                                      title="A door person is needed for this booking (fee status is separate)">
+                                      title="Pub needs to staff a door person for this gig (fee status is separate)">
                                     <i class="bi bi-person-fill-check"></i> Doorperson needed
                                 </span>
                             {% endif %}
