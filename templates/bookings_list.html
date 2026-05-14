@@ -332,14 +332,11 @@
                                     <i class="bi bi-ticket-perforated"></i> Ticket info changed
                                 </span>
                             {% endif %}
-                            {% if b.status == 'confirmed' and (
-                                    b.source == 'form-import' or
-                                    (b.created_at and b.created_at[:10] < legacy_cutoff_date)
-                                 ) %}
+                            {% if b.status == 'confirmed' and b.door_person in ('pub', 'pub_no_fee', 'own') %}
                                 <span class="badge ms-1"
-                                      style="background:#1c1c2e;color:#fff;"
-                                      title="Booked under previous pricing{% if b.source == 'form-import' %} (migrated from original form){% else %} (created {{ b.created_at[:10] }}){% endif %}. No €50 door person fee applies.">
-                                    <i class="bi bi-slash-circle"></i> NO doorperson fee
+                                      style="background:#0d6efd;color:#fff;"
+                                      title="A door person is needed for this booking (fee status is separate)">
+                                    <i class="bi bi-person-fill-check"></i> Doorperson needed
                                 </span>
                             {% endif %}
                             {% if b.status == 'confirmed' %}
