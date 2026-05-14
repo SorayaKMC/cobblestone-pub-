@@ -97,6 +97,9 @@ def _parse_form(form):
         "door_fee_required":   1 if form.get("door_fee_required") else 0,
         "venue_fee_required":  1 if form.get("venue_fee_required") else 0,
         "blocks_public_calendar": 0 if form.get("non_blocking") else 1,
+        # Checkbox is the inverse — checked = "don't list on website" → 0.
+        # Unchecked = required (the default).
+        "website_listing_required": 0 if form.get("internal_only") else 1,
         # Left intentionally without a default — managed by a separate form
         # on the booking detail page (/bookings/<id>/squarespace). Falling
         # back to "not_listed" here would silently revert the dropdown every

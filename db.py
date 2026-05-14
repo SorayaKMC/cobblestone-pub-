@@ -428,6 +428,17 @@ def init_db():
         cursor.execute(
             "ALTER TABLE bookings ADD COLUMN ticket_info_changed_at TIMESTAMP"
         )
+    if "website_listing_required" not in bk_cols:
+        # 1 = this booking should appear on the Cobblestone website (default).
+        # 0 = internal-only (private hire, rehearsal, filming, mate's gig,
+        #     anything that explicitly doesn't need a public listing).
+        # When 0, the Squarespace Listing UI is hidden on the detail page
+        # and the bookings list shows a muted 'Internal only' badge rather
+        # than one of the listing-status badges.
+        cursor.execute(
+            "ALTER TABLE bookings ADD COLUMN website_listing_required "
+            "INTEGER NOT NULL DEFAULT 1"
+        )
 
     # Contact tokens — one row per unique contact email, used by the multi-gig
     # portal so a contact with several bookings has a single URL that lists them all
@@ -1564,6 +1575,7 @@ _BOOKING_FIELDS = (
     "ticketing", "ticket_price", "ticket_link",
     "door_person", "door_fee_required", "venue_fee_required",
     "blocks_public_calendar", "squarespace_listing_status",
+    "website_listing_required",
     "promo_folder_url",
     "announcement_date", "support_act", "promo_ok", "notes", "source",
 )
@@ -1753,6 +1765,9 @@ def save_booking(data, booking_id=None):
             return existing.get(f, 1)
         if v is None and f == "squarespace_listing_status":
             return existing.get(f) or "not_listed"
+        if v is None and f == "website_listing_required":
+            # preserve existing on update; default 1 (required) on insert
+            return existing.get(f, 1)
         return v
 
     if booking_id:

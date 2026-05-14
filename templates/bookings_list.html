@@ -340,25 +340,32 @@
                                 </span>
                             {% endif %}
                             {% if b.status == 'confirmed' %}
-                                {% set _ls = b.squarespace_listing_status or 'not_listed' %}
-                                {% if _ls == 'not_listed' %}
-                                    <span class="badge ms-1"
-                                          style="background:#ec4899;color:#fff;"
-                                          title="Not yet added to the Cobblestone website">
-                                        <i class="bi bi-square"></i> Not on website
+                                {% if not b.website_listing_required %}
+                                    <span class="badge ms-1 bg-secondary"
+                                          title="Internal-only booking — does not need to be listed on the website">
+                                        <i class="bi bi-eye-slash-fill"></i> Internal only
                                     </span>
-                                {% elif _ls == 'partial' %}
-                                    <span class="badge ms-1"
-                                          style="background:#f97316;color:#fff;"
-                                          title="On the website but waiting for info (ticket link, poster, etc.)">
-                                        <i class="bi bi-exclamation-square-fill"></i> Website: needs info
-                                    </span>
-                                {% elif _ls == 'live' %}
-                                    <span class="badge ms-1"
-                                          style="background:#14b8a6;color:#fff;"
-                                          title="Listed on the website with full info">
-                                        <i class="bi bi-check-square-fill"></i> On website
-                                    </span>
+                                {% else %}
+                                    {% set _ls = b.squarespace_listing_status or 'not_listed' %}
+                                    {% if _ls == 'not_listed' %}
+                                        <span class="badge ms-1"
+                                              style="background:#ec4899;color:#fff;"
+                                              title="Not yet added to the Cobblestone website">
+                                            <i class="bi bi-square"></i> Not on website
+                                        </span>
+                                    {% elif _ls == 'partial' %}
+                                        <span class="badge ms-1"
+                                              style="background:#f97316;color:#fff;"
+                                              title="On the website but waiting for info (ticket link, poster, etc.)">
+                                            <i class="bi bi-exclamation-square-fill"></i> Website: needs info
+                                        </span>
+                                    {% elif _ls == 'live' %}
+                                        <span class="badge ms-1"
+                                              style="background:#14b8a6;color:#fff;"
+                                              title="Listed on the website with full info">
+                                            <i class="bi bi-check-square-fill"></i> On website
+                                        </span>
+                                    {% endif %}
                                 {% endif %}
                             {% endif %}
                             {% if b.contact_email %}<div class="text-muted small">{{ b.contact_email }}</div>{% endif %}

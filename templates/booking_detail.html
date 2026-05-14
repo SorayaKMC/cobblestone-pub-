@@ -270,6 +270,15 @@
                                     <span class="text-muted">(daytime / partial-day)</span>
                                 </label>
                             </div>
+                            <div class="form-check">
+                                <input type="checkbox" name="internal_only" class="form-check-input" id="internal_only" value="1"
+                                       {% if booking and not booking.website_listing_required %}checked{% endif %}>
+                                <label class="form-check-label small" for="internal_only"
+                                       title="For private hires, rehearsals, filming, etc. — hides the Squarespace listing controls and skips this booking on the website.">
+                                    Don't list on website
+                                    <span class="text-muted">(internal only)</span>
+                                </label>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small">Status</label>
@@ -369,8 +378,8 @@
             </div>
         </div>
 
-        <!-- Squarespace event block (confirmed only) -->
-        {% if booking.status == 'confirmed' %}
+        <!-- Squarespace event block (confirmed + website-listed bookings only) -->
+        {% if booking.status == 'confirmed' and booking.website_listing_required %}
         <div class="card mb-3">
             <div class="card-body">
                 <h6 class="card-title mb-1">
@@ -441,6 +450,17 @@
                 </div>
                 {% endif %}
                 <hr>
+                {% if not booking.website_listing_required %}
+                <div class="d-flex align-items-center gap-2 py-1">
+                    <i class="bi bi-eye-slash-fill fs-5 text-muted"></i>
+                    <div>
+                        <div class="form-label small fw-semibold mb-0">Internal only</div>
+                        <div class="text-muted" style="font-size:.75rem;">
+                            Not listed on the website — unticked in Booking Details above.
+                        </div>
+                    </div>
+                </div>
+                {% else %}
                 {% set _ss_status = booking.squarespace_listing_status or 'not_listed' %}
                 {% set _ss_icon = {'not_listed': 'bi-square', 'partial': 'bi-exclamation-square-fill', 'live': 'bi-check-square-fill'} %}
                 {% set _ss_color = {'not_listed': 'text-muted', 'partial': 'text-warning', 'live': 'text-success'} %}
@@ -467,6 +487,7 @@
                         <button type="submit" class="btn btn-sm btn-outline-primary mt-1">Save</button>
                     </noscript>
                 </form>
+                {% endif %}
                 <hr>
                 <div class="d-flex align-items-center gap-2 py-1">
                     {% if booking.info_sheet_read_at %}
