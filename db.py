@@ -421,6 +421,13 @@ def init_db():
         cursor.execute(
             "ALTER TABLE bookings ADD COLUMN times_changed_at TIMESTAMP"
         )
+    if "ticket_info_changed_at" not in bk_cols:
+        # Stamped when a band edits ticketing / ticket_price / ticket_link
+        # via the portal. Same alert pattern as times_changed_at (badge +
+        # banner + Acknowledge button).
+        cursor.execute(
+            "ALTER TABLE bookings ADD COLUMN ticket_info_changed_at TIMESTAMP"
+        )
 
     # Contact tokens — one row per unique contact email, used by the multi-gig
     # portal so a contact with several bookings has a single URL that lists them all
@@ -1838,6 +1845,7 @@ def update_booking_field(booking_id, field, value, actor="system"):
         "promo_folder_url",
         "door_fee_required",
         "door_time", "start_time",
+        "ticketing", "ticket_price", "ticket_link",
     }
     if field not in safe:
         raise ValueError(f"Field '{field}' not allowed for direct update")
@@ -2107,6 +2115,29 @@ def clear_times_changed(booking_id):
     conn = get_db()
     conn.execute(
         "UPDATE bookings SET times_changed_at=NULL, updated_at=? WHERE id=?",
+        (datetime.now().isoformat(), booking_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def mark_ticket_info_changed(booking_id):
+    """Stamp ticket_info_changed_at — raises the admin alert."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE bookings SET ticket_info_changed_at=?, updated_at=? WHERE id=?",
+        (now, now, booking_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def clear_ticket_info_changed(booking_id):
+    """Clear the ticket-info-changed alert — admin Acknowledge action."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE bookings SET ticket_info_changed_at=NULL, updated_at=? WHERE id=?",
         (datetime.now().isoformat(), booking_id),
     )
     conn.commit()

@@ -57,6 +57,25 @@
 </div>
 {% endif %}
 
+{% if booking and booking.ticket_info_changed_at %}
+<div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"
+     style="background:#fdf2f8;border:1px solid #fbcfe8;color:#831843;">
+    <div>
+        <i class="bi bi-ticket-perforated me-1"></i>
+        <strong>Ticket info was updated by the band</strong>
+        on {{ booking.ticket_info_changed_at[:10] | pretty_date }}
+        {{ booking.ticket_info_changed_at[11:16] }}.
+        Mirror to Squarespace, then acknowledge.
+        Current: <strong>{{ booking.ticketing or '—' }}</strong>{% if booking.ticket_price %} · {{ booking.ticket_price }}{% endif %}{% if booking.ticket_link %} · <a href="{{ booking.ticket_link }}" target="_blank" rel="noopener" style="color:#831843;text-decoration:underline;">link</a>{% endif %}.
+    </div>
+    <form method="POST" action="/bookings/{{ booking.id }}/acknowledge-ticket-change" class="m-0">
+        <button type="submit" class="btn btn-sm" style="background:#ec4899;color:#fff;border:none;">
+            <i class="bi bi-check2 me-1"></i>Acknowledge
+        </button>
+    </form>
+</div>
+{% endif %}
+
 {# ── Same-day conflict warning ────────────────────────────────────────── #}
 {% if same_day_bookings %}
 <div class="alert alert-warning d-flex flex-wrap align-items-start mb-3" role="alert">

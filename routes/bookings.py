@@ -1535,6 +1535,79 @@ def acknowledge_time_change(booking_id):
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
 
+# Allowed values for the band-side ticketing dropdown. Matches the admin
+# dropdown options in booking_detail.html.
+TICKETING_OPTIONS = ("", "Free", "Eventbrite", "Door", "Ticketed")
+
+
+@bp.route("/book/<token>/edit-ticket", methods=["POST"])
+def book_edit_ticket(token):
+    """Band-side: update ticketing type, ticket price, and ticket link.
+
+    Bands typically don't have the link at the moment they request the
+    date — they need to add it later (Eventbrite URL, price, etc.).
+    Same audit + flag + acknowledge pattern as book_edit_times.
+    """
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+    if booking["status"] in ("cancelled", "completed"):
+        flash("This booking is no longer accepting changes.", "warning")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    new_ticketing = (request.form.get("ticketing") or "").strip()
+    if new_ticketing not in TICKETING_OPTIONS:
+        flash("Invalid ticketing option.", "danger")
+        return redirect(url_for("bookings.book_portal", token=token))
+    new_ticketing = new_ticketing or None
+    new_price = (request.form.get("ticket_price") or "").strip() or None
+    new_link  = (request.form.get("ticket_link")  or "").strip() or None
+
+    old_ticketing = booking["ticketing"]
+    old_price     = booking["ticket_price"]
+    old_link      = booking["ticket_link"]
+
+    if (new_ticketing == old_ticketing
+            and new_price == old_price
+            and new_link == old_link):
+        flash("No changes to save.", "info")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    if new_ticketing != old_ticketing:
+        db.update_booking_field(booking["id"], "ticketing",    new_ticketing, actor="band")
+    if new_price != old_price:
+        db.update_booking_field(booking["id"], "ticket_price", new_price,     actor="band")
+    if new_link != old_link:
+        db.update_booking_field(booking["id"], "ticket_link",  new_link,      actor="band")
+
+    db.add_booking_audit(
+        booking["id"], "band", "edited",
+        f"Ticket info updated via portal "
+        f"(ticketing: {old_ticketing or '—'!r} → {new_ticketing or '—'!r}; "
+        f"price: {old_price or '—'!r} → {new_price or '—'!r}; "
+        f"link: {old_link or '—'!r} → {new_link or '—'!r})",
+    )
+    db.mark_ticket_info_changed(booking["id"])
+
+    flash("Ticket info updated — thanks! ✓", "success")
+    return redirect(url_for("bookings.book_portal", token=token))
+
+
+@bp.route("/bookings/<int:booking_id>/acknowledge-ticket-change", methods=["POST"])
+def acknowledge_ticket_change(booking_id):
+    """Admin: clear the ticket-info-changed flag after Squarespace etc. updated."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+    db.clear_ticket_info_changed(booking_id)
+    db.add_booking_audit(
+        booking_id, "admin", "acknowledged",
+        "Ticket info change acknowledged by admin.",
+    )
+    flash("Ticket info change acknowledged.", "success")
+    return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+
 @bp.route("/book/<token>/ack-info-sheet", methods=["POST"])
 def ack_info_sheet(token):
     """Band acknowledges they have read the info sheet / tech spec."""

@@ -238,6 +238,69 @@
     </div>
     {% endif %}
 
+    <!-- ── Edit ticket info (active bookings only) ──────────────────────── -->
+    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="card-title fw-semibold mb-0">
+                    <i class="bi bi-ticket-perforated me-1"></i>Edit ticket info
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#editTicketCollapse"
+                        aria-expanded="false">
+                    Edit
+                </button>
+            </div>
+            <p class="text-muted small mb-0">
+                Add or update your ticketing type, price, and link
+                (e.g. Eventbrite URL). We'll be notified so we can mirror
+                the change to the website.
+            </p>
+            <div id="editTicketCollapse" class="collapse mt-3">
+                <form method="POST" action="/book/{{ booking.public_token }}/edit-ticket">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label small fw-semibold">Ticketing</label>
+                            <select name="ticketing" class="form-select form-select-sm">
+                                <option value="" {% if not booking.ticketing %}selected{% endif %}>— select —</option>
+                                <option value="Free"       {% if booking.ticketing == 'Free' %}selected{% endif %}>Free</option>
+                                <option value="Eventbrite" {% if booking.ticketing == 'Eventbrite' %}selected{% endif %}>Eventbrite</option>
+                                <option value="Door"       {% if booking.ticketing == 'Door' %}selected{% endif %}>Door charge</option>
+                                <option value="Ticketed"   {% if booking.ticketing == 'Ticketed' %}selected{% endif %}>Other ticketed</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small fw-semibold">Price</label>
+                            <input type="text" name="ticket_price"
+                                   class="form-control form-control-sm"
+                                   value="{{ booking.ticket_price or '' }}"
+                                   placeholder="e.g. €15">
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label class="form-label small fw-semibold">Ticket link</label>
+                            <input type="url" name="ticket_link"
+                                   class="form-control form-control-sm"
+                                   value="{{ booking.ticket_link or '' }}"
+                                   placeholder="https://eventbrite.com/...">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#editTicketCollapse">Cancel</button>
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>Save ticket info
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ── Edit description (active bookings only) ──────────────────────── -->
     {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
     <div class="card shadow-sm mb-4">
