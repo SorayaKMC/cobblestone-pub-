@@ -353,20 +353,29 @@
             <div class="checklist-item">
                 {% if booking.info_sheet_read_at %}
                 <i class="bi bi-check-circle-fill text-success mt-1 flex-shrink-0 fs-5"></i>
-                <div>
-                    <div class="fw-semibold small">Info sheet &amp; tech spec read</div>
-                    <div class="text-muted" style="font-size:.82rem;">
-                        Acknowledged {{ booking.info_sheet_read_at[:10] }}
-                    </div>
-                </div>
                 {% else %}
                 <i class="bi bi-exclamation-circle text-warning mt-1 flex-shrink-0 fs-5"></i>
+                {% endif %}
                 <div>
-                    <div class="fw-semibold small mb-1">Read the info sheet &amp; tech spec</div>
+                    <div class="fw-semibold small mb-1">
+                        Info sheet &amp; tech spec
+                        {% if booking.info_sheet_read_at %}
+                        <span class="text-success" style="font-size:.78rem;font-weight:500;">
+                            · acknowledged {{ booking.info_sheet_read_at[:10] }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if not booking.info_sheet_read_at %}
                     <p class="text-muted mb-2" style="font-size:.82rem;line-height:1.45;">
                         Please read through the venue info sheet and tech spec before your event.
                         Everything you need to know about load-in, sound check, and the stage is in there.
                     </p>
+                    {% else %}
+                    <p class="text-muted mb-2" style="font-size:.82rem;line-height:1.45;">
+                        Always available here — open any time you need to check load-in,
+                        sound check, or stage details.
+                    </p>
+                    {% endif %}
                     <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
                         <a href="https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet.pdf"
                            target="_blank"
@@ -378,6 +387,7 @@
                            class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-file-earmark-pdf me-1"></i>Tech Spec
                         </a>
+                        {% if not booking.info_sheet_read_at %}
                         <form method="POST"
                               action="/book/{{ booking.public_token }}/ack-info-sheet"
                               class="d-inline">
@@ -385,9 +395,9 @@
                                 <i class="bi bi-check2 me-1"></i>I've read it — mark as done
                             </button>
                         </form>
+                        {% endif %}
                     </div>
                 </div>
-                {% endif %}
             </div>
             {% endif %}
 
