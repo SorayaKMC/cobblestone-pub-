@@ -552,6 +552,7 @@ def booking_detail(booking_id):
         same_day_bookings=same_day_rows,
         residency_event_type=RESIDENCY_EVENT_TYPE,
         legacy_cutoff_date=_legacy_no_door_fee_cutoff(),
+        door_person_labels=DOOR_PERSON_LABELS,
     )
 
 

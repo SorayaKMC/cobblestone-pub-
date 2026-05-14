@@ -34,6 +34,24 @@
             <i class="bi bi-slash-circle me-1"></i>NO doorperson fee
         </span>
         {% endif %}
+
+        {# Door person at-a-glance — surfaces the dropdown value at the top of the page #}
+        {% if booking.door_person == 'none' %}
+            <span class="badge bg-secondary" title="No door person required for this booking">
+                <i class="bi bi-dash-circle me-1"></i>No door person needed
+            </span>
+        {% elif not booking.door_person or booking.door_person == 'tbc' %}
+            <span class="badge bg-warning text-dark" title="Door person not assigned yet">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>Door person: TBC
+            </span>
+        {% else %}
+            <span class="badge"
+                  style="background:#0d6efd;color:#fff;"
+                  title="Door person arrangement for this booking">
+                <i class="bi bi-person-fill-check me-1"></i>
+                Door person: {{ door_person_labels.get(booking.door_person, booking.door_person) }}
+            </span>
+        {% endif %}
     </div>
     {% endif %}
 </div>
