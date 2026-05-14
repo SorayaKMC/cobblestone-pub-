@@ -344,6 +344,12 @@ def bookings_list():
     if hide_residencies:
         bookings = [b for b in bookings if b["event_type"] != RESIDENCY_EVENT_TYPE]
 
+    # When the user clicks a "Not on Squarespace" / "Listing info pending"
+    # tile, they want bookings that need website attention — internal-only
+    # rows shouldn't be in that list since they're deliberately off-site.
+    if ss_listing:
+        bookings = [b for b in bookings if b["website_listing_required"]]
+
     counts = db.booking_counts()
 
     # IDs of confirmed bookings within 7 days with no door_person set — used

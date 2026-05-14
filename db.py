@@ -1968,10 +1968,13 @@ def booking_counts():
              AND ((venue_fee_required=1 AND venue_fee_paid_at IS NULL)
                   OR (door_fee_required=1 AND door_fee_paid_at IS NULL))""",
     ).fetchone()[0]
+    # Listing-workflow counts exclude internal-only bookings (those don't
+    # need to appear on the website at all).
     needs_publishing = conn.execute(
         """SELECT COUNT(*) FROM bookings
            WHERE status='confirmed' AND event_date >= ?
              AND archived_at IS NULL
+             AND website_listing_required=1
              AND squarespace_listing_status='not_listed'""",
         (today,),
     ).fetchone()[0]
@@ -1979,6 +1982,7 @@ def booking_counts():
         """SELECT COUNT(*) FROM bookings
            WHERE status='confirmed' AND event_date >= ?
              AND archived_at IS NULL
+             AND website_listing_required=1
              AND squarespace_listing_status='partial'""",
         (today,),
     ).fetchone()[0]
