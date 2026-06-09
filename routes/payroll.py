@@ -259,14 +259,22 @@ def _compute_sanity_checks(payroll, iso_week, year, week):
       - Hours < 5 (but > 0): unusually short — confirm intentional
       - Salaried with €0 weekly_salary in Settings (would gross €0)
       - Hourly with €0 wage_rate but worked hours
-      - Open shift (no clock-out yet) detected
+        (skipped for salaried staff — Square always shows €0/hr for them
+        because their pay comes from weekly_salary in Settings, not from
+        Square's hourly rate)
     """
     issues = []
+
+    # Index categories so we can look up pay_type per employee.
+    cats_by_id = {c["team_member_id"]: c for c in db.get_employee_categories()}
 
     for p in payroll:
         name = f"{p['given_name']} {p['family_name']}".strip() or "(unknown)"
         hours = float(p.get("hours") or 0)
         wage = float(p.get("wage_rate") or 0)
+
+        cat = cats_by_id.get(p["team_member_id"])
+        is_salaried = bool(cat and cat["pay_type"] == "salaried")
 
         if hours > 50:
             issues.append({
@@ -274,14 +282,19 @@ def _compute_sanity_checks(payroll, iso_week, year, week):
                 "employee": name,
                 "message": f"{name}: {hours:.1f} hours this week — probable missed clock-out.",
             })
-        elif 0 < hours < 5 and not p.get("pto_only"):
+        elif 0 < hours < 5 and not p.get("pto_only") and not is_salaried:
+            # Salaried staff with low Square hours still get a full
+            # weekly salary, so 'short week' is meaningless for them.
             issues.append({
                 "severity": "warn",
                 "employee": name,
                 "message": f"{name}: only {hours:.1f} hours — confirm this was a short week.",
             })
 
-        if wage == 0 and hours > 0 and not p.get("pto_only") and p.get("category") != "Upper Management":
+        # €0 wage rate is expected for salaried staff — skip the warning.
+        if (wage == 0 and hours > 0 and not p.get("pto_only")
+                and not is_salaried
+                and p.get("category") != "Upper Management"):
             issues.append({
                 "severity": "warn",
                 "employee": name,
@@ -291,7 +304,8 @@ def _compute_sanity_checks(payroll, iso_week, year, week):
                 ),
             })
 
-    # Salaried with €0 salary in Settings
+    # Salaried with €0 salary in Settings — still useful (means Settings
+    # was never populated for them; Peter would see €0 gross).
     for c in db.get_employee_categories():
         if c["pay_type"] == "salaried" and (c["weekly_salary"] or 0) == 0:
             issues.append({
