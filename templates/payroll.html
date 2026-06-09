@@ -77,6 +77,27 @@
 </div>
 {% endif %}
 
+{% if uncategorized %}
+<div class="alert alert-warning d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+        <i class="bi bi-person-exclamation me-1"></i>
+        <strong>{{ uncategorized|length }} employee{{ '' if uncategorized|length == 1 else 's' }} not categorized in Settings.</strong>
+        Their hours are included but they're bucketed as <em>Staff</em> with no
+        cleaning or salary — which is usually wrong for managers or salaried staff.
+        <div class="small mt-1">
+            {% for u in uncategorized %}
+            <span class="badge bg-warning text-dark me-1">
+                {{ u.name }}{% if u.hours %} · {{ "%.1f"|format(u.hours) }}h{% endif %}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    <a href="/settings" class="btn btn-outline-warning btn-sm">
+        <i class="bi bi-gear me-1"></i>Fix in Settings
+    </a>
+</div>
+{% endif %}
+
 <form method="POST" action="/payroll/tips">
 <input type="hidden" name="iso_week" value="{{ iso_week }}">
 <div class="card">

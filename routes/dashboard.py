@@ -267,13 +267,24 @@ def _get_week_payroll(year, week):
 
         for tm_id, hours in emp_hours.items():
             cat_row = cats_by_id.get(tm_id)
-            if not cat_row:
-                continue
-
             member = members_by_id.get(tm_id, {})
-            pay_type = cat_row["pay_type"]
-            weekly_salary = Decimal(str(cat_row["weekly_salary"]))
-            cleaning = Decimal(str(cat_row["cleaning_amount"]))
+
+            if cat_row:
+                pay_type = cat_row["pay_type"]
+                weekly_salary = Decimal(str(cat_row["weekly_salary"]))
+                cleaning = Decimal(str(cat_row["cleaning_amount"]))
+                category = cat_row["category"]
+            else:
+                # Employee has timecards but no Settings row. Default
+                # to hourly Staff with no cleaning stipend rather than
+                # silently dropping them from the labor cost — that bug
+                # had the dashboard understate W23 payroll. The /payroll
+                # page warns the user to categorize them properly.
+                pay_type = "hourly"
+                weekly_salary = Decimal("0")
+                cleaning = Decimal("0")
+                category = "Staff"
+
             wage_rate = member.get("hourly_rate", Decimal("0"))
 
             if pay_type == "salaried" and weekly_salary > 0:
@@ -283,11 +294,11 @@ def _get_week_payroll(year, week):
 
             labor = gross + cleaning
 
-            if cat_row["category"] == "Upper Management":
+            if category == "Upper Management":
                 um_total += labor
-            elif cat_row["category"] == "Management":
+            elif category == "Management":
                 mgmt_total += labor
-            elif cat_row["category"] == "Staff":
+            else:  # Staff or fallback
                 staff_total += labor
 
         # Add holiday pay (PTO taken × wage). Bucket per category — UM
@@ -298,19 +309,19 @@ def _get_week_payroll(year, week):
             pto_taken = {}
         for tm_id, pto_d in pto_taken.items():
             cat_row = cats_by_id.get(tm_id)
-            if not cat_row:
-                continue
             member = members_by_id.get(tm_id, {})
             wage_rate = member.get("hourly_rate", Decimal("0"))
             holiday_hrs = Decimal(str(pto_d.get("hours", 0) or 0))
             if holiday_hrs <= 0 or wage_rate <= 0:
                 continue
             holiday_pay = holiday_hrs * wage_rate
-            if cat_row["category"] == "Upper Management":
+            # Uncategorized → default to Staff (matches /payroll page behaviour)
+            category = cat_row["category"] if cat_row else "Staff"
+            if category == "Upper Management":
                 um_total += holiday_pay
-            elif cat_row["category"] == "Management":
+            elif category == "Management":
                 mgmt_total += holiday_pay
-            elif cat_row["category"] == "Staff":
+            else:
                 staff_total += holiday_pay
 
         result = {

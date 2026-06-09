@@ -257,6 +257,20 @@ def payroll_page():
     try:
         payroll, pto_taken = _load_week_payroll(year, week, iso_week, start_date, end_date)
 
+        # Flag employees who have timecards/PTO this week but no row in
+        # Settings → Employees. They'd default to "Staff" with no
+        # cleaning/salary, which is usually wrong. Surface them so the
+        # user can fix the categorisation.
+        cat_ids = {c["team_member_id"] for c in db.get_employee_categories()}
+        uncategorized = []
+        for p in payroll:
+            if p["team_member_id"] not in cat_ids:
+                uncategorized.append({
+                    "team_member_id": p["team_member_id"],
+                    "name": f"{p['given_name']} {p['family_name']}".strip() or "(unknown)",
+                    "hours": float(p["hours"]),
+                })
+
         # Net pay (from accountant's gross-to-net upload, if any)
         net_pays = db.get_net_pays_by_employee(iso_week)
         net_total_accountant = 0.0
@@ -289,6 +303,7 @@ def payroll_page():
         error = None
     except Exception as e:
         payroll = []
+        uncategorized = []
         total_hours = total_gross = total_tips = total_cleaning = total_bonus = grand_total = total_labor = Decimal("0")
         total_holiday_hours = 0.0
         um_total = mgmt_total = staff_total = Decimal("0")
@@ -300,6 +315,7 @@ def payroll_page():
 
     return render_template("payroll.html",
         payroll=payroll,
+        uncategorized=uncategorized,
         week_label=label,
         iso_week=iso_week,
         start_date=start_date if not error else "",
