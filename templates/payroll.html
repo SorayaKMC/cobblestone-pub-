@@ -78,24 +78,174 @@
 {% endif %}
 
 {% if uncategorized %}
-<div class="alert alert-warning d-flex justify-content-between align-items-start flex-wrap gap-2">
+<div class="alert alert-warning d-flex justify-content-between align-items-start flex-wrap gap-2" id="uncategorized_alert">
     <div>
         <i class="bi bi-person-exclamation me-1"></i>
-        <strong>{{ uncategorized|length }} employee{{ '' if uncategorized|length == 1 else 's' }} not categorized in Settings.</strong>
-        Their hours are included but they're bucketed as <em>Staff</em> with no
-        cleaning or salary — which is usually wrong for managers or salaried staff.
-        <div class="small mt-1">
+        <strong><span id="uncat_count">{{ uncategorized|length }}</span> employee<span id="uncat_plural">{{ '' if uncategorized|length == 1 else 's' }}</span> not categorized.</strong>
+        Click any name to fix inline — they're bucketed as <em>Staff</em> with no
+        cleaning or salary until you do.
+        <div class="small mt-1" id="uncat_chips">
             {% for u in uncategorized %}
-            <span class="badge bg-warning text-dark me-1">
+            <button type="button" class="btn btn-sm btn-warning me-1 mb-1 quick-cat-chip"
+                    data-team-member-id="{{ u.team_member_id }}"
+                    data-name="{{ u.name }}"
+                    title="Click to categorize">
                 {{ u.name }}{% if u.hours %} · {{ "%.1f"|format(u.hours) }}h{% endif %}
-            </span>
+                <i class="bi bi-pencil-square ms-1"></i>
+            </button>
             {% endfor %}
         </div>
     </div>
     <a href="/settings" class="btn btn-outline-warning btn-sm">
-        <i class="bi bi-gear me-1"></i>Fix in Settings
+        <i class="bi bi-gear me-1"></i>Full Settings
     </a>
 </div>
+
+<!-- Quick-categorize modal -->
+<div class="modal fade" id="quickCatModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-check me-2"></i>Categorize <span id="qc_subject">employee</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="qc_error" class="alert alert-danger d-none py-2 small"></div>
+                <input type="hidden" id="qc_team_member_id">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">First name</label>
+                        <input type="text" id="qc_given" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Last name</label>
+                        <input type="text" id="qc_family" class="form-control">
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Category</label>
+                        <select id="qc_category" class="form-select">
+                            <option value="Staff" selected>Staff</option>
+                            <option value="Management">Management</option>
+                            <option value="Upper Management">Upper Management</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Pay type</label>
+                        <select id="qc_pay_type" class="form-select">
+                            <option value="hourly" selected>Hourly</option>
+                            <option value="salaried">Salaried</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Cleaning (€/wk)</label>
+                        <input type="number" id="qc_cleaning" class="form-control" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-6" id="qc_salary_wrap" style="display:none">
+                        <label class="form-label small fw-semibold">Weekly salary (€)</label>
+                        <input type="number" id="qc_salary" class="form-control" step="0.01" value="0">
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <label class="form-label small fw-semibold">Email <span class="text-muted fw-normal">(for payslip drafts)</span></label>
+                    <input type="email" id="qc_email" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="qc_save_btn" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    const modalEl = document.getElementById('quickCatModal');
+    if (!modalEl) return;
+    const modal = new bootstrap.Modal(modalEl);
+    const errorBox = document.getElementById('qc_error');
+    const subject = document.getElementById('qc_subject');
+    const payTypeSel = document.getElementById('qc_pay_type');
+    const salaryWrap = document.getElementById('qc_salary_wrap');
+
+    function showErr(m) { errorBox.textContent = m; errorBox.classList.remove('d-none'); }
+    function clearErr() { errorBox.classList.add('d-none'); }
+    function togglesSalary() {
+        salaryWrap.style.display = payTypeSel.value === 'salaried' ? '' : 'none';
+    }
+    payTypeSel.addEventListener('change', togglesSalary);
+
+    document.querySelectorAll('.quick-cat-chip').forEach(chip => {
+        chip.addEventListener('click', function(){
+            clearErr();
+            const fullName = chip.dataset.name || '';
+            const parts = fullName.trim().split(/\s+/);
+            const given = parts[0] || '';
+            const family = parts.slice(1).join(' ');
+            document.getElementById('qc_team_member_id').value = chip.dataset.teamMemberId;
+            document.getElementById('qc_given').value = given;
+            document.getElementById('qc_family').value = family;
+            document.getElementById('qc_category').value = 'Staff';
+            document.getElementById('qc_pay_type').value = 'hourly';
+            document.getElementById('qc_cleaning').value = '0';
+            document.getElementById('qc_salary').value = '0';
+            document.getElementById('qc_email').value = '';
+            togglesSalary();
+            subject.textContent = fullName || 'employee';
+            modal.show();
+        });
+    });
+
+    document.getElementById('qc_save_btn').addEventListener('click', async function(){
+        clearErr();
+        const btn = this;
+        const fd = new FormData();
+        fd.append('team_member_id', document.getElementById('qc_team_member_id').value);
+        fd.append('given_name', document.getElementById('qc_given').value.trim());
+        fd.append('family_name', document.getElementById('qc_family').value.trim());
+        fd.append('category', document.getElementById('qc_category').value);
+        fd.append('pay_type', document.getElementById('qc_pay_type').value);
+        fd.append('cleaning_amount', document.getElementById('qc_cleaning').value || 0);
+        fd.append('weekly_salary', document.getElementById('qc_salary').value || 0);
+        fd.append('email', document.getElementById('qc_email').value.trim());
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+        try {
+            const resp = await fetch('/payroll/quick-categorize', { method: 'POST', body: fd });
+            const data = await resp.json();
+            if (!resp.ok) { showErr(data.error || 'Could not save.'); return; }
+
+            // Remove the chip + update the count. If no chips remain,
+            // hide the whole banner.
+            const tmId = document.getElementById('qc_team_member_id').value;
+            const chip = document.querySelector(`.quick-cat-chip[data-team-member-id="${tmId}"]`);
+            if (chip) chip.remove();
+            const remaining = document.querySelectorAll('.quick-cat-chip').length;
+            if (remaining === 0) {
+                document.getElementById('uncategorized_alert').style.display = 'none';
+            } else {
+                document.getElementById('uncat_count').textContent = remaining;
+                document.getElementById('uncat_plural').textContent = remaining === 1 ? '' : 's';
+            }
+            modal.hide();
+        } catch (err) {
+            showErr('Network error: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save';
+        }
+    });
+})();
+</script>
 {% endif %}
 
 <form method="POST" action="/payroll/tips">

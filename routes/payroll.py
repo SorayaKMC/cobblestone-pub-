@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, send_file, flash, redirect, url_for
+from flask import Blueprint, render_template, request, send_file, flash, redirect, url_for, jsonify
 from decimal import Decimal
 from datetime import date
 import io
@@ -338,6 +338,52 @@ def payroll_page():
         net_total_accountant=net_total_accountant,
         error=error,
     )
+
+
+@bp.route("/payroll/quick-categorize", methods=["POST"])
+def quick_categorize():
+    """JSON endpoint to categorize an uncategorized employee inline from
+    the /payroll warning banner — same pattern as the supplier modal in
+    bookkeeping. Upserts into employee_categories.
+    """
+    tm_id = (request.form.get("team_member_id") or "").strip()
+    if not tm_id:
+        return jsonify({"error": "Missing team_member_id."}), 400
+
+    given = (request.form.get("given_name") or "").strip()
+    family = (request.form.get("family_name") or "").strip()
+    category = (request.form.get("category") or "").strip()
+    pay_type = (request.form.get("pay_type") or "hourly").strip()
+
+    if category not in ("Upper Management", "Management", "Staff"):
+        return jsonify({"error": "Invalid category."}), 400
+    if pay_type not in ("hourly", "salaried"):
+        return jsonify({"error": "Invalid pay type."}), 400
+    if not given and not family:
+        return jsonify({"error": "Name is required."}), 400
+
+    try:
+        cleaning = float(request.form.get("cleaning_amount", 0) or 0)
+    except (TypeError, ValueError):
+        cleaning = 0.0
+    try:
+        salary = float(request.form.get("weekly_salary", 0) or 0)
+    except (TypeError, ValueError):
+        salary = 0.0
+
+    email = (request.form.get("email") or "").strip() or None
+
+    db.update_employee_category(
+        team_member_id=tm_id,
+        given_name=given,
+        family_name=family,
+        category=category,
+        cleaning_amount=cleaning,
+        weekly_salary=salary,
+        pay_type=pay_type,
+        email=email,
+    )
+    return jsonify({"ok": True, "team_member_id": tm_id})
 
 
 @bp.route("/payroll/check-tips", methods=["POST"])
