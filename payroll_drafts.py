@@ -158,6 +158,87 @@ def _create_draft(service, mime_msg):
     return result.get("id")
 
 
+def send_drafts_for_period(pay_period_id):
+    """Send every payslip draft that's currently in 'created' status for
+    the given pay period. Drafts that previously sent successfully (status
+    'sent') are skipped — calling this twice is safe.
+
+    Updates progress in cache_metadata['drafts_send_progress'] so the
+    UI can poll for live status. Final result also lands there.
+
+    Returns dict summary {sent, skipped, failed}.
+    """
+    drafts = db.get_email_drafts(pay_period_id)
+    eligible = [d for d in drafts
+                if d.get("status") == "created" and d.get("gmail_draft_id")]
+
+    db.set_cache("drafts_send_progress", {
+        "pay_period_id": pay_period_id,
+        "status": "running",
+        "total": len(eligible),
+        "sent": 0, "failed": 0, "skipped": 0,
+        "started_at": datetime.now().isoformat(),
+    })
+
+    try:
+        service = _gmail_service()
+    except Exception as e:
+        db.set_cache("drafts_send_progress", {
+            "pay_period_id": pay_period_id,
+            "status": "failed",
+            "error": f"Auth setup failed: {e}",
+            "ts": datetime.now().isoformat(),
+        })
+        return {"sent": 0, "skipped": 0, "failed": len(eligible)}
+
+    sent = failed = 0
+    for d in eligible:
+        draft_id = d["gmail_draft_id"]
+        try:
+            # Gmail API: drafts.send moves the draft to Sent + delivers
+            service.users().drafts().send(
+                userId="me",
+                body={"id": draft_id},
+            ).execute()
+            db.record_email_draft(
+                pay_period_id=pay_period_id,
+                team_member_id=d["team_member_id"],
+                email=d["email"],
+                gmail_draft_id=draft_id,
+                status="sent",
+                error=None,
+            )
+            sent += 1
+        except Exception as e:
+            db.record_email_draft(
+                pay_period_id=pay_period_id,
+                team_member_id=d["team_member_id"],
+                email=d["email"],
+                gmail_draft_id=draft_id,
+                status="send_failed",
+                error=str(e)[:500],
+            )
+            failed += 1
+
+        # Update progress after each attempt so the UI poll is meaningful
+        db.set_cache("drafts_send_progress", {
+            "pay_period_id": pay_period_id,
+            "status": "running",
+            "total": len(eligible),
+            "sent": sent, "failed": failed, "skipped": 0,
+            "started_at": datetime.now().isoformat(),
+        })
+
+    db.set_cache("drafts_send_progress", {
+        "pay_period_id": pay_period_id,
+        "status": "completed",
+        "total": len(eligible),
+        "sent": sent, "failed": failed, "skipped": 0,
+        "ts": datetime.now().isoformat(),
+    })
+    return {"sent": sent, "skipped": 0, "failed": failed}
+
+
 def create_test_draft():
     """Create a self-addressed test draft to verify Gmail auth.
 

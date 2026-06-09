@@ -902,13 +902,28 @@ def accountant_page():
         r["draft_error"] = d["error"] if d else None
 
     drafts_progress = None
+    send_progress = None
+    drafts_ready_to_send = 0
+    drafts_already_sent = 0
     if period:
         drafts_progress, _ = db.get_cache(f"drafts_progress_{period['id']}")
+        send_progress, _ = db.get_cache("drafts_send_progress")
+        # Only show send progress if it pertains to THIS period
+        if send_progress and send_progress.get("pay_period_id") != period["id"]:
+            send_progress = None
+        drafts_ready_to_send = sum(
+            1 for d in drafts
+            if d.get("status") == "created" and d.get("gmail_draft_id")
+        )
+        drafts_already_sent = sum(1 for d in drafts if d.get("status") == "sent")
 
     return render_template("payroll_accountant.html",
         iso_week=iso_week,
         week_label=label,
         drafts_progress=drafts_progress,
+        send_progress=send_progress,
+        drafts_ready_to_send=drafts_ready_to_send,
+        drafts_already_sent=drafts_already_sent,
         **vm,
     )
 
@@ -1167,6 +1182,62 @@ def accountant_generate_drafts():
     flash(
         "Draft generation started in the background. This typically takes "
         "30-60 seconds. Refresh this page to watch progress.",
+        "info",
+    )
+    return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
+
+
+@bp.route("/payroll/accountant/send-drafts", methods=["POST"])
+def accountant_send_drafts():
+    """Send every payslip draft that's been created for a pay period.
+    Runs in a background thread; status lands in cache_metadata['drafts_send_progress'].
+
+    This is the 'commit' step — drafts that send become real emails to
+    employees. Skips drafts that are already 'sent' (idempotent).
+    """
+    import threading
+    from datetime import datetime as _dt
+
+    period_id = int(request.form.get("pay_period_id", 0) or 0)
+    if not period_id:
+        flash("Missing pay period.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+
+    period = db.get_pay_period_by_id(period_id)
+    if not period:
+        flash("Pay period not found.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+
+    drafts = db.get_email_drafts(period_id)
+    eligible = [d for d in drafts
+                if d.get("status") == "created" and d.get("gmail_draft_id")]
+    if not eligible:
+        flash("No drafts to send — generate them first.", "warning")
+        return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
+
+    db.set_cache("drafts_send_progress", {
+        "pay_period_id": period_id,
+        "status": "running",
+        "total": len(eligible),
+        "sent": 0, "failed": 0, "skipped": 0,
+        "started_at": _dt.now().isoformat(),
+    })
+
+    def _run():
+        try:
+            payroll_drafts.send_drafts_for_period(period_id)
+        except Exception as e:
+            db.set_cache("drafts_send_progress", {
+                "pay_period_id": period_id,
+                "status": "failed",
+                "error": str(e),
+                "ts": _dt.now().isoformat(),
+            })
+            print(f"[drafts] send job failed: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    flash(
+        f"Sending {len(eligible)} draft(s) in the background. Refresh to watch progress.",
         "info",
     )
     return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
