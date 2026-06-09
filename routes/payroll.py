@@ -250,12 +250,130 @@ def _load_week_payroll(year, week, iso_week, start_date, end_date):
     return payroll, pto_taken
 
 
+def _detect_boundary_shifts_arriving_into_week(year, week, start_date):
+    """Return shifts that clocked-in on the Sunday BEFORE this week's
+    Monday but bled into Monday morning. Under our workday rule these
+    are filed under last week — surfacing them tells the user why
+    Square's export and our payroll might differ at the week edges.
+
+    Returns list of {name, start_at_local, end_at_local, hours} dicts.
+    """
+    from datetime import datetime as _dt, timedelta as _td
+    try:
+        from zoneinfo import ZoneInfo
+        DUBLIN = ZoneInfo("Europe/Dublin")
+    except Exception:
+        DUBLIN = None
+
+    # Pull last week's timecards
+    if week > 1:
+        last_year, last_week = year, week - 1
+    else:
+        last_year, last_week = year - 1, 52
+    last_start, last_end = square_client.week_dates(last_year, last_week)
+
+    try:
+        last_tcs = square_client.get_timecards(last_start, last_end)
+        members = {m["id"]: m for m in square_client.get_team_members()}
+    except Exception:
+        return []
+
+    this_monday = _dt.strptime(start_date, "%Y-%m-%d").date()
+    results = []
+    for tc in last_tcs:
+        end_iso = tc.get("end_at")
+        if not end_iso:
+            continue
+        try:
+            end_dt = _dt.fromisoformat(end_iso)
+            if DUBLIN:
+                end_dt = end_dt.astimezone(DUBLIN)
+            if end_dt.date() == this_monday:
+                start_iso = tc.get("start_at")
+                start_dt = _dt.fromisoformat(start_iso)
+                if DUBLIN:
+                    start_dt = start_dt.astimezone(DUBLIN)
+                m = members.get(tc["team_member_id"], {})
+                name = f"{m.get('given_name','')} {m.get('family_name','')}".strip() or "(unknown)"
+                hrs = float(tc.get("regular_hours") or 0) + float(tc.get("overtime_hours") or 0)
+                results.append({
+                    "name": name,
+                    "start_at_local": start_dt.strftime("%a %-I:%M %p"),
+                    "end_at_local": end_dt.strftime("%a %-I:%M %p"),
+                    "hours": round(hrs, 2),
+                })
+        except Exception:
+            continue
+    return results
+
+
+def _detect_boundary_shifts_leaving_into_next(start_date, end_date):
+    """Return shifts that clocked-in this week's Sunday but bled into
+    next week's Monday — these stay in THIS week's payroll under our
+    workday rule, but won't appear in Square's CSV for next week.
+    Symmetric counterpart to _arriving_into_week.
+    """
+    from datetime import datetime as _dt, timedelta as _td
+    try:
+        from zoneinfo import ZoneInfo
+        DUBLIN = ZoneInfo("Europe/Dublin")
+    except Exception:
+        DUBLIN = None
+
+    try:
+        tcs = square_client.get_timecards(start_date, end_date)
+        members = {m["id"]: m for m in square_client.get_team_members()}
+    except Exception:
+        return []
+
+    next_monday = _dt.strptime(end_date, "%Y-%m-%d").date() + _td(days=1)
+    results = []
+    for tc in tcs:
+        end_iso = tc.get("end_at")
+        if not end_iso:
+            continue
+        try:
+            end_dt = _dt.fromisoformat(end_iso)
+            if DUBLIN:
+                end_dt = end_dt.astimezone(DUBLIN)
+            if end_dt.date() == next_monday:
+                start_iso = tc.get("start_at")
+                start_dt = _dt.fromisoformat(start_iso)
+                if DUBLIN:
+                    start_dt = start_dt.astimezone(DUBLIN)
+                m = members.get(tc["team_member_id"], {})
+                name = f"{m.get('given_name','')} {m.get('family_name','')}".strip() or "(unknown)"
+                hrs = float(tc.get("regular_hours") or 0) + float(tc.get("overtime_hours") or 0)
+                results.append({
+                    "name": name,
+                    "start_at_local": start_dt.strftime("%a %-I:%M %p"),
+                    "end_at_local": end_dt.strftime("%a %-I:%M %p"),
+                    "hours": round(hrs, 2),
+                })
+        except Exception:
+            continue
+    return results
+
+
 @bp.route("/payroll")
 def payroll_page():
     year, week, start_date, end_date, label, iso_week = _get_week_params()
 
     try:
         payroll, pto_taken = _load_week_payroll(year, week, iso_week, start_date, end_date)
+
+        # Detect "boundary shifts" — shifts whose clock-IN was on the
+        # Sunday before this week, but whose clock-OUT bled into Mon.
+        # These shifts belong to LAST week per our workday rule (and per
+        # each employee's Team app view), so they'll show up in last
+        # week's payroll, not this one. Surface that so it isn't
+        # mysterious when totals don't match Square's CSV export.
+        boundary_shifts_in = _detect_boundary_shifts_arriving_into_week(
+            year, week, start_date,
+        )
+        boundary_shifts_out = _detect_boundary_shifts_leaving_into_next(
+            start_date, end_date,
+        )
 
         # Flag employees who have timecards/PTO this week but no row in
         # Settings → Employees. They'd default to "Staff" with no
@@ -304,6 +422,8 @@ def payroll_page():
     except Exception as e:
         payroll = []
         uncategorized = []
+        boundary_shifts_in = []
+        boundary_shifts_out = []
         total_hours = total_gross = total_tips = total_cleaning = total_bonus = grand_total = total_labor = Decimal("0")
         total_holiday_hours = 0.0
         um_total = mgmt_total = staff_total = Decimal("0")
@@ -313,9 +433,18 @@ def payroll_page():
         net_total_accountant = 0.0
         error = str(e)
 
+    # Build prev-week URL so the boundary banner can link back to it.
+    if week > 1:
+        prev_iso_week = f"{year}-W{week-1:02d}"
+    else:
+        prev_iso_week = f"{year-1}-W52"
+
     return render_template("payroll.html",
         payroll=payroll,
         uncategorized=uncategorized,
+        boundary_in=boundary_shifts_in,
+        boundary_out=boundary_shifts_out,
+        prev_iso_week=prev_iso_week,
         week_label=label,
         iso_week=iso_week,
         start_date=start_date if not error else "",

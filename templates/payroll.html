@@ -248,6 +248,36 @@
 </script>
 {% endif %}
 
+{% if boundary_in or boundary_out %}
+<div class="alert alert-info py-2 small">
+    <i class="bi bi-info-circle me-1"></i>
+    <strong>Boundary shifts.</strong>
+    {% if boundary_in %}
+    <span class="d-block d-md-inline">
+        <strong>{{ boundary_in|length }}</strong> shift{{ '' if boundary_in|length == 1 else 's' }}
+        starting last Sunday rolled into Monday morning — filed under
+        <a href="/payroll?week={{ prev_iso_week }}">{{ prev_iso_week }}</a>, not this week.
+        <span class="text-muted">
+            ({% for b in boundary_in %}{{ b.name }} {{ b.start_at_local }}&rarr;{{ b.end_at_local }} · {{ b.hours }}h{% if not loop.last %}; {% endif %}{% endfor %})
+        </span>
+    </span>
+    {% endif %}
+    {% if boundary_out %}
+    <span class="d-block">
+        <strong>{{ boundary_out|length }}</strong> shift{{ '' if boundary_out|length == 1 else 's' }}
+        from this Sunday will bleed into next Monday — kept in <strong>this</strong> week.
+        <span class="text-muted">
+            ({% for b in boundary_out %}{{ b.name }} {{ b.start_at_local }}&rarr;{{ b.end_at_local }} · {{ b.hours }}h{% if not loop.last %}; {% endif %}{% endfor %})
+        </span>
+    </span>
+    {% endif %}
+    <div class="text-muted mt-1">
+        Square's CSV export uses a different rule and may show these in
+        a different week — this isn't a discrepancy in your data.
+    </div>
+</div>
+{% endif %}
+
 <form method="POST" action="/payroll/tips">
 <input type="hidden" name="iso_week" value="{{ iso_week }}">
 <div class="card">
