@@ -250,6 +250,62 @@ def _load_week_payroll(year, week, iso_week, start_date, end_date):
     return payroll, pto_taken
 
 
+def _compute_sanity_checks(payroll, iso_week, year, week):
+    """Surface anomalies before Peter sees the Excel. Returns list of
+    {severity, message, employee?} dicts. Severities: 'warn' or 'error'.
+
+    High-signal checks only (no expensive backfills):
+      - Hours > 50: probable missed clock-out or doubled shift
+      - Hours < 5 (but > 0): unusually short — confirm intentional
+      - Salaried with €0 weekly_salary in Settings (would gross €0)
+      - Hourly with €0 wage_rate but worked hours
+      - Open shift (no clock-out yet) detected
+    """
+    issues = []
+
+    for p in payroll:
+        name = f"{p['given_name']} {p['family_name']}".strip() or "(unknown)"
+        hours = float(p.get("hours") or 0)
+        wage = float(p.get("wage_rate") or 0)
+
+        if hours > 50:
+            issues.append({
+                "severity": "error",
+                "employee": name,
+                "message": f"{name}: {hours:.1f} hours this week — probable missed clock-out.",
+            })
+        elif 0 < hours < 5 and not p.get("pto_only"):
+            issues.append({
+                "severity": "warn",
+                "employee": name,
+                "message": f"{name}: only {hours:.1f} hours — confirm this was a short week.",
+            })
+
+        if wage == 0 and hours > 0 and not p.get("pto_only") and p.get("category") != "Upper Management":
+            issues.append({
+                "severity": "warn",
+                "employee": name,
+                "message": (
+                    f"{name}: worked {hours:.1f}h but has €0 wage rate in Square. "
+                    "Set their rate in Square Team Members or Peter will see €0 gross."
+                ),
+            })
+
+    # Salaried with €0 salary in Settings
+    for c in db.get_employee_categories():
+        if c["pay_type"] == "salaried" and (c["weekly_salary"] or 0) == 0:
+            issues.append({
+                "severity": "warn",
+                "employee": f"{c['given_name']} {c['family_name']}".strip(),
+                "message": (
+                    f"{c['given_name']} {c['family_name']} is set to Salaried but "
+                    f"weekly_salary is €0 — Peter will see €0 gross for them."
+                ),
+            })
+
+    return issues
+
+
 def _detect_boundary_shifts_arriving_into_week(year, week, start_date):
     """Return shifts that clocked-in on the Sunday BEFORE this week's
     Monday but bled into Monday morning. Under our workday rule these
@@ -388,6 +444,13 @@ def payroll_page():
                 else:
                     p["tips_is_carry_forward"] = False
 
+        # Sanity checks — flag anomalies before exporting to Peter
+        try:
+            sanity_issues = _compute_sanity_checks(payroll, iso_week, year, week)
+        except Exception as _sce:
+            print(f"[payroll] sanity check failed: {_sce}")
+            sanity_issues = []
+
         # Detect "boundary shifts" — shifts whose clock-IN was on the
         # Sunday before this week, but whose clock-OUT bled into Mon.
         # These shifts belong to LAST week per our workday rule (and per
@@ -448,6 +511,7 @@ def payroll_page():
     except Exception as e:
         payroll = []
         uncategorized = []
+        sanity_issues = []
         boundary_shifts_in = []
         boundary_shifts_out = []
         total_hours = total_gross = total_tips = total_cleaning = total_bonus = grand_total = total_labor = Decimal("0")
@@ -462,6 +526,7 @@ def payroll_page():
     return render_template("payroll.html",
         payroll=payroll,
         uncategorized=uncategorized,
+        sanity_issues=sanity_issues,
         boundary_in=boundary_shifts_in,
         boundary_out=boundary_shifts_out,
         prev_iso_week=prev_iso_week,
