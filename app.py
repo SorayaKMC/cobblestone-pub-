@@ -132,6 +132,50 @@ def eu_month(value):
     return s
 
 
+def time_ago(value):
+    """Render a UTC ISO timestamp as a compact 'how long ago' string,
+    e.g. '3h ago', '2d ago', '5w ago'. For the bookings list so we can
+    eyeball how long an inquiry has been sitting unanswered.
+
+    Returns '' for empty/null values.
+    """
+    from datetime import datetime as _dt
+    if value in (None, "", "None"):
+        return ""
+    try:
+        if isinstance(value, _dt):
+            ts = value
+        else:
+            s = str(value).strip().replace("T", " ")
+            # Common shapes: '2026-05-12 14:30:00', '2026-05-12 14:30:00.123'
+            ts = _dt.fromisoformat(s[:19])
+    except Exception:
+        return ""
+    delta = _dt.now() - ts
+    secs = int(delta.total_seconds())
+    if secs < 0:
+        return "just now"
+    if secs < 60:
+        return f"{secs}s ago"
+    mins = secs // 60
+    if mins < 60:
+        return f"{mins}m ago"
+    hours = mins // 60
+    if hours < 24:
+        return f"{hours}h ago"
+    days = hours // 24
+    if days < 14:
+        return f"{days}d ago"
+    weeks = days // 7
+    if weeks < 9:
+        return f"{weeks}w ago"
+    months = days // 30
+    if months < 18:
+        return f"{months}mo ago"
+    years = days // 365
+    return f"{years}y ago"
+
+
 def _gmail_poll_loop():
     """Background thread: poll invoice@cobblestonepub.ie every 30 minutes.
 
@@ -350,6 +394,7 @@ def create_app():
     app.jinja_env.filters["eu_month"] = eu_month
     app.jinja_env.filters["pretty_date"] = pretty_date
     app.jinja_env.filters["day_name"] = day_name
+    app.jinja_env.filters["time_ago"] = time_ago
 
     # Initialize database
     with app.app_context():
