@@ -415,34 +415,8 @@ def _detect_boundary_shifts_leaving_into_next(start_date, end_date):
 def payroll_page():
     year, week, start_date, end_date, label, iso_week = _get_week_params()
 
-    # Pre-compute last-week ISO label for tips carry-forward + boundary link
-    if week > 1:
-        prev_iso_week = f"{year}-W{week-1:02d}"
-    else:
-        prev_iso_week = f"{year-1}-W52"
-
     try:
         payroll, pto_taken = _load_week_payroll(year, week, iso_week, start_date, end_date)
-
-        # Tips carry-forward: if an employee has no tips row entered for
-        # THIS week yet, suggest last week's amount as a pre-fill.
-        # The actual save still happens on form submit so the user keeps
-        # full control — this just reduces re-typing the common case.
-        this_week_actual_tips = db.get_weekly_tips(iso_week)
-        last_week_tips = db.get_weekly_tips(prev_iso_week)
-        for p in payroll:
-            tm_id = p["team_member_id"]
-            if tm_id in this_week_actual_tips:
-                p["tips_is_carry_forward"] = False
-            else:
-                cf = float(last_week_tips.get(tm_id) or 0)
-                if cf > 0:
-                    p["tips"] = Decimal(str(cf))
-                    p["total"] = p["total"] + Decimal(str(cf))
-                    p["declared_cash_tips"] = Decimal(str(cf))
-                    p["tips_is_carry_forward"] = True
-                else:
-                    p["tips_is_carry_forward"] = False
 
         # Sanity checks — flag anomalies before exporting to Peter
         try:
@@ -522,6 +496,12 @@ def payroll_page():
         has_accountant_data = False
         net_total_accountant = 0.0
         error = str(e)
+
+    # Build prev-week URL so the boundary banner can link back to it.
+    if week > 1:
+        prev_iso_week = f"{year}-W{week-1:02d}"
+    else:
+        prev_iso_week = f"{year-1}-W52"
 
     return render_template("payroll.html",
         payroll=payroll,
