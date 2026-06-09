@@ -45,6 +45,10 @@
         <a href="/payroll/download/raw?week={{ iso_week }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-spreadsheet me-1"></i>Raw Timecards
         </a>
+        <a href="/payroll/download/shifts-csv?week={{ iso_week }}" class="btn btn-outline-secondary btn-sm"
+           title="Shift-by-shift CSV matching the dashboard's boundary rule (shifts bucketed by clock-in date, same as each employee's Team app).">
+            <i class="bi bi-filetype-csv me-1"></i>Shifts CSV (matches dashboard)
+        </a>
         <form method="POST" action="/payroll/import-tips" class="d-inline"
               onsubmit="return confirm('Import historical tips from the Tips sheet 2026 spreadsheet? Safe to run multiple times.');">
             <button type="submit" class="btn btn-outline-success btn-sm">

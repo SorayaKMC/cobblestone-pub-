@@ -999,6 +999,133 @@ def accountant_payslip(period_id, ref):
     )
 
 
+@bp.route("/payroll/download/shifts-csv")
+def download_shifts_csv():
+    """Download a shift-by-shift CSV for the selected week, using the SAME
+    boundary rule as our dashboard and each employee's Square Team app:
+    a shift is bucketed by its CLOCK-IN date (`workday`) in Dublin time.
+
+    This is intentionally different from Square's built-in 'Shifts Export'
+    CSV, which uses an any-overlap rule and includes shifts that started
+    in the prior week if they clocked out in this one. Use ours when
+    reconciling against the dashboard or against an employee's Team app
+    weekly totals.
+    """
+    import csv
+    from io import StringIO, BytesIO
+    from datetime import datetime as _dt
+
+    try:
+        from zoneinfo import ZoneInfo
+        DUBLIN = ZoneInfo("Europe/Dublin")
+    except Exception:
+        DUBLIN = None
+
+    year, week, start_date, end_date, label, iso_week = _get_week_params()
+
+    LOCATION_NAMES = {
+        "LVTMD7JYHNV9E": "BACK ROOM",
+        "L72Q03M0KGGFR": "MAIN BAR",
+        "LDMS9S19E3ZJ6": "OUTSIDE",
+    }
+
+    try:
+        timecards = square_client.get_timecards(start_date, end_date)
+        team_members = square_client.get_team_members()
+        members_by_id = {m["id"]: m for m in team_members}
+
+        def to_local(iso_str):
+            if not iso_str:
+                return None
+            d = _dt.fromisoformat(iso_str)
+            return d.astimezone(DUBLIN) if DUBLIN else d
+
+        # Sort by employee family name, then clock-in, mirroring Square's
+        # default sort order so eyeballing it against Square's CSV is easy.
+        def sort_key(tc):
+            m = members_by_id.get(tc["team_member_id"], {})
+            fam = (m.get("family_name") or "").lower()
+            given = (m.get("given_name") or "").lower()
+            return (fam, given, tc.get("start_at") or "")
+        timecards = sorted(timecards, key=sort_key)
+
+        buf = StringIO()
+        writer = csv.writer(buf)
+        writer.writerow([
+            "Team member ID", "First name", "Last name", "Job title", "Location",
+            "Clockin date", "Clockin time", "Clockout date", "Clockout time",
+            "Unpaid break (hrs)", "Regular hours", "Overtime hours",
+            "Doubletime hours", "Total paid hours",
+            "Hourly wage", "Regular labor cost", "Overtime labor cost",
+            "Doubletime labor cost", "Total labor cost",
+            "Declared cash tips",
+        ])
+
+        total_reg = total_ot = total_dt = total_paid = Decimal("0")
+        total_cost = Decimal("0")
+
+        for tc in timecards:
+            tm_id = tc["team_member_id"]
+            member = members_by_id.get(tm_id, {})
+            wage = Decimal(str(member.get("hourly_rate") or 0))
+
+            reg = Decimal(str(tc.get("regular_hours") or 0))
+            ot = Decimal(str(tc.get("overtime_hours") or 0))
+            dt_h = Decimal(str(tc.get("doubletime_hours") or 0))
+            paid = reg + ot + dt_h
+
+            reg_cost = (reg * wage).quantize(Decimal("0.01"))
+            ot_cost = (ot * wage * Decimal("1.5")).quantize(Decimal("0.01"))
+            dt_cost = (dt_h * wage * Decimal("2")).quantize(Decimal("0.01"))
+            line_total = reg_cost + ot_cost + dt_cost
+
+            total_reg += reg
+            total_ot += ot
+            total_dt += dt_h
+            total_paid += paid
+            total_cost += line_total
+
+            cin = to_local(tc.get("start_at"))
+            cout = to_local(tc.get("end_at"))
+
+            unpaid_break_hrs = (
+                Decimal(str(tc.get("break_minutes") or 0)) / Decimal("60")
+            ).quantize(Decimal("0.01"))
+
+            writer.writerow([
+                tm_id,  # Square's internal team-member ID (we don't store Square's "Employee number" field)
+                member.get("given_name") or "",
+                member.get("family_name") or "",
+                member.get("job_title") or "",
+                LOCATION_NAMES.get(tc.get("location_id"), tc.get("location_id") or ""),
+                cin.strftime("%-d/%-m/%y") if cin else "",
+                cin.strftime("%-I:%M:%S %p IST") if cin else "",
+                cout.strftime("%-d/%-m/%y") if cout else "",
+                cout.strftime("%-I:%M:%S %p IST") if cout else "",
+                f"{unpaid_break_hrs}",
+                f"{reg}", f"{ot}", f"{dt_h}", f"{paid}",
+                f"€{wage:.2f}",
+                f"€{reg_cost:.2f}", f"€{ot_cost:.2f}", f"€{dt_cost:.2f}",
+                f"€{line_total:.2f}",
+                f"€{Decimal(str(tc.get('declared_cash_tip') or 0)):.2f}",
+            ])
+
+        writer.writerow([])
+        writer.writerow([
+            "Total", "", "", "", "", "", "", "", "", "",
+            f"{total_reg}", f"{total_ot}", f"{total_dt}", f"{total_paid}",
+            "", "", "", "", f"€{total_cost:.2f}", "",
+        ])
+
+        out = BytesIO(buf.getvalue().encode("utf-8-sig"))  # BOM so Excel reads euro signs cleanly
+        filename = f"Cobblestone_shifts_{start_date}_{end_date}.csv"
+        return send_file(out, download_name=filename, as_attachment=True,
+                         mimetype="text/csv")
+    except Exception as e:
+        flash(f"Shift CSV export failed: {e}", "danger")
+        return redirect(url_for("payroll.payroll_page", week=iso_week))
+
+
 @bp.route("/payroll/download/raw")
 def download_raw():
     year, week, start_date, end_date, label, iso_week = _get_week_params()
