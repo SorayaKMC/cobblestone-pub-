@@ -280,31 +280,63 @@
 {% endif %}
 
 {% if boundary_in or boundary_out %}
-<div class="alert alert-info py-2 small">
-    <i class="bi bi-info-circle me-1"></i>
-    <strong>Boundary shifts.</strong>
-    {% if boundary_in %}
-    <span class="d-block d-md-inline">
-        <strong>{{ boundary_in|length }}</strong> shift{{ '' if boundary_in|length == 1 else 's' }}
-        starting last Sunday rolled into Monday morning — filed under
-        <a href="/payroll?week={{ prev_iso_week }}">{{ prev_iso_week }}</a>, not this week.
-        <span class="text-muted">
-            ({% for b in boundary_in %}{{ b.name }} {{ b.start_at_local }}&rarr;{{ b.end_at_local }} · {{ b.hours }}h{% if not loop.last %}; {% endif %}{% endfor %})
-        </span>
-    </span>
-    {% endif %}
-    {% if boundary_out %}
-    <span class="d-block">
-        <strong>{{ boundary_out|length }}</strong> shift{{ '' if boundary_out|length == 1 else 's' }}
-        from this Sunday will bleed into next Monday — kept in <strong>this</strong> week.
-        <span class="text-muted">
-            ({% for b in boundary_out %}{{ b.name }} {{ b.start_at_local }}&rarr;{{ b.end_at_local }} · {{ b.hours }}h{% if not loop.last %}; {% endif %}{% endfor %})
-        </span>
-    </span>
-    {% endif %}
-    <div class="text-muted mt-1">
-        Square's CSV export uses a different rule and may show these in
-        a different week — this isn't a discrepancy in your data.
+<div class="alert alert-info py-2 mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="small">
+            <i class="bi bi-info-circle me-1"></i>
+            <strong>Boundary shifts</strong> — shifts that crossed the Sun/Mon week edge.
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="document.getElementById('boundary_detail').classList.toggle('d-none');this.querySelector('i').classList.toggle('bi-chevron-down');this.querySelector('i').classList.toggle('bi-chevron-up');">
+            <i class="bi bi-chevron-down"></i> Details
+            ({{ (boundary_in|length) + (boundary_out|length) }})
+        </button>
+    </div>
+
+    <div id="boundary_detail" class="row g-3 mt-1 d-none">
+        {% if boundary_in %}
+        <div class="col-md-6">
+            <div class="small fw-semibold mb-1 text-secondary">
+                <i class="bi bi-arrow-left-circle me-1"></i>
+                Counted in last week
+                (<a href="/payroll?week={{ prev_iso_week }}">{{ prev_iso_week }}</a>)
+            </div>
+            <table class="table table-sm table-borderless mb-0" style="font-size:0.85rem">
+                <tbody>
+                {% for b in boundary_in %}
+                <tr>
+                    <td class="ps-1 pe-2 fw-semibold">{{ b.name }}</td>
+                    <td class="text-muted">{{ b.start_at_local }} &rarr; {{ b.end_at_local }}</td>
+                    <td class="text-end pe-1">{{ b.hours }}h</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        {% if boundary_out %}
+        <div class="col-md-6">
+            <div class="small fw-semibold mb-1 text-secondary">
+                <i class="bi bi-arrow-right-circle me-1"></i>
+                Counted in <strong>this</strong> week (bleeds into next Mon)
+            </div>
+            <table class="table table-sm table-borderless mb-0" style="font-size:0.85rem">
+                <tbody>
+                {% for b in boundary_out %}
+                <tr>
+                    <td class="ps-1 pe-2 fw-semibold">{{ b.name }}</td>
+                    <td class="text-muted">{{ b.start_at_local }} &rarr; {{ b.end_at_local }}</td>
+                    <td class="text-end pe-1">{{ b.hours }}h</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        <div class="col-12 small text-muted mt-1">
+            Square's CSV export uses a different rule and may show these in a
+            different week — this isn't a discrepancy in your data.
+        </div>
     </div>
 </div>
 {% endif %}
