@@ -250,34 +250,18 @@ def _get_week_payroll(year, week):
         members_by_id = {m["id"]: m for m in team_members}
         cats_by_id = {r["team_member_id"]: r for r in categories}
 
-        # Per-shift labor cost summing — each shift's pay rounded to the
-        # cent before summing — matches each employee's Squarepace Team
-        # app and Square's CSV labor-cost column to the cent. See same
-        # logic in routes/payroll.py:_build_payroll_data.
         emp_hours = {}
-        emp_cost = {}
         for tc in timecards:
             tm_id = tc["team_member_id"]
-            emp_hours[tm_id] = emp_hours.get(tm_id, Decimal("0"))
-            emp_cost[tm_id] = emp_cost.get(tm_id, Decimal("0"))
-
-            hrs = tc["regular_hours"] + tc["overtime_hours"] + tc["doubletime_hours"]
-            emp_hours[tm_id] += hrs
-
-            member = members_by_id.get(tm_id, {})
-            wage = member.get("hourly_rate", Decimal("0"))
-            if wage and wage > 0:
-                reg_cost = (tc["regular_hours"] * wage).quantize(Decimal("0.01"))
-                ot_cost = (tc["overtime_hours"] * wage * Decimal("1.5")).quantize(Decimal("0.01"))
-                dt_cost = (tc["doubletime_hours"] * wage * Decimal("2")).quantize(Decimal("0.01"))
-                emp_cost[tm_id] += reg_cost + ot_cost + dt_cost
+            if tm_id not in emp_hours:
+                emp_hours[tm_id] = Decimal("0")
+            emp_hours[tm_id] += tc["regular_hours"] + tc["overtime_hours"] + tc["doubletime_hours"]
 
         # Include salaried employees who don't have timecards
         for cat_row in categories:
             tm_id = cat_row["team_member_id"]
             if tm_id not in emp_hours and cat_row["pay_type"] == "salaried" and cat_row["weekly_salary"] > 0:
                 emp_hours[tm_id] = Decimal("0")
-                emp_cost[tm_id] = Decimal("0")
 
         um_total = mgmt_total = staff_total = Decimal("0")
 
@@ -301,10 +285,12 @@ def _get_week_payroll(year, week):
                 cleaning = Decimal("0")
                 category = "Staff"
 
+            wage_rate = member.get("hourly_rate", Decimal("0"))
+
             if pay_type == "salaried" and weekly_salary > 0:
                 gross = weekly_salary
             else:
-                gross = emp_cost.get(tm_id, Decimal("0"))
+                gross = hours * wage_rate
 
             labor = gross + cleaning
 
