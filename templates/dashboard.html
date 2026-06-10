@@ -135,15 +135,9 @@ html, body{overflow-x:hidden;max-width:100vw}
 
 <div class="sec">
   <div class="sec-lbl">Cobblestone T-Shirt sales</div>
-  <div class="grid2">
-    <div class="box">
-      <div class="ct">Units sold per week</div>
-      <canvas id="c-merch1" height="160"></canvas>
-    </div>
-    <div class="box">
-      <div class="ct">Cumulative revenue (gross)</div>
-      <canvas id="c-merch2" height="160"></canvas>
-    </div>
+  <div class="box">
+    <div class="ct">Units sold per week</div>
+    <canvas id="c-merch1" height="120"></canvas>
   </div>
   <div class="note" style="margin-top:8px">Cobblestone T-Shirt Tee · €{{ tshirt_price }}/unit · {{ tshirt_total_units }} units · €{{ '{:,}'.format(tshirt_total_revenue) }} gross revenue</div>
 </div>
@@ -532,11 +526,10 @@ function drawAll(){
 
   var merchYMax = MERCH.length ? Math.ceil(Math.max.apply(null,MERCH)/10)*10+10 : 10;
   var merchWkLabels = MERCH.map(function(_,i){return "W"+String(i+1).padStart(2,"0");});
-  barChart("c-merch1", 160, merchWkLabels,
+  barChart("c-merch1", 120, merchWkLabels,
     [{data:MERCH, color:MERCH.map(function(v){return v>=40?"#15803d":v>=25?"#3b82f6":v>=15?"#93c5fd":"#c8bfb0";})}],
     merchYMax, function(v){return v+"u";});
 
-  drawMerchCumulative();
   drawBackbar(salesYMax);
 }
 
@@ -644,44 +637,6 @@ function drawBackbar(salesYMax){
   document.getElementById("t-bb").innerHTML = bbH;
 }
 
-function drawMerchCumulative(){
-  var id="c-merch2", h=160;
-  var cv=document.getElementById(id); if(!cv||MERCH.length===0)return;
-  var dpr=window.devicePixelRatio||1;
-  var W=cv.parentElement.offsetWidth||400;
-  cv.width=W*dpr; cv.height=h*dpr; cv.style.width=W+"px"; cv.style.height=h+"px";
-  var ctx=cv.getContext("2d"); ctx.scale(dpr,dpr);
-  var pad={t:10,r:14,b:26,l:48};
-  var CW=W-pad.l-pad.r, CH=h-pad.t-pad.b;
-  var n=MERCH.length;
-  var cum=[], s=0;
-  MERCH.forEach(function(v){s+=v*{{ tshirt_price }}; cum.push(s);});
-  var yMax=Math.ceil(s/1000)*1000 || 1000;
-  ctx.font="9px Georgia"; ctx.textAlign="right"; ctx.fillStyle="#999"; ctx.strokeStyle="#f0ece4"; ctx.lineWidth=1;
-  for(var i=0;i<=4;i++){
-    var y=pad.t+CH-(i/4)*CH;
-    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+CW,y); ctx.stroke();
-    ctx.fillText("\u20ac"+(i/4*yMax/1000).toFixed(1)+"k", pad.l-4, y+4);
-  }
-  ctx.fillStyle="#888"; ctx.textAlign="center"; ctx.font="10px Georgia";
-  var merchWkLabels = MERCH.map(function(_,i){return "W"+String(i+1).padStart(2,"0");});
-  merchWkLabels.forEach(function(wk,i){ctx.fillText(wk,pad.l+(i+0.5)*(CW/n),h-6);});
-  ctx.beginPath();
-  cum.forEach(function(v,i){var cx=pad.l+(i+0.5)*(CW/n); var cy=pad.t+CH-(v/yMax)*CH; i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);});
-  ctx.lineTo(pad.l+(n-0.5)*(CW/n), pad.t+CH);
-  ctx.lineTo(pad.l+0.5*(CW/n), pad.t+CH);
-  ctx.closePath();
-  ctx.fillStyle="rgba(21,128,61,0.12)"; ctx.fill();
-  ctx.beginPath(); ctx.strokeStyle="#15803d"; ctx.lineWidth=2;
-  cum.forEach(function(v,i){var cx=pad.l+(i+0.5)*(CW/n); var cy=pad.t+CH-(v/yMax)*CH; i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);});
-  ctx.stroke();
-  cum.forEach(function(v,i){var cx=pad.l+(i+0.5)*(CW/n); var cy=pad.t+CH-(v/yMax)*CH; ctx.beginPath(); ctx.arc(cx,cy,3,0,2*Math.PI); ctx.fillStyle="#15803d"; ctx.fill();});
-  var lastCx=pad.l+(n-0.5)*(CW/n);
-  var lastCy=pad.t+CH-(s/yMax)*CH;
-  ctx.fillStyle="#15803d"; ctx.textAlign="right"; ctx.font="bold 10px Georgia";
-  ctx.fillText("\u20ac"+(s/1000).toFixed(1)+"k", lastCx-4, lastCy-6);
-}
-
 // ─── KPIs ────────────────────────────────────────────────────────────────────
 var msPct = (PAYROLL_DATA.length && ytdNet>0) ?
   +(PAYROLL_DATA.filter(function(p){return p.wk!=="W01";}).reduce(function(a,p){return a+p.ms;},0)/ytdNet*100).toFixed(1) : 0;
@@ -737,6 +692,21 @@ function renderDailyTable(){
   var gMax=0;
   Object.keys(DAILY).forEach(function(wk){DAILY[wk].forEach(function(v){if(v>gMax)gMax=v;});});
   function heatSt(v){if(!v)return "background:transparent;color:#ddd";var r=v/gMax;if(r>.85)return "background:#166534;color:#bbf7d0;font-weight:500";if(r>.65)return "background:#15803d;color:#dcfce7;font-weight:500";if(r>.45)return "background:#16a34a;color:#f0fdf4";if(r>.30)return "background:#dcfce7;color:#166534";return "background:#f0fdf4;color:#16a34a";}
+  // Per-week total heat (purple). Compute max weekly total first so the
+  // scale is consistent across the full table.
+  var wkTotMax=0;
+  WKS.forEach(function(w){var vals=DAILY[w.wk]; if(!vals)return; var t=vals.reduce(function(a,v){return a+v;},0); if(t>wkTotMax)wkTotMax=t;});
+  function totHeat(v){
+    if(!v||!wkTotMax)return "color:#1a1a1a;font-weight:500";
+    var r=v/wkTotMax;
+    if(r>.85)return "background:#4c1d95;color:#ede9fe;font-weight:600";
+    if(r>.70)return "background:#5b21b6;color:#ede9fe;font-weight:600";
+    if(r>.55)return "background:#6d28d9;color:#f5f3ff;font-weight:500";
+    if(r>.40)return "background:#8b5cf6;color:#f5f3ff;font-weight:500";
+    if(r>.25)return "background:#c4b5fd;color:#4c1d95;font-weight:500";
+    if(r>.10)return "background:#ddd6fe;color:#4c1d95";
+    return "background:#f5f3ff;color:#6d28d9";
+  }
   var dH = '<tr><th class="l">Week</th>'+DAYS.map(function(d){return '<th>'+d+'</th>';}).join('')+'<th>Total</th></tr>';
   var dT={}; DAYS.forEach(function(d){dT[d]=0;});
   var dA={}; DAYS.forEach(function(d){dA[d]=[];});
@@ -745,7 +715,7 @@ function renderDailyTable(){
     var tot=vals.reduce(function(a,v){return a+v;},0);
     dH+='<tr><td class="l"><span class="badge">'+w.wk+'</span><span style="font-size:11px;color:#888">'+w.dates+'</span></td>';
     vals.forEach(function(v,i){dH+='<td style="'+heatSt(v)+'">'+fmt(v)+'</td>'; dT[DAYS[i]]+=v; dA[DAYS[i]].push(v);});
-    dH+='<td style="color:#1a1a1a;font-weight:500">'+fmt(tot)+'</td></tr>';
+    dH+='<td style="'+totHeat(tot)+'">'+fmt(tot)+'</td></tr>';
   });
   var grand = DAYS.reduce(function(a,d){return a+dT[d];},0);
   dH+='<tr class="ttl"><td class="l" style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.1em">Day total</td>'
