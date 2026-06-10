@@ -699,13 +699,13 @@ function renderDailyTable(){
   function totHeat(v){
     if(!v||!wkTotMax)return "color:#1a1a1a;font-weight:500";
     var r=v/wkTotMax;
-    if(r>.85)return "background:#4c1d95;color:#ede9fe;font-weight:600";
-    if(r>.70)return "background:#5b21b6;color:#ede9fe;font-weight:600";
-    if(r>.55)return "background:#6d28d9;color:#f5f3ff;font-weight:500";
-    if(r>.40)return "background:#8b5cf6;color:#f5f3ff;font-weight:500";
-    if(r>.25)return "background:#c4b5fd;color:#4c1d95;font-weight:500";
-    if(r>.10)return "background:#ddd6fe;color:#4c1d95";
-    return "background:#f5f3ff;color:#6d28d9";
+    if(r>.85)return "background:#3b0764;color:#fff;font-weight:700";
+    if(r>.70)return "background:#581c87;color:#fff;font-weight:600";
+    if(r>.55)return "background:#7e22ce;color:#fff;font-weight:600";
+    if(r>.40)return "background:#a855f7;color:#fff;font-weight:500";
+    if(r>.25)return "background:#d8b4fe;color:#3b0764;font-weight:500";
+    if(r>.10)return "background:#f3e8ff;color:#3b0764";
+    return "background:#faf5ff;color:#7e22ce";
   }
   var dH = '<tr><th class="l">Week</th>'+DAYS.map(function(d){return '<th>'+d+'</th>';}).join('')+'<th>Total</th></tr>';
   var dT={}; DAYS.forEach(function(d){dT[d]=0;});
