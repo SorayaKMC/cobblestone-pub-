@@ -1444,7 +1444,10 @@ def download_shifts_csv():
                 cout.strftime("%-d/%-m/%y") if cout else "",
                 cout.strftime("%-I:%M:%S %p IST") if cout else "",
                 f"{unpaid_break_hrs}",
-                f"{reg}", f"{ot}", f"{dt_h}", f"{paid}",
+                f"{reg.quantize(Decimal('0.01'))}",
+                f"{ot.quantize(Decimal('0.01'))}",
+                f"{dt_h.quantize(Decimal('0.01'))}",
+                f"{paid.quantize(Decimal('0.01'))}",
                 f"€{wage:.2f}",
                 f"€{reg_cost:.2f}", f"€{ot_cost:.2f}", f"€{dt_cost:.2f}",
                 f"€{line_total:.2f}",
@@ -1454,7 +1457,10 @@ def download_shifts_csv():
         writer.writerow([])
         writer.writerow([
             "Total", "", "", "", "", "", "", "", "", "",
-            f"{total_reg}", f"{total_ot}", f"{total_dt}", f"{total_paid}",
+            f"{total_reg.quantize(Decimal('0.01'))}",
+            f"{total_ot.quantize(Decimal('0.01'))}",
+            f"{total_dt.quantize(Decimal('0.01'))}",
+            f"{total_paid.quantize(Decimal('0.01'))}",
             "", "", "", "", f"€{total_cost:.2f}", "",
         ])
 

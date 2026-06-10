@@ -343,9 +343,17 @@ def _process_timecard(tc):
         "total_minutes": total_minutes,
         "break_minutes": break_minutes,
         "paid_minutes": paid_minutes,
-        "regular_hours": regular_hours.quantize(Decimal("0.01")),
-        "overtime_hours": overtime_hours.quantize(Decimal("0.01")),
-        "doubletime_hours": doubletime_hours.quantize(Decimal("0.01")),
+        # Keep full Decimal precision per shift so summing across an
+        # employee's week matches Square's headline figure to 0.01h.
+        # Previous behaviour quantised each shift to 2 dp, which made
+        # the sum drift by a few hundredths of an hour — purely cosmetic
+        # since pay always rounds to the same cent, but caused
+        # "26.31 vs 26.32" reconciliation noise against Square's CSV.
+        # Consumers (payroll table, Peter Excel, shifts CSV) still
+        # round at display time.
+        "regular_hours": regular_hours,
+        "overtime_hours": overtime_hours,
+        "doubletime_hours": doubletime_hours,
         "status": tc.get("status", ""),
         "declared_cash_tip": declared_cash_tip,
     }
