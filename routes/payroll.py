@@ -53,43 +53,61 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
     members_by_id = {m["id"]: m for m in team_members}
     cats_by_id = {r["team_member_id"]: r for r in categories}
 
-    # Aggregate timecards per employee (hours only - tips are manual)
+    # Aggregate timecards per employee.
+    #
+    # Hours sum at full Decimal precision (so weekly totals match Square's
+    # headline figure exactly).
+    #
+    # Cost sums PER-SHIFT, each shift rounded to 2 dp before summing — this
+    # matches what Square's CSV labor-cost column shows and, importantly,
+    # what each employee sees in their Squarepace Team app when they
+    # reconcile their paycheck against shifts they worked.
+    def _new_emp_bucket():
+        return {
+            "regular": Decimal("0"),
+            "overtime": Decimal("0"),
+            "doubletime": Decimal("0"),
+            "total": Decimal("0"),
+            "regular_cost": Decimal("0"),
+            "overtime_cost": Decimal("0"),
+            "doubletime_cost": Decimal("0"),
+            "total_cost": Decimal("0"),
+        }
+
     employee_hours = {}
     for tc in timecards:
         tm_id = tc["team_member_id"]
         if tm_id not in employee_hours:
-            employee_hours[tm_id] = {
-                "regular": Decimal("0"),
-                "overtime": Decimal("0"),
-                "doubletime": Decimal("0"),
-                "total": Decimal("0"),
-            }
+            employee_hours[tm_id] = _new_emp_bucket()
 
         employee_hours[tm_id]["regular"] += tc["regular_hours"]
         employee_hours[tm_id]["overtime"] += tc["overtime_hours"]
         employee_hours[tm_id]["doubletime"] += tc["doubletime_hours"]
         employee_hours[tm_id]["total"] += tc["regular_hours"] + tc["overtime_hours"] + tc["doubletime_hours"]
 
+        # Per-shift cost: paid_hours × wage rate from Square, rounded once
+        # per shift to match what employees see in their Team app.
+        member = members_by_id.get(tm_id, {})
+        wage = member.get("hourly_rate", Decimal("0"))
+        if wage and wage > 0:
+            reg_cost = (tc["regular_hours"] * wage).quantize(Decimal("0.01"))
+            ot_cost = (tc["overtime_hours"] * wage * Decimal("1.5")).quantize(Decimal("0.01"))
+            dt_cost = (tc["doubletime_hours"] * wage * Decimal("2")).quantize(Decimal("0.01"))
+            employee_hours[tm_id]["regular_cost"] += reg_cost
+            employee_hours[tm_id]["overtime_cost"] += ot_cost
+            employee_hours[tm_id]["doubletime_cost"] += dt_cost
+            employee_hours[tm_id]["total_cost"] += reg_cost + ot_cost + dt_cost
+
     # Include salaried employees who may not have timecards (e.g. Upper Management)
     for cat_row in categories:
         tm_id = cat_row["team_member_id"]
         if tm_id not in employee_hours and cat_row["pay_type"] == "salaried" and cat_row["weekly_salary"] > 0:
-            employee_hours[tm_id] = {
-                "regular": Decimal("0"),
-                "overtime": Decimal("0"),
-                "doubletime": Decimal("0"),
-                "total": Decimal("0"),
-            }
+            employee_hours[tm_id] = _new_emp_bucket()
 
     # Include anyone who has manual tips/bonus entered (even if no timecards/salary)
     for tm_id in list(manual_tips.keys()) + list(weekly_bonus.keys()):
         if tm_id not in employee_hours:
-            employee_hours[tm_id] = {
-                "regular": Decimal("0"),
-                "overtime": Decimal("0"),
-                "doubletime": Decimal("0"),
-                "total": Decimal("0"),
-            }
+            employee_hours[tm_id] = _new_emp_bucket()
 
     # Build payroll rows
     payroll = []
@@ -113,11 +131,13 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
 
         wage_rate = member.get("hourly_rate", Decimal("0"))
 
-        # Salaried staff: use fixed weekly salary for gross, not hours x rate
+        # Salaried staff: use fixed weekly salary for gross, not hours x rate.
+        # Hourly staff: use the per-shift-summed cost from the timecard loop
+        # above so it matches each employee's Square Team app to the cent.
         if pay_type == "salaried" and weekly_salary > 0:
             gross = weekly_salary
         else:
-            gross = hours["total"] * wage_rate
+            gross = hours["total_cost"]
 
         # Tips and bonus are manually entered (never from Square)
         tips = Decimal(str(manual_tips.get(tm_id, 0) or 0))
@@ -141,9 +161,9 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
             "regular_hours": hours["regular"].quantize(Decimal("0.01")),
             "overtime_hours": hours["overtime"].quantize(Decimal("0.01")),
             "doubletime_hours": hours["doubletime"].quantize(Decimal("0.01")),
-            "regular_cost": (hours["regular"] * wage_rate).quantize(Decimal("0.01")),
-            "overtime_cost": (hours["overtime"] * wage_rate * Decimal("1.5")).quantize(Decimal("0.01")),
-            "doubletime_cost": (hours["doubletime"] * wage_rate * Decimal("2")).quantize(Decimal("0.01")),
+            "regular_cost": hours["regular_cost"].quantize(Decimal("0.01")),
+            "overtime_cost": hours["overtime_cost"].quantize(Decimal("0.01")),
+            "doubletime_cost": hours["doubletime_cost"].quantize(Decimal("0.01")),
             "total_cost": gross.quantize(Decimal("0.01")),
             "transaction_tips": Decimal("0"),
             "declared_cash_tips": tips.quantize(Decimal("0.01")),
