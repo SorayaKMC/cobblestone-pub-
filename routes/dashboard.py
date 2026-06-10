@@ -427,7 +427,9 @@ def _compute_vat(year):
     Derives output VAT by summing net sales per month from the daily breakdown
     already stored in each week's cache entry. Cached for 24 hours.
     """
-    cache_key = f"vat_periods_{year}"
+    # cache key bumped to v2 when the display limit went from 2 → 3 periods,
+    # so stale 2-period caches don't keep hiding P3.
+    cache_key = f"vat_periods_v2_{year}"
     cached, synced_at = db.get_cache(cache_key)
     if cached and synced_at:
         try:

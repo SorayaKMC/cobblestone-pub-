@@ -157,20 +157,9 @@ html, body{overflow-x:hidden;max-width:100vw}
 
 <div class="sec">
   <div class="sec-lbl">Back room (backbar) &amp; Outside sales</div>
-  <div class="grid2">
-    <div class="box">
-      <div class="ct">Back room net sales by week</div>
-      <canvas id="c-bb1" height="180"></canvas>
-    </div>
-    <div class="box">
-      <div class="ct">Three-location split — main bar, back room, outside</div>
-      <canvas id="c-bb2" height="180"></canvas>
-      <div class="lgnd">
-        <span><span class="ldot" style="background:#3b82f6"></span>Main bar</span>
-        <span><span class="ldot" style="background:#8b5cf6"></span>Back room</span>
-        <span><span class="ldot" style="background:#15803d"></span>Outside</span>
-      </div>
-    </div>
+  <div class="box">
+    <div class="ct">Back room net sales by week</div>
+    <canvas id="c-bb1" height="140"></canvas>
   </div>
   <div class="box box-scroll" style="margin-top:12px"><table id="t-bb"></table></div>
 </div>
@@ -605,17 +594,9 @@ function drawBackbar(salesYMax){
   if(bbD.length===0) return;
   var bb1Max=Math.max.apply(null,bbD.map(function(w){return BB[w.wk]||0;}));
   var bb1YMax=Math.ceil(bb1Max/500)*500+500;
-  barChart("c-bb1",180,bbD.map(function(w){return w.wk;}),
+  barChart("c-bb1",140,bbD.map(function(w){return w.wk;}),
     [{data:bbD.map(function(w){return BB[w.wk]||0;}), color:"#8b5cf6"}],
     bb1YMax, function(v){return "\u20ac"+(v/1000).toFixed(1)+"k";});
-
-  stackedBarChart("c-bb2", 180,
-    bbD.map(function(w){return w.wk;}),
-    bbD.map(function(w){return w.n26-(BB[w.wk]||0)-(OUT[w.wk]||0);}),
-    bbD.map(function(w){return BB[w.wk]||0;}),
-    bbD.map(function(w){return OUT[w.wk]||0;}),
-    "#3b82f6","#8b5cf6","#15803d",
-    salesYMax, function(v){return "\u20ac"+(v/1000).toFixed(0)+"k";});
 
   // Backbar table
   var bbH = '<tr><th class="l">Week</th><th class="l">Dates</th><th>Total net</th><th>Back room</th><th>Outside</th><th>Main bar</th><th>BR+Out %</th></tr>';
