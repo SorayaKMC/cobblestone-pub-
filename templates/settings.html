@@ -80,11 +80,16 @@
                                 <td class="text-center">
                                     {% set _n = payslip_counts.get(emp.team_member_id, 0) %}
                                     {% if _n > 0 %}
-                                    <a href="/settings/employees/{{ emp.team_member_id }}/payslips.zip"
-                                       class="btn btn-outline-primary btn-sm"
-                                       title="Download all {{ _n }} payslip{{ '' if _n == 1 else 's' }} as a ZIP">
+                                    <button type="button"
+                                            class="btn btn-outline-primary btn-sm payslip-download-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#payslipDownloadModal"
+                                            data-tm-id="{{ emp.team_member_id }}"
+                                            data-name="{{ emp.given_name }} {{ emp.family_name }}"
+                                            data-count="{{ _n }}"
+                                            title="Download payslips for {{ emp.given_name }} {{ emp.family_name }}">
                                         <i class="bi bi-download me-1"></i>{{ _n }}
-                                    </a>
+                                    </button>
                                     {% else %}
                                     <span class="text-muted small">—</span>
                                     {% endif %}
@@ -99,6 +104,137 @@
                 </form>
             </div>
         </div>
+
+        <!-- Per-employee payslip download modal (shared across all rows) -->
+        <div class="modal fade" id="payslipDownloadModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-download me-2"></i>Download payslips for
+                            <span id="psDlSubject">employee</span>
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted mb-3">
+                            <span id="psDlCount">0</span> payslip(s) on file total.
+                            Choose a date range or grab them all.
+                        </p>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold mb-1">Quick presets</label>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="all">All</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="this-year">This year</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="last-year">Last year</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="last-12">Last 12 weeks</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-preset="last-6">Last 6 weeks</button>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">From (pay date)</label>
+                                <input type="date" id="psDlFrom" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">To (pay date)</label>
+                                <input type="date" id="psDlTo" class="form-control form-control-sm">
+                            </div>
+                        </div>
+                        <div class="small text-muted mt-2">
+                            Leave both blank to include every payslip on file.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <a href="#" id="psDlSubmit" class="btn btn-primary">
+                            <i class="bi bi-download me-1"></i>Download ZIP
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        (function(){
+            const modalEl = document.getElementById('payslipDownloadModal');
+            if (!modalEl) return;
+            const subject = document.getElementById('psDlSubject');
+            const countEl = document.getElementById('psDlCount');
+            const fromEl = document.getElementById('psDlFrom');
+            const toEl = document.getElementById('psDlTo');
+            const submitEl = document.getElementById('psDlSubmit');
+            let currentTmId = '';
+
+            function fmtISO(d) {
+                return d.getFullYear() + '-' +
+                       String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                       String(d.getDate()).padStart(2, '0');
+            }
+
+            // Wire up the row buttons to populate the modal context.
+            document.querySelectorAll('.payslip-download-btn').forEach(btn => {
+                btn.addEventListener('click', function(){
+                    currentTmId = btn.dataset.tmId;
+                    subject.textContent = btn.dataset.name;
+                    countEl.textContent = btn.dataset.count;
+                    fromEl.value = '';
+                    toEl.value = '';
+                    updateLink();
+                });
+            });
+
+            // Preset buttons set the date inputs.
+            document.querySelectorAll('[data-preset]').forEach(b => {
+                b.addEventListener('click', function(){
+                    const today = new Date();
+                    const yr = today.getFullYear();
+                    const preset = b.dataset.preset;
+                    if (preset === 'all') {
+                        fromEl.value = '';
+                        toEl.value = '';
+                    } else if (preset === 'this-year') {
+                        fromEl.value = yr + '-01-01';
+                        toEl.value = yr + '-12-31';
+                    } else if (preset === 'last-year') {
+                        fromEl.value = (yr - 1) + '-01-01';
+                        toEl.value = (yr - 1) + '-12-31';
+                    } else if (preset === 'last-12') {
+                        const d = new Date(today); d.setDate(d.getDate() - 7 * 12);
+                        fromEl.value = fmtISO(d);
+                        toEl.value = fmtISO(today);
+                    } else if (preset === 'last-6') {
+                        const d = new Date(today); d.setDate(d.getDate() - 7 * 6);
+                        fromEl.value = fmtISO(d);
+                        toEl.value = fmtISO(today);
+                    }
+                    updateLink();
+                });
+            });
+
+            fromEl.addEventListener('change', updateLink);
+            toEl.addEventListener('change', updateLink);
+
+            function updateLink() {
+                if (!currentTmId) return;
+                const params = [];
+                if (fromEl.value) params.push('from=' + encodeURIComponent(fromEl.value));
+                if (toEl.value) params.push('to=' + encodeURIComponent(toEl.value));
+                const qs = params.length ? '?' + params.join('&') : '';
+                submitEl.href = '/settings/employees/' + encodeURIComponent(currentTmId) +
+                                '/payslips.zip' + qs;
+            }
+
+            // Close the modal after the download starts so the user can move on.
+            submitEl.addEventListener('click', function(){
+                setTimeout(function(){
+                    bootstrap.Modal.getInstance(modalEl)?.hide();
+                }, 500);
+            });
+        })();
+        </script>
 
         <div class="card mt-4">
             <div class="card-body">

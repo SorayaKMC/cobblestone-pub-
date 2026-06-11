@@ -33,16 +33,31 @@ def _safe_filename_component(s):
 
 @bp.route("/settings/employees/<team_member_id>/payslips.zip")
 def download_employee_payslips(team_member_id):
-    """Bundle every payslip PDF for one employee into a single .zip and
-    return it as a download. Files inside are named with the pay week so
-    they sort chronologically when extracted."""
+    """Bundle payslip PDFs for one employee into a single .zip download.
+    Optional query params ?from=YYYY-MM-DD & ?to=YYYY-MM-DD filter by
+    pay_date inclusive. Files inside the zip are named with the pay
+    week so they sort chronologically when extracted."""
     cat = db.get_employee_category(team_member_id)
     if not cat:
         abort(404)
 
-    payslips = db.get_payslips_for_employee(team_member_id)
+    start_date = (request.args.get("from") or "").strip() or None
+    end_date = (request.args.get("to") or "").strip() or None
+
+    payslips = db.get_payslips_for_employee(
+        team_member_id, start_date=start_date, end_date=end_date,
+    )
     if not payslips:
-        flash(f"No payslips on file for {cat['given_name']} {cat['family_name']}.", "warning")
+        if start_date or end_date:
+            flash(
+                f"No payslips for {cat['given_name']} {cat['family_name']} "
+                f"in that date range.", "warning",
+            )
+        else:
+            flash(
+                f"No payslips on file for {cat['given_name']} {cat['family_name']}.",
+                "warning",
+            )
         return redirect(url_for("settings.settings_page"))
 
     employee_label = _safe_filename_component(
@@ -56,10 +71,19 @@ def download_employee_payslips(team_member_id):
             pdf_filename = f"Payslip_{employee_label}_{week_label}.pdf"
             zf.writestr(pdf_filename, bytes(slip["pdf_blob"]))
 
+    # Include date range in the download filename if filtered
+    range_suffix = ""
+    if start_date and end_date:
+        range_suffix = f"_{start_date}_to_{end_date}"
+    elif start_date:
+        range_suffix = f"_from_{start_date}"
+    elif end_date:
+        range_suffix = f"_to_{end_date}"
+
     buf.seek(0)
     return send_file(
         buf,
-        download_name=f"{employee_label}_payslips.zip",
+        download_name=f"{employee_label}_payslips{range_suffix}.zip",
         as_attachment=True,
         mimetype="application/zip",
     )

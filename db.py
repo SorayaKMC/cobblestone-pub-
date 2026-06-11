@@ -1111,32 +1111,56 @@ def get_payslip_blob(pay_period_id, team_member_id):
     return row
 
 
-def get_payslips_for_employee(team_member_id):
+def get_payslips_for_employee(team_member_id, start_date=None, end_date=None):
     """All payslip PDFs for one employee across every pay period we have,
     most-recent first. Used by the 'Download all payslips' button on the
     Settings → Employees row.
+
+    Optional start_date / end_date (ISO 'YYYY-MM-DD') filter by pay_date
+    inclusive — for pulling 'this year only' or a custom range.
 
     Returns list of Rows: pay_period_id, iso_week, pay_date, period_end,
     week_num, year, raw_name, pdf_blob.
     """
     conn = get_db()
-    rows = conn.execute(
-        """SELECT pp.id           AS pay_period_id,
-                  pp.iso_week     AS iso_week,
-                  pp.pay_date     AS pay_date,
-                  pp.period_end   AS period_end,
-                  pp.week_num     AS week_num,
-                  pp.year         AS year,
-                  ps.raw_name     AS raw_name,
-                  ps.pdf_blob     AS pdf_blob
-           FROM pay_period_payslips ps
-           JOIN pay_periods pp ON pp.id = ps.pay_period_id
-           WHERE ps.team_member_id = ?
-           ORDER BY pp.pay_date DESC, pp.iso_week DESC""",
-        (team_member_id,),
-    ).fetchall()
+    sql = """SELECT pp.id           AS pay_period_id,
+                    pp.iso_week     AS iso_week,
+                    pp.pay_date     AS pay_date,
+                    pp.period_end   AS period_end,
+                    pp.week_num     AS week_num,
+                    pp.year         AS year,
+                    ps.raw_name     AS raw_name,
+                    ps.pdf_blob     AS pdf_blob
+             FROM pay_period_payslips ps
+             JOIN pay_periods pp ON pp.id = ps.pay_period_id
+             WHERE ps.team_member_id = ?"""
+    args = [team_member_id]
+    if start_date:
+        sql += " AND pp.pay_date >= ?"
+        args.append(start_date)
+    if end_date:
+        sql += " AND pp.pay_date <= ?"
+        args.append(end_date)
+    sql += " ORDER BY pp.pay_date DESC, pp.iso_week DESC"
+    rows = conn.execute(sql, args).fetchall()
     conn.close()
     return rows
+
+
+def get_payslip_date_range_for_employee(team_member_id):
+    """Earliest and latest pay_date we have payslips for, used to set
+    sensible default 'from' / 'to' values in the date-range picker.
+    Returns (min_iso, max_iso) — either can be None if no payslips."""
+    conn = get_db()
+    row = conn.execute(
+        """SELECT MIN(pp.pay_date) AS lo, MAX(pp.pay_date) AS hi
+           FROM pay_period_payslips ps
+           JOIN pay_periods pp ON pp.id = ps.pay_period_id
+           WHERE ps.team_member_id = ?""",
+        (team_member_id,),
+    ).fetchone()
+    conn.close()
+    return (row["lo"], row["hi"]) if row else (None, None)
 
 
 def count_payslips_for_employee(team_member_id):
