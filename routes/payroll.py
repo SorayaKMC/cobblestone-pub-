@@ -905,11 +905,13 @@ def accountant_page():
         # Only show send progress if it pertains to THIS period
         if send_progress and send_progress.get("pay_period_id") != period["id"]:
             send_progress = None
+        # NB: drafts are sqlite3.Row objects (no .get) — use bracket
+        # access. .get() on Row raises AttributeError → 500 on page load.
         drafts_ready_to_send = sum(
             1 for d in drafts
-            if d.get("status") == "created" and d.get("gmail_draft_id")
+            if d["status"] == "created" and d["gmail_draft_id"]
         )
-        drafts_already_sent = sum(1 for d in drafts if d.get("status") == "sent")
+        drafts_already_sent = sum(1 for d in drafts if d["status"] == "sent")
 
     return render_template("payroll_accountant.html",
         iso_week=iso_week,
@@ -1203,8 +1205,9 @@ def accountant_send_drafts():
         return redirect(url_for("payroll.accountant_page"))
 
     drafts = db.get_email_drafts(period_id)
+    # sqlite3.Row — bracket access only, no .get()
     eligible = [d for d in drafts
-                if d.get("status") == "created" and d.get("gmail_draft_id")]
+                if d["status"] == "created" and d["gmail_draft_id"]]
     if not eligible:
         flash("No drafts to send — generate them first.", "warning")
         return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))

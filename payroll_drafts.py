@@ -169,8 +169,9 @@ def send_drafts_for_period(pay_period_id):
     Returns dict summary {sent, skipped, failed}.
     """
     drafts = db.get_email_drafts(pay_period_id)
+    # drafts are sqlite3.Row objects — bracket access only, no .get()
     eligible = [d for d in drafts
-                if d.get("status") == "created" and d.get("gmail_draft_id")]
+                if d["status"] == "created" and d["gmail_draft_id"]]
 
     db.set_cache("drafts_send_progress", {
         "pay_period_id": pay_period_id,
