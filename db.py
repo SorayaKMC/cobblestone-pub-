@@ -1111,6 +1111,46 @@ def get_payslip_blob(pay_period_id, team_member_id):
     return row
 
 
+def get_payslips_for_employee(team_member_id):
+    """All payslip PDFs for one employee across every pay period we have,
+    most-recent first. Used by the 'Download all payslips' button on the
+    Settings → Employees row.
+
+    Returns list of Rows: pay_period_id, iso_week, pay_date, period_end,
+    week_num, year, raw_name, pdf_blob.
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT pp.id           AS pay_period_id,
+                  pp.iso_week     AS iso_week,
+                  pp.pay_date     AS pay_date,
+                  pp.period_end   AS period_end,
+                  pp.week_num     AS week_num,
+                  pp.year         AS year,
+                  ps.raw_name     AS raw_name,
+                  ps.pdf_blob     AS pdf_blob
+           FROM pay_period_payslips ps
+           JOIN pay_periods pp ON pp.id = ps.pay_period_id
+           WHERE ps.team_member_id = ?
+           ORDER BY pp.pay_date DESC, pp.iso_week DESC""",
+        (team_member_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def count_payslips_for_employee(team_member_id):
+    """Cheap COUNT query to render a badge in the Settings page without
+    pulling every PDF blob."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM pay_period_payslips WHERE team_member_id = ?",
+        (team_member_id,),
+    ).fetchone()
+    conn.close()
+    return row["n"] if row else 0
+
+
 def get_payslip_blob_by_ref(pay_period_id, ref_no):
     conn = get_db()
     row = conn.execute(
@@ -1531,6 +1571,94 @@ def monthly_vat_totals(year):
     return {r["m"]: {"net": r["net"] or 0, "vat": r["vat"] or 0,
                      "total": r["total"] or 0, "count": r["cnt"]}
             for r in rows}
+
+
+# --- Booking notifications (top-of-page "new note/band update" banner) ──
+#
+# Tracks a single "last seen" audit-row id, stored in cache_metadata.
+# An entry counts as a notification if it's:
+#   • actor='band'                          (band created / edited / uploaded /
+#                                             rebooked / acked info sheet)
+#   • actor='internal' AND action='note'    (staff manually-added note)
+# Other audit entries (email_sent, status changes, system retags, etc.) are
+# treated as noise and never flagged.
+#
+# "Mark all read" sets the seen pointer to MAX(booking_audit.id) at click
+# time, so any subsequent inserts will re-trigger the banner.
+
+NOTIFICATION_SEEN_KEY = "bookings_notifications_seen_audit_id"
+
+
+def _notification_seen_id(conn):
+    row = conn.execute(
+        "SELECT data_json FROM cache_metadata WHERE cache_key = ?",
+        (NOTIFICATION_SEEN_KEY,),
+    ).fetchone()
+    if not row or not row["data_json"]:
+        return 0
+    try:
+        return int(json.loads(row["data_json"]).get("max_id", 0))
+    except (ValueError, TypeError):
+        return 0
+
+
+def get_unread_notifications(limit=50):
+    """Return audit entries since last 'mark all read', newest first.
+
+    Each row has: audit_id, booking_id, actor, action, detail, created_at,
+                  act_name, event_date, status (joined from bookings).
+    """
+    conn = get_db()
+    seen_id = _notification_seen_id(conn)
+    rows = conn.execute(
+        """SELECT a.id AS audit_id, a.booking_id, a.actor, a.action, a.detail,
+                  a.created_at, b.act_name, b.event_date, b.status
+             FROM booking_audit a
+             LEFT JOIN bookings b ON b.id = a.booking_id
+            WHERE a.id > ?
+              AND (a.actor = 'band'
+                   OR (a.actor = 'internal' AND a.action = 'note'))
+            ORDER BY a.id DESC
+            LIMIT ?""",
+        (seen_id, limit),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def count_unread_notifications():
+    """Cheap count for the badge/header — no JOIN, no LIMIT."""
+    conn = get_db()
+    seen_id = _notification_seen_id(conn)
+    row = conn.execute(
+        """SELECT COUNT(*) AS c FROM booking_audit
+            WHERE id > ?
+              AND (actor = 'band'
+                   OR (actor = 'internal' AND action = 'note'))""",
+        (seen_id,),
+    ).fetchone()
+    conn.close()
+    return row["c"] if row else 0
+
+
+def mark_notifications_read():
+    """Set the 'seen' marker to the current MAX(booking_audit.id)."""
+    conn = get_db()
+    max_row = conn.execute("SELECT MAX(id) AS m FROM booking_audit").fetchone()
+    max_id = (max_row["m"] if max_row else 0) or 0
+    conn.execute(
+        """INSERT INTO cache_metadata (cache_key, last_synced_at, data_json)
+                 VALUES (?, ?, ?)
+             ON CONFLICT(cache_key) DO UPDATE SET
+                 last_synced_at=excluded.last_synced_at,
+                 data_json=excluded.data_json""",
+        (NOTIFICATION_SEEN_KEY,
+         datetime.now().isoformat(),
+         json.dumps({"max_id": int(max_id)})),
+    )
+    conn.commit()
+    conn.close()
+    return int(max_id)
 
 
 # --- Cache ---

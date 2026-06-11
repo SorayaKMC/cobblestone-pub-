@@ -28,6 +28,7 @@
                                 <th style="width: 130px">Cleaning (EUR/wk)</th>
                                 <th style="width: 220px">Email</th>
                                 <th style="width: 80px" class="text-center">Former?</th>
+                                <th style="width: 130px" class="text-center">Payslips</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -75,6 +76,18 @@
                                     <input type="checkbox" name="former_{{ emp.team_member_id }}"
                                            class="form-check-input"
                                            {% if not emp.is_active %}checked{% endif %}>
+                                </td>
+                                <td class="text-center">
+                                    {% set _n = payslip_counts.get(emp.team_member_id, 0) %}
+                                    {% if _n > 0 %}
+                                    <a href="/settings/employees/{{ emp.team_member_id }}/payslips.zip"
+                                       class="btn btn-outline-primary btn-sm"
+                                       title="Download all {{ _n }} payslip{{ '' if _n == 1 else 's' }} as a ZIP">
+                                        <i class="bi bi-download me-1"></i>{{ _n }}
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

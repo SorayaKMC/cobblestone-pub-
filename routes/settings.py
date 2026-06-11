@@ -1,4 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, abort
+from io import BytesIO
+import re
+import zipfile
 import db
 import square_client
 
@@ -8,7 +11,58 @@ bp = Blueprint("settings", __name__)
 @bp.route("/settings")
 def settings_page():
     categories = db.get_employee_categories()
-    return render_template("settings.html", employees=categories)
+    # Per-employee payslip counts so each row can show a badge.
+    payslip_counts = {
+        c["team_member_id"]: db.count_payslips_for_employee(c["team_member_id"])
+        for c in categories
+    }
+    return render_template(
+        "settings.html",
+        employees=categories,
+        payslip_counts=payslip_counts,
+    )
+
+
+def _safe_filename_component(s):
+    """Strip characters that confuse filesystems / Content-Disposition."""
+    if not s:
+        return ""
+    s = re.sub(r"[^A-Za-z0-9._\- ]+", "_", s).strip()
+    return s.replace(" ", "_")
+
+
+@bp.route("/settings/employees/<team_member_id>/payslips.zip")
+def download_employee_payslips(team_member_id):
+    """Bundle every payslip PDF for one employee into a single .zip and
+    return it as a download. Files inside are named with the pay week so
+    they sort chronologically when extracted."""
+    cat = db.get_employee_category(team_member_id)
+    if not cat:
+        abort(404)
+
+    payslips = db.get_payslips_for_employee(team_member_id)
+    if not payslips:
+        flash(f"No payslips on file for {cat['given_name']} {cat['family_name']}.", "warning")
+        return redirect(url_for("settings.settings_page"))
+
+    employee_label = _safe_filename_component(
+        f"{cat['given_name']}_{cat['family_name']}"
+    ) or "employee"
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for slip in payslips:
+            week_label = slip["iso_week"] or ""  # e.g. 2026-W22
+            pdf_filename = f"Payslip_{employee_label}_{week_label}.pdf"
+            zf.writestr(pdf_filename, bytes(slip["pdf_blob"]))
+
+    buf.seek(0)
+    return send_file(
+        buf,
+        download_name=f"{employee_label}_payslips.zip",
+        as_attachment=True,
+        mimetype="application/zip",
+    )
 
 
 @bp.route("/settings/categories", methods=["POST"])
