@@ -146,7 +146,11 @@ def _build_mime(to_email, subject, body, attachment_bytes, attachment_filename):
         "Content-Disposition",
         f'attachment; filename="{attachment_filename}"',
     )
-    part.add_header("Content-Type", f'application/pdf; name="{attachment_filename}"')
+    # NB: don't add a second Content-Type header — MIMEBase("application",
+    # "pdf") already sets it. Adding a second one produced duplicate
+    # Content-Type lines in the serialised MIME, which Gmail interpreted
+    # as malformed and silently dropped the attachment. The `name=`
+    # parameter is redundant with Content-Disposition's `filename=` anyway.
     msg.attach(part)
     return msg
 
