@@ -383,7 +383,26 @@ def require_auth(f):
 def create_app():
     app = Flask(__name__)
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "cobblestone-pub-local-app-2026")
-    app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB file upload limit
+    app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25 MB file upload limit (Peter's combined payslip PDFs for 14+ employees can easily exceed 10 MB)
+
+    @app.errorhandler(413)
+    def request_too_large(_e):
+        # Give a clear, actionable message instead of a stack trace.
+        from flask import request as _req
+        return (
+            "<!doctype html><html><head><title>File too large</title>"
+            "<style>body{font-family:Georgia,serif;max-width:560px;margin:60px auto;padding:0 20px;color:#1a1a1a;line-height:1.6}"
+            "h1{color:#b91c1c}a{color:#1d4ed8}</style></head><body>"
+            "<h1>File too large</h1>"
+            "<p>The upload exceeded the 25 MB server limit. Try one of these:</p>"
+            "<ul>"
+            "<li>Compress the PDF first (Preview &rarr; File &rarr; Export &rarr; Reduce File Size).</li>"
+            "<li>Ask Peter to send the gross-to-net and combined payslips as two separate uploads if either one alone fits.</li>"
+            "</ul>"
+            f"<p><a href='{_req.referrer or '/payroll'}'>&larr; Back</a></p>"
+            "</body></html>",
+            413,
+        )
 
     @app.context_processor
     def inject_globals():
