@@ -43,15 +43,19 @@ def download_employee_payslips(team_member_id):
 
     start_date = (request.args.get("from") or "").strip() or None
     end_date = (request.args.get("to") or "").strip() or None
+    start_iso_week = (request.args.get("from_week") or "").strip() or None
+    end_iso_week = (request.args.get("to_week") or "").strip() or None
 
     payslips = db.get_payslips_for_employee(
-        team_member_id, start_date=start_date, end_date=end_date,
+        team_member_id,
+        start_date=start_date, end_date=end_date,
+        start_iso_week=start_iso_week, end_iso_week=end_iso_week,
     )
     if not payslips:
-        if start_date or end_date:
+        if start_date or end_date or start_iso_week or end_iso_week:
             flash(
                 f"No payslips for {cat['given_name']} {cat['family_name']} "
-                f"in that date range.", "warning",
+                f"in that range.", "warning",
             )
         else:
             flash(
@@ -71,9 +75,16 @@ def download_employee_payslips(team_member_id):
             pdf_filename = f"Payslip_{employee_label}_{week_label}.pdf"
             zf.writestr(pdf_filename, bytes(slip["pdf_blob"]))
 
-    # Include date range in the download filename if filtered
+    # Include range in the download filename if filtered, so multiple
+    # downloads for the same person don't overwrite each other.
     range_suffix = ""
-    if start_date and end_date:
+    if start_iso_week and end_iso_week:
+        range_suffix = f"_{start_iso_week}_to_{end_iso_week}"
+    elif start_iso_week:
+        range_suffix = f"_from_{start_iso_week}"
+    elif end_iso_week:
+        range_suffix = f"_to_{end_iso_week}"
+    elif start_date and end_date:
         range_suffix = f"_{start_date}_to_{end_date}"
     elif start_date:
         range_suffix = f"_from_{start_date}"

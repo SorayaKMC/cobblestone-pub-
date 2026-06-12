@@ -1111,13 +1111,17 @@ def get_payslip_blob(pay_period_id, team_member_id):
     return row
 
 
-def get_payslips_for_employee(team_member_id, start_date=None, end_date=None):
+def get_payslips_for_employee(team_member_id, start_date=None, end_date=None,
+                              start_iso_week=None, end_iso_week=None):
     """All payslip PDFs for one employee across every pay period we have,
     most-recent first. Used by the 'Download all payslips' button on the
     Settings → Employees row.
 
-    Optional start_date / end_date (ISO 'YYYY-MM-DD') filter by pay_date
-    inclusive — for pulling 'this year only' or a custom range.
+    Filter options (any subset can be combined):
+      - start_date / end_date: ISO 'YYYY-MM-DD' bracket on pp.pay_date
+      - start_iso_week / end_iso_week: 'YYYY-Www' bracket on pp.iso_week
+        (string comparison works because the format sorts lexically the
+        same as chronologically — 2026-W05 < 2026-W23).
 
     Returns list of Rows: pay_period_id, iso_week, pay_date, period_end,
     week_num, year, raw_name, pdf_blob.
@@ -1141,6 +1145,12 @@ def get_payslips_for_employee(team_member_id, start_date=None, end_date=None):
     if end_date:
         sql += " AND pp.pay_date <= ?"
         args.append(end_date)
+    if start_iso_week:
+        sql += " AND pp.iso_week >= ?"
+        args.append(start_iso_week)
+    if end_iso_week:
+        sql += " AND pp.iso_week <= ?"
+        args.append(end_iso_week)
     sql += " ORDER BY pp.pay_date DESC, pp.iso_week DESC"
     rows = conn.execute(sql, args).fetchall()
     conn.close()
