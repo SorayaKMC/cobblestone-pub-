@@ -129,6 +129,7 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
             "team_member_id": tm_id,
             "given_name": given_name,
             "family_name": family_name,
+            "pay_type": pay_type,  # 'hourly' | 'salaried' — used to skip holiday-pay calc for salaried staff
             "wage_rate": wage_rate.quantize(Decimal("0.01")),
             "gross": gross.quantize(Decimal("0.01")),
             "hours": hours["total"].quantize(Decimal("0.01")),
@@ -232,14 +233,22 @@ def _load_week_payroll(year, week, iso_week, start_date, end_date):
         p["holiday_days"] = pto.get("days", 0.0)
         p.setdefault("pto_only", False)
 
-        # Compute holiday pay = hours x wage; roll it into total_for_labor
-        # so it counts toward Cobblestone's labor cost + labor %.
-        try:
-            wage_dec = Decimal(str(p["wage_rate"]))
-            hrs_dec = Decimal(str(p["holiday_hours"]))
-            hp = (wage_dec * hrs_dec).quantize(Decimal("0.01"))
-        except (ValueError, TypeError, ArithmeticError):
+        # Holiday pay = hours_taken × wage_rate, but ONLY for hourly staff.
+        # Salaried employees (Camille, Nheaca) get their full weekly_salary
+        # regardless of how many days they actually worked — adding holiday
+        # pay on top would double-pay them. Their holiday HOURS still show
+        # on the payslip (so Peter can see they took leave) and their PTO
+        # balance still ticks down (so we keep an accurate vacation
+        # record), but no extra euros get added to gross or labor cost.
+        if p.get("pay_type") == "salaried":
             hp = Decimal("0.00")
+        else:
+            try:
+                wage_dec = Decimal(str(p["wage_rate"]))
+                hrs_dec = Decimal(str(p["holiday_hours"]))
+                hp = (wage_dec * hrs_dec).quantize(Decimal("0.01"))
+            except (ValueError, TypeError, ArithmeticError):
+                hp = Decimal("0.00")
         p["holiday_pay"] = hp
         try:
             current_labor = Decimal(str(p["total_for_labor"]))

@@ -314,6 +314,12 @@ def _get_week_payroll(year, week):
             holiday_hrs = Decimal(str(pto_d.get("hours", 0) or 0))
             if holiday_hrs <= 0 or wage_rate <= 0:
                 continue
+            # Salaried staff already get their full weekly_salary baked
+            # into the labor cost above — adding holiday pay on top would
+            # double-count their PTO weeks. Skip them here (matches the
+            # /payroll page behaviour).
+            if cat_row and cat_row["pay_type"] == "salaried":
+                continue
             holiday_pay = holiday_hrs * wage_rate
             # Uncategorized → default to Staff (matches /payroll page behaviour)
             category = cat_row["category"] if cat_row else "Staff"
