@@ -124,11 +124,11 @@
 
                     <div class="col-md-6">
                         <label class="form-label small mb-1">
-                            Phone <span class="text-muted">(optional)</span>
+                            Phone <span class="text-danger">*</span>
                         </label>
                         <input type="tel" name="contact_phone"
                                class="form-control form-control-sm"
-                               placeholder="+353 87 000 0000"
+                               placeholder="+353 87 000 0000" required
                                value="{{ form_data.get('contact_phone', '') }}">
                     </div>
 

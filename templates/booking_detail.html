@@ -37,12 +37,12 @@
 
         {# Door person at-a-glance — surfaces the dropdown value at the top of the page #}
         {% if booking.door_person == 'none' %}
-            <span class="badge bg-secondary" title="No door person required for this booking">
-                <i class="bi bi-dash-circle me-1"></i>No door person needed
+            <span class="badge bg-primary" title="No door person required for this booking">
+                <i class="bi bi-dash-circle me-1"></i>NO doorperson
             </span>
         {% elif not booking.door_person or booking.door_person == 'tbc' %}
-            <span class="badge bg-warning text-dark" title="Door person not assigned yet">
-                <i class="bi bi-exclamation-triangle-fill me-1"></i>Door person: TBC
+            <span class="badge bg-danger" title="Door person not assigned yet">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>Doorperson needed
             </span>
         {% else %}
             <span class="badge"

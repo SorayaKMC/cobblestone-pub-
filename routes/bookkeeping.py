@@ -287,8 +287,14 @@ def reclassify_invoice_as_statement(invoice_id):
             "notes": f"Reclassified from invoice #{invoice_id}.",
         })
         db.delete_invoice(invoice_id)
-        flash(f"Reclassified as statement. Review under Statements.", "success")
-        return redirect(url_for("bookkeeping.statement_detail", statement_id=statement_id))
+        flash(f"Reclassified as statement. Moved on to next pending invoice.", "success")
+        filters = _filter_args_from_request()
+        next_id = _next_pending_in_filter(invoice_id, filters)
+        if next_id:
+            return redirect(url_for("bookkeeping.edit_invoice", invoice_id=next_id, **{
+                f"filter_{k}": v for k, v in filters.items() if v
+            }))
+        return redirect("/bookkeeping" + _filter_query_string(filters))
     except Exception as e:
         flash(f"Reclassify failed: {e}", "danger")
         return redirect(url_for("bookkeeping.bookkeeping_page"))
@@ -393,18 +399,12 @@ def _filter_query_string(filters):
 
 
 def _next_pending_in_filter(current_invoice_id, filters):
-    """Find the next pending invoice strictly after the currently-edited
-    one (by invoice_date, then id). Returns its id, or None if there's
-    nothing further.
+    """Find the next pending invoice to review — the one with the date
+    closest to today (most recent first), skipping the current invoice.
 
-    The comparison is by date+id rather than 'walk past current in the
-    list', so it works correctly when the current invoice has been
-    approved and is no longer in the pending list.
+    Sorted DESC so the user always lands on the most recent unreviewed
+    invoice rather than wrapping around to the oldest.
     """
-    current_inv = db.get_invoice(current_invoice_id)
-    current_date = (current_inv["invoice_date"] if current_inv else "") or ""
-    current_key = (current_date, current_invoice_id)
-
     rows = db.list_invoices(
         start_date=filters.get("start_date") or None,
         end_date=filters.get("end_date") or None,
@@ -413,19 +413,9 @@ def _next_pending_in_filter(current_invoice_id, filters):
         status="pending",
         limit=500,
     )
-    rows = sorted(rows, key=lambda r: ((r["invoice_date"] or ""), r["id"]))
+    # Most recent first (closest to today)
+    rows = sorted(rows, key=lambda r: ((r["invoice_date"] or ""), r["id"]), reverse=True)
 
-    # First: find a pending strictly after the current one.
-    for r in rows:
-        if r["id"] == current_invoice_id:
-            continue
-        r_key = ((r["invoice_date"] or ""), r["id"])
-        if r_key > current_key:
-            return r["id"]
-
-    # Nothing strictly after — wrap around to the first pending that
-    # isn't the current one (covers the 'current was the last pending'
-    # case but still has earlier ones to clear).
     for r in rows:
         if r["id"] != current_invoice_id:
             return r["id"]

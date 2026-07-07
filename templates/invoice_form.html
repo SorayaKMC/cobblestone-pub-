@@ -210,6 +210,13 @@
         <hr>
         <form method="POST" action="/bookkeeping/{{ invoice.id }}/reclassify-as-statement"
               class="d-inline" onsubmit="return confirm('Reclassify this as a statement? It will be moved out of the invoice list and out of VAT period totals.');">
+            {% if filters %}
+            <input type="hidden" name="filter_start_date" value="{{ filters.start_date }}">
+            <input type="hidden" name="filter_end_date" value="{{ filters.end_date }}">
+            <input type="hidden" name="filter_supplier_id" value="{{ filters.supplier_id }}">
+            <input type="hidden" name="filter_category" value="{{ filters.category }}">
+            <input type="hidden" name="filter_status" value="{{ filters.status }}">
+            {% endif %}
             <button type="submit" class="btn btn-outline-warning btn-sm">
                 <i class="bi bi-arrow-left-right me-1"></i>Actually a Statement
             </button>

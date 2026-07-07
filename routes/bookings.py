@@ -358,10 +358,17 @@ def bookings_list():
         b["id"] for b in db.get_bookings_needing_door_confirmation(days_ahead=7)
     }
 
+    # Top-of-page "new note / band update" banner — newest first, capped at
+    # 50 so the banner stays scannable even after a quiet week.
+    notifications = db.get_unread_notifications(limit=50)
+    notification_count = db.count_unread_notifications()
+
     return render_template(
         "bookings_list.html",
         bookings=bookings,
         counts=counts,
+        notifications=notifications,
+        notification_count=notification_count,
         statuses=STATUSES,
         status_labels=STATUS_LABELS,
         status_badges=STATUS_BADGES,
@@ -381,6 +388,19 @@ def bookings_list():
         residency_event_type=RESIDENCY_EVENT_TYPE,
         legacy_cutoff_date=_legacy_no_door_fee_cutoff(),
     )
+
+
+@bp.route("/bookings/notifications/mark-read", methods=["POST"])
+def mark_notifications_read():
+    """Dismiss the top-of-page 'new note / band update' banner.
+
+    Advances the seen-pointer to MAX(booking_audit.id) at this moment, so
+    any audit row created after the click will re-trigger the banner.
+    """
+    max_id = db.mark_notifications_read()
+    flash(f"Marked {max_id} audit entries as read.", "success")
+    # Bounce back to wherever they were (preserves filters/search).
+    return redirect(session.get("last_bookings_url", url_for("bookings.bookings_list")))
 
 
 @bp.route("/bookings/<int:booking_id>/archive", methods=["POST"])
@@ -1018,6 +1038,10 @@ def _parse_public_form(form):
     if not contact_email or "@" not in contact_email:
         raise ValueError("A valid email address is required.")
 
+    contact_phone = _opt("contact_phone")
+    if not contact_phone:
+        raise ValueError("A phone number is required.")
+
     event_date = _opt("event_date")
     if not event_date:
         raise ValueError("Please select a date on the calendar.")
@@ -1041,7 +1065,7 @@ def _parse_public_form(form):
         "act_name":            act_name,
         "contact_name":        contact_name,
         "contact_email":       contact_email,
-        "contact_phone":       _opt("contact_phone"),
+        "contact_phone":       contact_phone,
         "expected_attendance": None,
         "description":         _opt("description"),
         "media_links":         _opt("media_links"),
@@ -1175,6 +1199,10 @@ def _parse_other_public_form(form):
     if not contact_email or "@" not in contact_email:
         raise ValueError("A valid email address is required.")
 
+    contact_phone = _opt("contact_phone")
+    if not contact_phone:
+        raise ValueError("A phone number is required.")
+
     event_date = _opt("event_date")
     if not event_date:
         raise ValueError("Please pick an event date.")
@@ -1205,7 +1233,7 @@ def _parse_other_public_form(form):
         "act_name":            title,
         "contact_name":        contact_name,
         "contact_email":       contact_email,
-        "contact_phone":       _opt("contact_phone"),
+        "contact_phone":       contact_phone,
         "expected_attendance": _opt_int("expected_attendance"),
         "description":         _opt("description"),
         "media_links":         None,

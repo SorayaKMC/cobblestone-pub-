@@ -48,6 +48,9 @@ FILE_ORDER = [
     "07-settings.md",
     "08-new-manager-guide.md",
     "09-year-end-checklist.md",
+    "11-bookings-manager-sop.md",
+    "12-shane-quick-reference.md",
+    "13-bookings-cheat-sheet.md",
 ]
 
 TITLE_BY_FILE = {
@@ -61,6 +64,9 @@ TITLE_BY_FILE = {
     "07-settings.md": "Settings",
     "08-new-manager-guide.md": "New Manager Onboarding",
     "09-year-end-checklist.md": "Year-End Checklist",
+    "11-bookings-manager-sop.md": "Bookings Manager SOP",
+    "12-shane-quick-reference.md": "Shane Quick Reference",
+    "13-bookings-cheat-sheet.md": "Backroom Bookings Cheat Sheet",
     "README.md": "Cobblestone Pub Docs - Index",
 }
 

@@ -1,26 +1,31 @@
 # Backroom Bookings — Manager SOP
 
-For Tomás, Camille, Nheaca and anyone else using the bookings portal
-day-to-day. Replaces the old spreadsheet workflow as of May 2026.
+For Camille, Nheaca, and anyone else running the bookings portal
+day-to-day. Replaces the old spreadsheet workflow.
 
 If something here doesn't match what you're seeing in the app, ping
 Soraya — the system is still being polished.
 
 ---
 
-## Quick start: the 5 things you'll do most
+## Quick start: the 6 things you'll do most
 
 1. **Triage a new inquiry** → `/bookings`, click into the row,
-   Approve or Decline.
+   Confirm or Cancel.
 2. **Quick Hold a date** that someone texted you about → big "Quick
    Hold" button at top of `/bookings`.
 3. **Send a band their portal link** if they didn't get the auto
    email → on the booking detail page, "Send portal link" action.
 4. **Mark a fee as paid** when cash hits the till → on the booking
    detail page, "Mark venue fee paid" / "Mark door fee paid".
-5. **Publish to Squarespace** → on a confirmed booking, copy the
-   Squarespace block and paste it as a new event on the website.
-   Then tick "Squarespace published".
+5. **Publish to Squarespace** → on a confirmed booking, click
+   **Copy formatted (paste into Text Block)** in the Squarespace
+   Listing card, then paste into a Squarespace Text Block. Set the
+   listing-status dropdown to match.
+6. **Acknowledge band-side changes** → when an amber/pink banner
+   appears at the top of a booking ("Times changed" or "Ticket info
+   changed"), mirror the change to Squarespace and click
+   **Acknowledge** to clear the alert.
 
 Everything else is bonus.
 
@@ -181,19 +186,24 @@ These flip the row out of the "Outstanding fees" KPI tile.
 
 When a gig is confirmed and ready to go on the website:
 
-1. Open the booking
-2. Scroll to the "Squarespace block" panel
-3. Click **Copy Squarespace block** — copies a pre-formatted text
-   chunk to your clipboard
-4. Open Squarespace → Events → New Event → paste it in
-5. Back in the app, set the **Squarespace listing** dropdown:
-   - **Listed — info pending** — if you've created the event but
-     are still waiting on the band for the ticket link, poster, or
-     other final details
-   - **Listed — complete** — when the event is fully published with
-     everything in place
-
-The dropdown saves on change (no extra click). Three-state flow:
+1. Open the booking. Scroll to the **Squarespace Listing** card
+   (only appears on confirmed bookings that aren't marked
+   internal-only — see "Internal-only events" below).
+2. The card shows a live preview of how the listing will render
+   (H2 act name, H3 support act, description paragraphs, links,
+   bold Doors / Gig / Ticket lines).
+3. Click **Copy formatted (paste into Text Block)**. This writes
+   rich-text HTML to your clipboard.
+4. In Squarespace, add a **Text Block** to the event page (NOT a
+   Code Block — Text Blocks inherit your site's typography). Paste.
+   The H2 / H3 / bold / links all come through with your existing
+   site styles.
+5. If the band gave a video URL in the description, add a separate
+   Squarespace **Video Block** above the text — Text Blocks can't
+   render iframes/embeds. There's an inline reminder in the card
+   when a video URL is detected.
+6. Back in the app, set the **Squarespace listing** dropdown in the
+   Fees & Listing card:
 
 | State | When |
 |---|---|
@@ -201,19 +211,32 @@ The dropdown saves on change (no extra click). Three-state flow:
 | **Listed — info pending** | On the site but missing ticket link / poster / final info |
 | **Listed — complete** | Fully published, nothing missing |
 
-The two intermediate states each have their own KPI tile so you can
-chase the gaps weekly without losing track.
+The dropdown saves on change. The two intermediate states each have
+their own KPI tile so you can chase the gaps weekly without losing
+track.
+
+There's also a plain-text fallback (collapsible "Plain-text version"
+section) — only useful if you're pasting into a non-Squarespace
+destination.
 
 ### Assign a door person
 
 On the booking detail, the Door Person field has options:
-- `pub` — the Cobblestone provides one (€50)
-- `own` — band brings their own
-- `tbc` — to be confirmed
-- `none` — not needed
+- `pub` — Cobblestone provides one, €50 door fee charged. Auto-generates a Square payment link the band can use.
+- `pub_no_fee` — Cobblestone provides one, no fee (residencies, special arrangements).
+- `own` — band brings their own.
+- `tbc` — to be confirmed.
+- `none` — not needed.
 
-Confirmed gigs within 7 days with no door person set show a
-warning badge in the bookings list.
+The booking detail page shows a coloured badge at the top of the
+header so you can see the current arrangement at a glance.
+
+Confirmed gigs within 7 days with no door person set show a yellow
+**Door person TBC** warning badge on the bookings list.
+
+Confirmed gigs where the **pub** is providing (either `pub` or
+`pub_no_fee`) show a blue **Doorperson needed** badge on the list
+— useful for scanning staffing needs across the week.
 
 ### Send a custom message to the band
 
@@ -298,6 +321,97 @@ Jazz Coop booking carries a note:
 When confirming a Sunday-evening booking on a Jazz Coop date,
 add a note to that booking's description so the band knows about
 the 6pm load-in cutoff.
+
+### What bands can update themselves (via their portal)
+
+Each booking has a band-facing portal at `/book/<token>`. As of
+May 2026 the band can update three things post-confirmation:
+
+| Field | Why it matters |
+|---|---|
+| **Description** | Bio / lineup / blurb for the public listing |
+| **Door + gig (start) times** | Set times can shift after confirmation — they often don't have them locked when they request the date |
+| **Ticket info** — type, price, link | Bands often don't have the Eventbrite URL or final price at the moment they request the date |
+
+What they **can't** change: the event date, the venue, the contact
+details, or anything financial. Date changes still come through us.
+
+All band-side edits write to `booking_audit` (visible at the bottom
+of the booking detail page) so there's always a record.
+
+### Acknowledging band-side changes
+
+When a band updates their times or ticket info, an alert surfaces in
+two places on your side:
+
+- A **coloured banner** at the top of the booking detail page
+  showing old → new values.
+- A matching **badge** on the row in the bookings list
+  (⏰ Times changed in amber, 🎟️ Ticket info changed in pink).
+
+For **time changes** an email also fires to
+`cobblestonedublin@gmail.com` — these are higher-urgency since the
+gig is usually imminent.
+
+Workflow when one of these appears:
+
+1. Open the booking from the badge.
+2. Read the banner — it shows you the current values inline.
+3. Mirror the change to Squarespace (and the Google Calendar event
+   if it's a time change — but the calendar updates automatically
+   for confirmed bookings, so that's already done).
+4. Click **Acknowledge** on the banner. Banner + badge clear, audit
+   log records the acknowledgment.
+
+### Info sheet & tech spec acknowledgment
+
+The portal's confirmation checklist asks the band to confirm they've
+read the **Info Sheet** (venue info, load-in details) and **Tech
+Spec** (PA, monitors, stage layout) PDFs.
+
+Both PDFs stay available on their portal *after* acknowledgment too
+— previously the buttons disappeared once acked, but bands kept
+asking for the links so they're now permanently visible. After
+acking, a small "Acknowledged YYYY-MM-DD" note appears beside the
+heading and the helper text changes to "always available here, open
+any time."
+
+You'll see the acked / not-acked status on the booking detail
+page's checklist column.
+
+### Internal-only events
+
+Some events shouldn't appear on Squarespace at all — private hires,
+rehearsals, filming sessions, mate-of-the-pub one-offs. Tick
+**"Don't list on website (internal only)"** in the Booking Details
+form and click **Save Changes**.
+
+What that does:
+- Hides the Squarespace Listing card (rich-text generator) on the
+  detail page.
+- Replaces the Squarespace status dropdown with a muted "Internal
+  only" indicator.
+- Swaps the row badge on `/bookings` to a grey **Internal only**
+  pill instead of one of the pink/orange/teal listing-status
+  badges.
+- Excludes the booking from the "Not on Squarespace" and "Listing
+  info pending" KPI tile counts.
+
+Untick to bring it back into the listing workflow at any time.
+
+### Weekly run sheet (printable)
+
+`/bookings/week-sheet` — printable summary of the week's confirmed
+gigs for whoever's working the door / FOH.
+
+One card per gig with everything operationally relevant: act +
+support, doors / gig / end, door person, fee status (paid/unpaid
+pills), ticketing, band contact + phone, notes. **Prev / This week
+/ Next week** buttons; **Print** button hides the sidebar for clean
+A4 output. Cards don't split across page breaks.
+
+Quick workflow: print every Monday and stick it behind the bar so
+the team can glance at it through the week.
 
 ### Squarespace listing — 3-state dropdown
 
@@ -409,6 +523,7 @@ Shane (`+353 85 175 8254`).
 |---|---|
 | Bookings tracker | `/bookings` |
 | Calendar view | `/bookings/calendar` |
+| **Weekly run sheet (printable)** | `/bookings/week-sheet` |
 | Single booking | `/bookings/<id>` |
 | Add booking manually | `/bookings/new` |
 | Quick hold | Modal on `/bookings` |
@@ -424,6 +539,10 @@ Shane (`+353 85 175 8254`).
 Production URL: `https://bookings.cobblestonepub.ie` (or
 `https://cobblestone-pub.onrender.com` if the custom domain isn't
 fully set up yet).
+
+---
+
+_Last updated: 15 May 2026 — Camille + Nheaca handover._
 
 ---
 
