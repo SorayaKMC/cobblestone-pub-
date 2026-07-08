@@ -26,12 +26,14 @@ from pypdf import PdfReader, PdfWriter
 # title; surnames may contain spaces (e.g. 'O Maolagain', 'Mc Mahon').
 _NAME_RE = re.compile(r"^\s*(\d+)\s+\1\s+(.+?)\s*$")
 
-# A numeric data line has 10 floats, possibly with leading whitespace.
+# A numeric data line has 10+ numeric values (int or float), possibly negative.
+# Loose match: allows whole numbers (e.g. 0 instead of 0.00) and extra
+# columns (e.g. if Peter's software adds a pension column for some employees).
+_ANY_NUM = r"-?\d+(?:\.\d+)?"
 _NUM_RE = re.compile(
-    r"^\s*"
-    + r"\s+".join([r"(-?\d+\.\d+)"] * 10)
-    + r"\s*$"
+    r"^\s*(?:" + _ANY_NUM + r")(?:\s+(?:" + _ANY_NUM + r")){9,}\s*$"
 )
+_NUM_EXTRACT = re.compile(_ANY_NUM)
 
 _PERIOD_RE = re.compile(r"Pay Period\s*:\s*(.+)")
 
@@ -83,9 +85,15 @@ def parse_gross_to_net(pdf_path):
                     while j < len(lines) and not lines[j].strip():
                         j += 1
                     if j < len(lines):
-                        num_match = _NUM_RE.match(lines[j])
+                        # Strip thousands-separator commas before matching
+                        # (amounts ≥ €1,000 are formatted as "1,019.44" in the PDF)
+                        num_line = lines[j].replace(",", "")
+                        num_match = _NUM_RE.match(num_line)
                         if num_match:
-                            nums = [float(x) for x in num_match.groups()]
+                            nums = [float(x) for x in _NUM_EXTRACT.findall(num_line)]
+                            if len(nums) < 10:
+                                i += 1
+                                continue
                             rows.append({
                                 "ref": name_match.group(1),
                                 "raw_name": name_match.group(2),

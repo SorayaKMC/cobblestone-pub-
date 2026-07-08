@@ -823,28 +823,38 @@ def _strip_titles(parts):
     return [p for p in parts if p.lower().strip(".") not in _TITLES]
 
 
+def _normalise_name(s):
+    """Normalise a name string for matching: strip titles, lower, split on
+    hyphens/apostrophes/spaces so 'O'Maolagain' and 'O Maolagain' tokenise
+    identically."""
+    return re.sub(r"[-'’]", " ", s).split()
+
+
 def _fuzzy_name_match(raw_name, active_employees):
     """Best-effort match of a payslip name to an employee. Returns tm_id or None.
 
     The accountant's PDFs format names inconsistently: 'Mr Thomas Mulligan',
     'Mc Mahon Soraya' (surname-first), 'Carlos Manuel Dia Soto' (multi-token).
+    Apostrophes in names like O'Maolagain may appear as spaces in the PDF.
     """
     if not raw_name:
         return None
-    raw_parts = _strip_titles(raw_name.replace("-", " ").split())
+    raw_parts = _strip_titles(_normalise_name(raw_name))
     raw_tokens = set(p.lower() for p in raw_parts)
     norm_raw = " ".join(p.lower() for p in raw_parts)
 
     for emp in active_employees:
-        first_last = f"{emp['given_name']} {emp['family_name']}".lower()
-        last_first = f"{emp['family_name']} {emp['given_name']}".lower()
+        first_parts = _normalise_name(emp["given_name"])
+        last_parts = _normalise_name(emp["family_name"])
+        first_last = " ".join(p.lower() for p in first_parts + last_parts)
+        last_first = " ".join(p.lower() for p in last_parts + first_parts)
         if norm_raw == first_last or norm_raw == last_first:
             return emp["team_member_id"]
 
     for emp in active_employees:
         emp_tokens = set()
         for field in (emp["given_name"], emp["family_name"]):
-            for tok in field.replace("-", " ").split():
+            for tok in _normalise_name(field):
                 emp_tokens.add(tok.lower())
         if raw_tokens and (raw_tokens == emp_tokens or
                            raw_tokens.issubset(emp_tokens) or
@@ -935,118 +945,113 @@ def accountant_page():
 
 @bp.route("/payroll/accountant/upload", methods=["POST"])
 def accountant_upload():
-    gtn_file = request.files.get("gross_to_net")
-    payslips_file = request.files.get("payslips")
+    import traceback as _traceback
+    from datetime import datetime as _dt, timedelta as _td
 
     fallback_iso = request.form.get("iso_week") or _get_week_params()[5]
-
-    if not gtn_file or not gtn_file.filename:
-        flash("Please upload the Gross-to-Net PDF.", "danger")
-        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
-    if not payslips_file or not payslips_file.filename:
-        flash("Please upload the combined payslips PDF.", "danger")
-        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
-
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as gf:
-        gtn_file.save(gf.name)
-        gtn_path = gf.name
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as pf:
-        payslips_file.save(pf.name)
-        slips_path = pf.name
+    gtn_path = slips_path = None
 
     try:
+        gtn_file = request.files.get("gross_to_net")
+        payslips_file = request.files.get("payslips")
+
+        if not gtn_file or not gtn_file.filename:
+            flash("Please upload the Gross-to-Net PDF.", "danger")
+            return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+        if not payslips_file or not payslips_file.filename:
+            flash("Please upload the combined payslips PDF.", "danger")
+            return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+
+        # Save uploads to temp files
+        gtn_path = slips_path = None
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as gf:
+            gtn_file.save(gf)
+            gtn_path = gf.name
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as pf:
+            payslips_file.save(pf)
+            slips_path = pf.name
+
+        # Parse gross-to-net (required)
         gtn = payslip_extractor.parse_gross_to_net(gtn_path)
-        slips = payslip_extractor.split_payslips(slips_path)
-    except Exception as e:
-        flash(f"Could not parse PDFs: {e}", "danger")
+        if not gtn["rows"]:
+            flash("No employee rows found in the Gross-to-Net PDF — check you uploaded the right file.", "danger")
+            return redirect(url_for("payroll.accountant_page", week=fallback_iso))
+
+        # Parse payslips (optional — failure doesn't block the upload)
+        slips_error = None
+        try:
+            slips = payslip_extractor.split_payslips(slips_path)
+        except Exception as _se:
+            slips = []
+            slips_error = str(_se)
+            print(f"[upload] payslips parse failed (non-fatal): {_se}", flush=True)
+
+        # Determine work week from Peter's PDF pay date
+        _peter_wk, pay_date, _peter_yr = payslip_extractor.parse_period_label(gtn["period_label"])
+        if pay_date:
+            period_end_str = payslip_extractor.period_end_from_pay_date(pay_date)
+            _ped = _dt.strptime(period_end_str, "%Y-%m-%d").date()
+            _ic = _ped.isocalendar()
+            year_parsed, week_num = int(_ic[0]), int(_ic[1])
+            iso_week_actual = f"{year_parsed}-W{week_num:02d}"
+            try:
+                _, period_end_str = square_client.week_dates(year_parsed, week_num)
+            except Exception:
+                pass
+        else:
+            # Fallback: use URL week
+            _parts = fallback_iso.split("-W")
+            year_parsed, week_num = int(_parts[0]), int(_parts[1])
+            iso_week_actual = fallback_iso
+            _mon = _dt.strptime(square_client.week_dates(year_parsed, week_num)[0], "%Y-%m-%d")
+            pay_date = (_mon + _td(days=4)).strftime("%Y-%m-%d")
+            _, period_end_str = square_client.week_dates(year_parsed, week_num)
+
+        print(f"[upload] {len(gtn['rows'])} employees → {iso_week_actual} (pay_date={pay_date})", flush=True)
+
+        # Match employees
+        saved_map = db.get_ref_mappings()
+        active_employees = [r for r in db.get_employee_categories() if r["is_active"]]
+        auto_count = 0
+        for row in gtn["rows"]:
+            tm_id = saved_map.get(row["ref"]) or _fuzzy_name_match(row["raw_name"], active_employees)
+            row["team_member_id"] = tm_id
+            if tm_id:
+                auto_count += 1
+
+        slip_by_ref = {s["ref"]: s for s in slips}
+        for row in gtn["rows"]:
+            if row["ref"] in slip_by_ref:
+                slip_by_ref[row["ref"]]["team_member_id"] = row["team_member_id"]
+
+        # Save to DB
+        period_id = db.upsert_pay_period(
+            iso_week_actual, week_num, year_parsed, pay_date, period_end_str, gtn["period_label"]
+        )
+        db.replace_pay_period_nets(period_id, gtn["rows"])
+        db.replace_pay_period_payslips(period_id, list(slip_by_ref.values()))
+
+        total = len(gtn["rows"])
+        print(f"[upload] saved period_id={period_id}, {total} employees, {auto_count} matched", flush=True)
+
+        if auto_count == total:
+            flash(f"Uploaded {total} employees for {iso_week_actual} — all matched.", "success")
+        else:
+            flash(f"Uploaded {total} employees for {iso_week_actual}. {auto_count} matched, {total - auto_count} need review.", "warning")
+        if slips_error:
+            flash(f"Payslips PDF had an error but employee data was saved: {slips_error}", "warning")
+
+        return redirect(url_for("payroll.accountant_page", week=iso_week_actual))
+
+    except Exception as _e:
+        print(f"[upload] FAILED: {_e}\n{_traceback.format_exc()}", flush=True)
+        flash(f"Upload failed — {_e}", "danger")
         return redirect(url_for("payroll.accountant_page", week=fallback_iso))
     finally:
-        try: os.unlink(gtn_path)
-        except OSError: pass
-        try: os.unlink(slips_path)
-        except OSError: pass
-
-    if not gtn["rows"]:
-        flash("No employee rows found in the gross-to-net PDF.", "danger")
-        return redirect(url_for("payroll.accountant_page", week=fallback_iso))
-
-    # Trust the URL's iso_week (= the work week the user is processing)
-    # over Peter's "Pay Period : Week N" label. Peter dates his
-    # paperwork by when HE receives our download, which can be days or
-    # weeks after the actual work was done — using his label for
-    # accrual lookups would land in the wrong Square data.
-    work_iso = fallback_iso  # 'YYYY-Www' from the URL the user clicked Upload from
-    try:
-        year_parsed, week_num_str = work_iso.split("-W")
-        year_parsed = int(year_parsed)
-        week_num = int(week_num_str)
-    except (ValueError, IndexError):
-        flash("Could not parse the work week from the URL. Navigate to "
-              "/payroll/accountant?week=YYYY-Www first.", "danger")
-        return redirect(url_for("payroll.accountant_page"))
-
-    # Pay date still comes from Peter's PDF (informational only — not
-    # used for accrual lookup).
-    _peter_week_num, pay_date, _peter_year = payslip_extractor.parse_period_label(gtn["period_label"])
-    if not pay_date:
-        # Peter's label was unparseable; fall back to the Friday of the work week.
-        from datetime import datetime as _dt, timedelta as _td
-        try:
-            monday = _dt.strptime(square_client.week_dates(year_parsed, week_num)[0], "%Y-%m-%d")
-            pay_date = (monday + _td(days=4)).strftime("%Y-%m-%d")
-        except Exception:
-            pay_date = ""
-
-    iso_week_actual = work_iso
-    try:
-        _, period_end = square_client.week_dates(year_parsed, week_num)
-    except Exception:
-        period_end = payslip_extractor.period_end_from_pay_date(pay_date) if pay_date else ""
-
-    # Soft warning if Peter's label is more than 1 week off from the work
-    # week — surfaces unusual timing without blocking the upload.
-    if _peter_week_num and abs(_peter_week_num - week_num) > 1:
-        flash(
-            f"Heads up: Peter's PDF is labelled Week {_peter_week_num} but you're "
-            f"uploading for work week {week_num}. Using work week {week_num} for "
-            "PTO lookup. If that's wrong, navigate to the right week first.",
-            "warning",
-        )
-
-    saved_map = db.get_ref_mappings()
-    active_employees = [r for r in db.get_employee_categories() if r["is_active"]]
-
-    auto_count = 0
-    for row in gtn["rows"]:
-        ref = row["ref"]
-        tm_id = saved_map.get(ref)
-        if not tm_id:
-            tm_id = _fuzzy_name_match(row["raw_name"], active_employees)
-        row["team_member_id"] = tm_id
-        if tm_id:
-            auto_count += 1
-
-    slip_by_ref = {s["ref"]: s for s in slips}
-    for ref, tm_id in [(r["ref"], r["team_member_id"]) for r in gtn["rows"]]:
-        if ref in slip_by_ref:
-            slip_by_ref[ref]["team_member_id"] = tm_id
-
-    period_id = db.upsert_pay_period(
-        iso_week_actual, week_num, year_parsed, pay_date, period_end, gtn["period_label"]
-    )
-    db.replace_pay_period_nets(period_id, gtn["rows"])
-    db.replace_pay_period_payslips(period_id, list(slip_by_ref.values()))
-
-    total = len(gtn["rows"])
-    if auto_count == total:
-        flash(f"Uploaded {total} employees for {iso_week_actual} — all auto-mapped.", "success")
-    else:
-        flash(
-            f"Uploaded {total} employees for {iso_week_actual}. "
-            f"{auto_count} auto-mapped, {total - auto_count} need review below.",
-            "warning",
-        )
-    return redirect(url_for("payroll.accountant_page", week=iso_week_actual))
+        for _p in [gtn_path, slips_path]:
+            if _p:
+                try: os.unlink(_p)
+                except OSError: pass
 
 
 @bp.route("/payroll/accountant/save", methods=["POST"])

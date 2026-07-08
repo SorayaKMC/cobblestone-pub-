@@ -746,6 +746,27 @@ def add_pto_taken(team_member_id, date, days_taken, hours_equivalent, reason="")
     conn.close()
 
 
+def update_pto_taken(taken_id, days_taken, hours_equivalent, reason=""):
+    """Edit an existing PTO taken entry by id."""
+    conn = get_db()
+    conn.execute(
+        """UPDATE pto_taken
+           SET days_taken=?, hours_equivalent=?, reason=?
+           WHERE id=?""",
+        (days_taken, hours_equivalent, reason, taken_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_pto_taken(taken_id):
+    """Delete a PTO taken entry by id."""
+    conn = get_db()
+    conn.execute("DELETE FROM pto_taken WHERE id=?", (taken_id,))
+    conn.commit()
+    conn.close()
+
+
 def get_pto_taken_log(team_member_id=None):
     """Get PTO taken records, optionally filtered by employee."""
     conn = get_db()

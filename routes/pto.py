@@ -173,6 +173,35 @@ def log_pto_taken():
     return redirect(url_for("pto.pto_page"))
 
 
+@bp.route("/pto/taken/<int:taken_id>/edit", methods=["POST"])
+def edit_pto_taken(taken_id):
+    try:
+        days = float(request.form.get("days_taken") or 0)
+        hours = float(request.form.get("hours_equivalent") or 0)
+        reason = (request.form.get("reason") or "").strip()
+        if days <= 0:
+            flash("Days taken must be greater than 0.", "warning")
+            return redirect(url_for("pto.pto_page"))
+        db.update_pto_taken(taken_id, days, hours, reason)
+        flash(
+            f"PTO entry updated. Run Recalculate PTO to update balances.",
+            "warning",
+        )
+    except Exception as e:
+        flash(f"Could not update PTO entry: {e}", "danger")
+    return redirect(url_for("pto.pto_page"))
+
+
+@bp.route("/pto/taken/<int:taken_id>/delete", methods=["POST"])
+def delete_pto_taken(taken_id):
+    try:
+        db.delete_pto_taken(taken_id)
+        flash("PTO entry deleted. Run Recalculate PTO to update balances.", "warning")
+    except Exception as e:
+        flash(f"Could not delete PTO entry: {e}", "danger")
+    return redirect(url_for("pto.pto_page"))
+
+
 @bp.route("/pto/adjust", methods=["POST"])
 def adjust_pto():
     tm_id = request.form.get("team_member_id")

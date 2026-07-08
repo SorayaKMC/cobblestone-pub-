@@ -274,6 +274,7 @@
                     <th class="text-end">Days</th>
                     <th class="text-end">Hours Equiv.</th>
                     <th>Reason</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -284,6 +285,19 @@
                     <td class="text-end">{{ log.days_taken }}</td>
                     <td class="text-end">{{ "%.1f"|format(log.hours_equivalent) }}</td>
                     <td>{{ log.reason or '-' }}</td>
+                    <td class="text-end text-nowrap">
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                onclick="openEditPto({{ log.id }}, '{{ log.date }}', {{ log.days_taken }}, {{ log.hours_equivalent }}, {{ (log.reason or '')|tojson }})"
+                                title="Edit this entry">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <form method="POST" action="/pto/taken/{{ log.id }}/delete" class="d-inline"
+                              onsubmit="return confirm('Delete this PTO entry ({{ names_by_id.get(log.team_member_id, '') }}, {{ log.date }}, {{ log.days_taken }} days)?\n\nWarning: run Recalculate PTO afterwards to update balances.');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete this entry">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -291,6 +305,47 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Edit PTO entry modal -->
+<div class="modal fade" id="editPtoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editPtoForm" action="">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Leave Entry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <strong>Editing past PTO affects balances.</strong> Click <em>Recalculate PTO</em> after saving to update everyone's balance.
+                    </div>
+                    <div class="text-muted small mb-3" id="editPtoLabel"></div>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label small">Days taken</label>
+                            <input type="number" name="days_taken" id="editDays" class="form-control form-control-sm" step="0.5" min="0.5" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Hours equiv.</label>
+                            <input type="number" name="hours_equivalent" id="editHours" class="form-control form-control-sm" step="0.1" min="0">
+                        </div>
+                        <div class="col-md-12 mt-2">
+                            <label class="form-label small">Reason</label>
+                            <input type="text" name="reason" id="editReason" class="form-control form-control-sm" placeholder="Optional">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-save me-1"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- Recalculate Modal -->
 <div class="modal fade" id="recalcModal" tabindex="-1">
@@ -324,4 +379,17 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEditPto(id, date, days, hours, reason) {
+    document.getElementById('editPtoForm').action = '/pto/taken/' + id + '/edit';
+    document.getElementById('editPtoLabel').textContent = 'Entry: ' + date;
+    document.getElementById('editDays').value = days;
+    document.getElementById('editHours').value = hours;
+    document.getElementById('editReason').value = reason || '';
+    new bootstrap.Modal(document.getElementById('editPtoModal')).show();
+}
+</script>
 {% endblock %}
