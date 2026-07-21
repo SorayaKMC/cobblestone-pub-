@@ -181,6 +181,11 @@
 <div class="card mb-3">
     <div class="card-body">
         <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">Search</label>
+                <input type="text" name="keyword" value="{{ filter_keyword }}" placeholder="Supplier, invoice #, notes…"
+                       class="form-control form-control-sm">
+            </div>
             <div class="col-md-2">
                 <label class="form-label small">From</label>
                 <input type="date" name="start_date" value="{{ filter_start }}" class="form-control form-control-sm">
@@ -189,7 +194,7 @@
                 <label class="form-label small">To</label>
                 <input type="date" name="end_date" value="{{ filter_end }}" class="form-control form-control-sm">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small">Supplier</label>
                 <select name="supplier_id" class="form-select form-select-sm">
                     <option value="">All suppliers</option>
@@ -198,7 +203,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <label class="form-label small">Category</label>
                 <select name="category" class="form-select form-select-sm">
                     <option value="">All</option>
@@ -207,7 +212,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <label class="form-label small">Status</label>
                 <select name="status" class="form-select form-select-sm">
                     <option value="">All</option>
@@ -217,7 +222,7 @@
             </div>
             <div class="col-md-1">
                 <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
-                    <i class="bi bi-funnel"></i>
+                    <i class="bi bi-search"></i>
                 </button>
             </div>
         </form>
@@ -255,6 +260,7 @@
     <input type="hidden" name="filter_supplier_id" value="{{ filter_supplier }}">
     <input type="hidden" name="filter_category" value="{{ filter_category }}">
     <input type="hidden" name="filter_status" value="{{ filter_status }}">
+    <input type="hidden" name="filter_keyword" value="{{ filter_keyword }}">
 
     {% if pending_visible %}
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">

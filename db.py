@@ -1316,7 +1316,7 @@ def update_supplier(supplier_id, name, default_vat_rate, default_category, vat_n
     conn.close()
 
 
-def list_invoices(start_date=None, end_date=None, supplier_id=None, category=None, status=None, limit=500):
+def list_invoices(start_date=None, end_date=None, supplier_id=None, category=None, status=None, keyword=None, limit=500):
     """Get invoices with optional filters. Returns list of rows."""
     conn = get_db()
     sql = """SELECT i.*, s.name AS supplier_name_resolved, s.default_category
@@ -1339,6 +1339,11 @@ def list_invoices(start_date=None, end_date=None, supplier_id=None, category=Non
     if status:
         sql += " AND i.status = ?"
         params.append(status)
+    if keyword:
+        like = f"%{keyword}%"
+        sql += """ AND (i.supplier_name LIKE ? OR s.name LIKE ?
+                        OR i.invoice_number LIKE ? OR i.notes LIKE ?)"""
+        params.extend([like, like, like, like])
     sql += " ORDER BY i.invoice_date DESC, i.id DESC LIMIT ?"
     params.append(limit)
     rows = conn.execute(sql, params).fetchall()

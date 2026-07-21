@@ -27,6 +27,7 @@ def bookkeeping_page():
     supplier_id = request.args.get("supplier_id", "")
     category = request.args.get("category", "")
     status = request.args.get("status", "")
+    keyword = request.args.get("keyword", "")
 
     supplier_id_int = int(supplier_id) if supplier_id.isdigit() else None
     status_filter = status if status else None
@@ -37,6 +38,7 @@ def bookkeeping_page():
         supplier_id=supplier_id_int,
         category=category or None,
         status=status_filter,
+        keyword=keyword or None,
     )
     suppliers = db.list_suppliers()
 
@@ -74,6 +76,7 @@ def bookkeeping_page():
         filter_supplier=supplier_id,
         filter_category=category,
         filter_status=status,
+        filter_keyword=keyword,
         today=today.isoformat(),
         drive_status=drive_status,
         drive_last_run=drive_last_run,
@@ -381,6 +384,7 @@ def _filter_args_from_request():
             "supplier_id": src.get("filter_supplier_id", ""),
             "category":    src.get("filter_category", ""),
             "status":      src.get("filter_status", ""),
+            "keyword":     src.get("filter_keyword", ""),
         }
     src = request.args
     return {
@@ -389,6 +393,7 @@ def _filter_args_from_request():
         "supplier_id": src.get("filter_supplier_id") or src.get("supplier_id") or "",
         "category":    src.get("filter_category") or src.get("category") or "",
         "status":      src.get("filter_status") or src.get("status") or "",
+        "keyword":     src.get("filter_keyword") or src.get("keyword") or "",
     }
 
 
@@ -411,6 +416,7 @@ def _next_pending_in_filter(current_invoice_id, filters):
         supplier_id=int(filters["supplier_id"]) if (filters.get("supplier_id") or "").isdigit() else None,
         category=filters.get("category") or None,
         status="pending",
+        keyword=filters.get("keyword") or None,
         limit=500,
     )
     # Most recent first (closest to today)
@@ -433,6 +439,7 @@ def _neighbors_in_filter(current_invoice_id, filters):
         supplier_id=int(filters["supplier_id"]) if (filters.get("supplier_id") or "").isdigit() else None,
         category=filters.get("category") or None,
         status=filters.get("status") or None,
+        keyword=filters.get("keyword") or None,
         limit=1000,
     )
     rows = sorted(rows, key=lambda r: ((r["invoice_date"] or ""), r["id"]))
