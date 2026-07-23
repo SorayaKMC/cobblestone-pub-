@@ -535,6 +535,100 @@ def _cache_coverage(current_year, current_week):
     return cached
 
 
+def _get_tshirt_inventory_report():
+    """Fetch t-shirt inventory by size/colour from Square. Cached for 1 hour.
+
+    Returns dict:
+        colours: list of colour names (sorted)
+        sizes: list of size names (sorted by standard order)
+        grid: {colour: {size: qty}}
+        total: int
+        last_updated: ISO string or None
+        variations: list of {variation_id, name, qty}
+    """
+    cache_key = "tshirt_inventory_v1"
+    cached, synced_at = db.get_cache(cache_key)
+    if cached and synced_at:
+        try:
+            synced_dt = datetime.fromisoformat(synced_at)
+            if (datetime.now() - synced_dt).total_seconds() < 3600:
+                cached["last_updated"] = synced_at
+                return cached
+        except Exception:
+            pass
+
+    item_id = list(TSHIRT_ITEMS.values())[0][0]
+    try:
+        variations = square_client.get_tshirt_catalog_variations(item_id)
+    except Exception as e:
+        print(f"[dashboard] catalog fetch failed: {e}")
+        return None
+
+    if not variations:
+        return None
+
+    variation_ids = [v["variation_id"] for v in variations]
+    try:
+        counts = square_client.get_tshirt_inventory_counts(variation_ids)
+    except Exception as e:
+        print(f"[dashboard] inventory fetch failed: {e}")
+        counts = {}
+
+    # Parse variation names — Square names them "Colour / Size" or "Colour - Size"
+    SIZE_ORDER = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "XXL", "XXXL", "One Size"]
+    grid = {}
+    all_colours = set()
+    all_sizes = set()
+
+    for v in variations:
+        name = v["name"]
+        qty = counts.get(v["variation_id"], 0)
+        # Try splitting on " / " or " - " or ","
+        parts = None
+        for sep in [" / ", " - ", ", ", "/"]:
+            if sep in name:
+                parts = [p.strip() for p in name.split(sep, 1)]
+                break
+        if parts and len(parts) == 2:
+            colour, size = parts[0], parts[1]
+        else:
+            colour, size = name, "One Size"
+
+        all_colours.add(colour)
+        all_sizes.add(size)
+        if colour not in grid:
+            grid[colour] = {}
+        grid[colour][size] = grid[colour].get(size, 0) + qty
+
+    def _size_key(s):
+        try:
+            return SIZE_ORDER.index(s)
+        except ValueError:
+            return len(SIZE_ORDER)
+
+    sorted_colours = sorted(all_colours)
+    sorted_sizes = sorted(all_sizes, key=_size_key)
+    total = sum(counts.values())
+
+    result = {
+        "colours": sorted_colours,
+        "sizes": sorted_sizes,
+        "grid": grid,
+        "total": total,
+        "variations": [
+            {"variation_id": v["variation_id"], "name": v["name"],
+             "qty": counts.get(v["variation_id"], 0)}
+            for v in variations
+        ],
+    }
+
+    if total > 0 or variations:
+        db.set_cache(cache_key, result)
+
+    result["last_updated"] = datetime.now().isoformat()
+    return result
+
+
 @bp.route("/dashboard/refresh-vat", methods=["POST"])
 def refresh_vat():
     """Drop the cached VAT-period rollup so the dashboard recomputes
@@ -674,6 +768,13 @@ def dashboard_page():
     tshirt_total_units = sum(tshirt_weekly)
     tshirt_total_revenue = round(tshirt_total_units * 20)  # €20/unit average
 
+    # T-shirt inventory
+    try:
+        tshirt_inventory = _get_tshirt_inventory_report()
+    except Exception as e:
+        print(f"T-shirt inventory failed: {e}")
+        tshirt_inventory = None
+
     # Compute VAT periods live
     try:
         vat_periods = _compute_vat(current_year)
@@ -706,6 +807,7 @@ def dashboard_page():
     last_complete_week_label = f"W{last_complete_week:02d}"
 
     return render_template("dashboard.html",
+        tshirt_inventory=tshirt_inventory,
         wks_json=json.dumps(wks),
         daily_json=json.dumps(daily),
         bb_json=json.dumps(bb),
@@ -730,6 +832,23 @@ def dashboard_page():
 @bp.route("/api/dashboard/trend")
 def dashboard_trend():
     return jsonify([])
+
+
+@bp.route("/dashboard/refresh-inventory", methods=["POST"])
+def refresh_inventory():
+    """Bust the t-shirt inventory cache so the next dashboard load re-fetches from Square."""
+    conn = db.get_db()
+    conn.execute("DELETE FROM cache_metadata WHERE cache_key = 'tshirt_inventory_v1'")
+    conn.commit()
+    conn.close()
+    # Also bust catalog cache so new variations are picked up
+    conn2 = db.get_db()
+    item_id = list(TSHIRT_ITEMS.values())[0][0]
+    conn2.execute("DELETE FROM cache_metadata WHERE cache_key = ?", (f"catalog_variations_{item_id}",))
+    conn2.commit()
+    conn2.close()
+    flash("Inventory refreshed from Square.", "success")
+    return redirect(url_for("dashboard.dashboard_page") + "#inventory")
 
 
 @bp.route("/dashboard/refresh", methods=["POST"])

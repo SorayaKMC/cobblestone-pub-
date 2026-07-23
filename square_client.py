@@ -474,6 +474,88 @@ def current_week():
     return iso[0], iso[1]
 
 
+# --- Catalog & Inventory ---
+
+def get_tshirt_catalog_variations(item_id):
+    """Fetch all variations for a catalog item (e.g. the t-shirt).
+
+    Returns list of dicts: {variation_id, name, sku}
+    where name is the variation's display name (e.g. "Forest Green / S").
+    Cached for 24 hours — catalog changes rarely.
+    """
+    import db as _db
+    from datetime import datetime as _dt
+    cache_key = f"catalog_variations_{item_id}"
+    cached, synced_at = _db.get_cache(cache_key)
+    if cached and synced_at:
+        try:
+            if (_dt.now() - _dt.fromisoformat(synced_at)).total_seconds() < 86400:
+                return cached
+        except Exception:
+            pass
+
+    url = f"{config.SQUARE_BASE_URL}/catalog/object/{item_id}"
+    resp = requests.get(url, headers=_headers(), params={"include_related_objects": "true"})
+    resp.raise_for_status()
+    data = resp.json()
+
+    obj = data.get("object", {})
+    item_data = obj.get("item_data", {})
+    variations = []
+    for v in item_data.get("variations", []):
+        vd = v.get("item_variation_data", {})
+        variations.append({
+            "variation_id": v["id"],
+            "name": vd.get("name", v["id"]),
+            "sku": vd.get("sku", ""),
+        })
+
+    try:
+        _db.set_cache(cache_key, variations)
+    except Exception:
+        pass
+    return variations
+
+
+def get_tshirt_inventory_counts(variation_ids, location_ids=None):
+    """Batch-retrieve current QUANTITY inventory counts for a list of variation IDs.
+
+    Returns dict: {variation_id: quantity (int)}
+    """
+    if not variation_ids:
+        return {}
+    lids = location_ids or config.ALL_LOCATION_IDS
+    body = {
+        "catalog_object_ids": list(variation_ids),
+        "location_ids": lids,
+        "states": ["IN_STOCK"],
+    }
+    url = f"{config.SQUARE_BASE_URL}/inventory/counts/batch-retrieve"
+    all_counts = []
+    cursor = None
+    while True:
+        if cursor:
+            body["cursor"] = cursor
+        resp = requests.post(url, headers=_headers(), json=body)
+        resp.raise_for_status()
+        data = resp.json()
+        all_counts.extend(data.get("counts", []))
+        cursor = data.get("cursor")
+        if not cursor:
+            break
+
+    result = {}
+    for c in all_counts:
+        vid = c.get("catalog_object_id")
+        qty = c.get("quantity", "0")
+        try:
+            qty = int(float(qty))
+        except Exception:
+            qty = 0
+        result[vid] = result.get(vid, 0) + qty
+    return result
+
+
 # --- Booking Payment Links ---
 
 def create_door_fee_payment_link(booking_id, act_name, event_date, redirect_url=None):
