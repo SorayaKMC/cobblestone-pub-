@@ -495,7 +495,7 @@ def get_tshirt_catalog_variations(item_id):
             pass
 
     url = f"{config.SQUARE_BASE_URL}/catalog/object/{item_id}"
-    resp = requests.get(url, headers=_headers(), params={"include_related_objects": "true"})
+    resp = requests.get(url, headers=_headers(), params={"include_related_objects": "true"}, timeout=10)
     resp.raise_for_status()
     data = resp.json()
 
@@ -536,7 +536,7 @@ def get_tshirt_inventory_counts(variation_ids, location_ids=None):
     while True:
         if cursor:
             body["cursor"] = cursor
-        resp = requests.post(url, headers=_headers(), json=body)
+        resp = requests.post(url, headers=_headers(), json=body, timeout=10)
         resp.raise_for_status()
         data = resp.json()
         all_counts.extend(data.get("counts", []))

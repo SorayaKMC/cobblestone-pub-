@@ -773,9 +773,13 @@ def dashboard_page():
     tshirt_total_units = sum(tshirt_weekly)
     tshirt_total_revenue = round(tshirt_total_units * 20)  # €20/unit average
 
-    # T-shirt inventory
+    # T-shirt inventory — run in a thread so a slow/failed Square call can't hang the page
+    tshirt_inventory = None
     try:
-        tshirt_inventory = _get_tshirt_inventory_report()
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(_get_tshirt_inventory_report)
+            tshirt_inventory = future.result(timeout=12)
     except Exception as e:
         print(f"T-shirt inventory failed: {e}")
         tshirt_inventory = None
