@@ -575,7 +575,7 @@ def _get_tshirt_inventory_report():
         counts = {}
 
     # Parse variation names — Square names them "Colour / Size" or "Colour - Size"
-    SIZE_ORDER = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "XXL", "XXXL", "One Size"]
+    SIZE_ORDER = ["3XL", "XXXL", "2XL", "XXL", "XL", "L", "M", "S", "XS", "One Size"]
     grid = {}
     all_colours = set()
     all_sizes = set()
