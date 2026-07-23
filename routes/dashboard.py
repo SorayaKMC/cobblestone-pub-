@@ -579,8 +579,9 @@ def _get_tshirt_inventory_report():
         print(f"[dashboard] inventory fetch failed: {e}")
         counts = {}
 
-    # Parse variation names — Square names them "Colour / Size" or "Colour - Size"
+    # Parse variation names — Square may name them "Size / Colour" or "Colour / Size"
     SIZE_ORDER = ["3XL", "XXXL", "2XL", "XXL", "XL", "L", "M", "S", "XS", "One Size"]
+    SIZE_SET = {s.upper() for s in SIZE_ORDER}
     grid = {}
     all_colours = set()
     all_sizes = set()
@@ -588,14 +589,19 @@ def _get_tshirt_inventory_report():
     for v in variations:
         name = v["name"]
         qty = counts.get(v["variation_id"], 0)
-        # Try splitting on " / " or " - " or ","
         parts = None
         for sep in [" / ", " - ", ", ", "/"]:
             if sep in name:
                 parts = [p.strip() for p in name.split(sep, 1)]
                 break
         if parts and len(parts) == 2:
-            colour, size = parts[0], parts[1]
+            # Detect which part is the size by matching against known size names
+            if parts[0].upper() in SIZE_SET:
+                size, colour = parts[0], parts[1]
+            elif parts[1].upper() in SIZE_SET:
+                colour, size = parts[0], parts[1]
+            else:
+                colour, size = parts[0], parts[1]  # fallback
         else:
             colour, size = name, "One Size"
 
