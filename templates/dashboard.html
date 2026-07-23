@@ -152,7 +152,19 @@ html, body{overflow-x:hidden;max-width:100vw}
     </form>
   </div>
   {% if tshirt_inventory %}
-    <div style="overflow-x:auto;margin-top:8px">
+    {# Reorder warning banner — fires if any colour is below its minimum total #}
+    {% set low_colours = [] %}
+    {% for colour in tshirt_inventory.colours %}
+      {% set colour_total = tshirt_inventory.grid[colour].values()|sum %}
+      {% if colour_total < tshirt_colour_min_total %}{% set _ = low_colours.append(colour) %}{% endif %}
+    {% endfor %}
+    {% if low_colours %}
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;margin-top:8px;font-size:13px;color:#b91c1c">
+      <strong>⚠ Reorder needed:</strong> {{ low_colours|join(', ') }} {% if low_colours|length == 1 %}is{% else %}are{% endif %} below minimum stock ({{ tshirt_colour_min_total }} units per colour).
+    </div>
+    {% endif %}
+
+    <div style="overflow-x:auto;margin-top:10px">
       <table style="border-collapse:collapse;font-size:13px;width:auto;min-width:300px">
         <thead>
           <tr>
@@ -162,6 +174,16 @@ html, body{overflow-x:hidden;max-width:100vw}
             {% endfor %}
             <th style="padding:6px 10px;text-align:center;color:#6b7280;font-weight:600;border-bottom:2px solid #e5e7eb">Total</th>
           </tr>
+          {# Min / Ideal reference row #}
+          <tr style="background:#f9fafb">
+            <td style="padding:3px 14px 3px 0;font-size:11px;color:#9ca3af;font-style:italic">min / ideal</td>
+            {% for size in tshirt_inventory.sizes %}
+            <td style="padding:3px 10px;text-align:center;font-size:11px;color:#9ca3af">
+              {{ tshirt_size_min.get(size, '—') }} / {{ tshirt_size_ideal.get(size, '—') }}
+            </td>
+            {% endfor %}
+            <td style="padding:3px 10px;text-align:center;font-size:11px;color:#9ca3af">{{ tshirt_colour_min_total }} / 152</td>
+          </tr>
         </thead>
         <tbody>
           {% for colour in tshirt_inventory.colours %}
@@ -170,15 +192,23 @@ html, body{overflow-x:hidden;max-width:100vw}
             <td style="padding:6px 14px 6px 0;font-weight:600;white-space:nowrap;border-bottom:1px solid #f3f4f6">{{ colour }}</td>
             {% for size in tshirt_inventory.sizes %}
             {% set qty = tshirt_inventory.grid[colour].get(size, 0) %}
+            {% set mn = tshirt_size_min.get(size, 0) %}
+            {% set id = tshirt_size_ideal.get(size, 0) %}
             <td style="padding:6px 10px;text-align:center;border-bottom:1px solid #f3f4f6;
-              {% if qty == 0 %}color:#d1d5db{% elif qty <= 3 %}color:#ef4444;font-weight:600{% elif qty <= 8 %}color:#f59e0b;font-weight:600{% else %}color:#111827{% endif %}">
+              {% if qty == 0 %}color:#d1d5db;
+              {% elif qty <= mn %}background:#fef2f2;color:#ef4444;font-weight:700;
+              {% elif qty < id %}background:#fffbeb;color:#b45309;font-weight:600;
+              {% else %}color:#111827;{% endif %}">
               {{ qty if qty > 0 else '—' }}
             </td>
             {% endfor %}
-            <td style="padding:6px 10px;text-align:center;font-weight:700;border-bottom:1px solid #f3f4f6">{{ colour_total }}</td>
+            <td style="padding:6px 10px;text-align:center;font-weight:700;border-bottom:1px solid #f3f4f6;
+              {% if colour_total < tshirt_colour_min_total %}color:#ef4444{% endif %}">
+              {{ colour_total }}
+            </td>
           </tr>
           {% endfor %}
-          <tr>
+          <tr style="background:#f9fafb">
             <td style="padding:8px 14px 4px 0;font-weight:700;font-size:12px;color:#6b7280">TOTAL</td>
             {% for size in tshirt_inventory.sizes %}
             {% set size_total = namespace(v=0) %}
@@ -193,7 +223,8 @@ html, body{overflow-x:hidden;max-width:100vw}
     <div class="note" style="margin-top:8px">
       {{ tshirt_inventory.total }} units in stock
       {% if tshirt_inventory.last_updated %} · updated {{ tshirt_inventory.last_updated[:16]|replace('T',' ') }}{% endif %}
-      · <span style="color:#ef4444;font-weight:600">red = ≤3</span> · <span style="color:#f59e0b;font-weight:600">amber = ≤8</span>
+      · <span style="background:#fef2f2;color:#ef4444;font-weight:700;padding:1px 5px;border-radius:3px">red = at/below min</span>
+      · <span style="background:#fffbeb;color:#b45309;font-weight:600;padding:1px 5px;border-radius:3px">amber = below ideal</span>
     </div>
   {% else %}
     <div class="note" style="margin-top:8px">Inventory data unavailable — check Square catalog item IDs in settings.</div>

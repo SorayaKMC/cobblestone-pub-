@@ -19,6 +19,11 @@ OUTSIDE = "LDMS9S19E3ZJ6"
 VAT_RATE = Decimal("1.23")
 VAT_PCT = Decimal("0.23")
 
+# T-shirt stock level thresholds (per colour)
+TSHIRT_SIZE_MIN   = {"XS": 2, "S": 7,  "M": 15, "L": 15, "XL": 9,  "2XL": 3, "3XL": 1, "XXL": 3, "XXXL": 1}
+TSHIRT_SIZE_IDEAL = {"XS": 6, "S": 20, "M": 44, "L": 44, "XL": 26, "2XL": 9, "3XL": 3, "XXL": 9, "XXXL": 3}
+TSHIRT_COLOUR_MIN_TOTAL = 52   # reorder if a colour's total drops below this
+
 # T-shirt catalog items in Square - only the Cobblestone T-Shirt
 # (Ispini Touched and Six Counties excluded per user request)
 # name -> (item_id, variation_id, default_price_eur)
@@ -808,6 +813,9 @@ def dashboard_page():
 
     return render_template("dashboard.html",
         tshirt_inventory=tshirt_inventory,
+        tshirt_size_min=TSHIRT_SIZE_MIN,
+        tshirt_size_ideal=TSHIRT_SIZE_IDEAL,
+        tshirt_colour_min_total=TSHIRT_COLOUR_MIN_TOTAL,
         wks_json=json.dumps(wks),
         daily_json=json.dumps(daily),
         bb_json=json.dumps(bb),
