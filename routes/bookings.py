@@ -446,6 +446,16 @@ def new_booking():
         data = _parse_form(request.form)
         bid = db.save_booking(data)
         db.add_booking_audit(bid, "manual", "created", "Manually entered via webapp")
+        # Auto-notify Shane when a new booking is created
+        try:
+            import bookings_email
+            booking = db.get_booking(bid)
+            sent = bookings_email.send_shane_notification(booking, request.host_url.rstrip("/"))
+            if sent:
+                db.add_booking_audit(bid, "internal", "email_sent",
+                                     f"Auto-notification sent to Shane ({bookings_email.SHANE_EMAIL})")
+        except Exception as _e:
+            print(f"[bookings] Shane auto-notify failed: {_e}")
         flash(f"Booking #{bid} created.", "success")
         return redirect(url_for("bookings.booking_detail", booking_id=bid))
     except Exception as e:
