@@ -440,7 +440,7 @@ def _compute_vat(year):
     """
     # cache key bumped to v2 when the display limit went from 2 → 3 periods,
     # so stale 2-period caches don't keep hiding P3.
-    cache_key = f"vat_periods_v2_{year}"
+    cache_key = f"vat_periods_v3_{year}"
     cached, synced_at = db.get_cache(cache_key)
     if cached and synced_at:
         try:
@@ -470,7 +470,7 @@ def _compute_vat(year):
     confirmed_input_vat = _get_confirmed_input_vat(year)
 
     for m1, m2, due in period_months:
-        if len(vat_periods) >= 3:
+        if len(vat_periods) >= 4:
             break
         if m1 > current_month:
             break
