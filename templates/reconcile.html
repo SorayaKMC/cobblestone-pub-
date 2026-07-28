@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}Bank Reconciliation{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0"><i class="bi bi-bank me-2"></i>Bank Reconciliation</h2>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+    <i class="bi bi-upload me-1"></i>Upload Statement
+  </button>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- Statement list sidebar + main content -->
+<div class="row g-4">
+  <!-- Sidebar: list of uploaded statements -->
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-header fw-semibold">Uploaded Statements</div>
+      <div class="list-group list-group-flush">
+        {% for s in statements %}
+        <a href="{{ url_for('reconcile.reconcile_view', statement_id=s.id) }}"
+           class="list-group-item list-group-item-action {% if view and view.id == s.id %}active{% endif %}">
+          <div class="d-flex justify-content-between">
+            <small class="fw-semibold">{{ s.date_from }} → {{ s.date_to }}</small>
+            {% set total = (s.matched_count or 0) + (s.unmatched_count or 0) + (s.ignored_count or 0) %}
+            {% if total > 0 %}
+              {% set pct = ((s.matched_count or 0) + (s.ignored_count or 0)) * 100 // total %}
+              <span class="badge bg-{% if pct == 100 %}success{% elif pct >= 80 %}warning{% else %}danger{% endif %}">{{ pct }}%</span>
+            {% endif %}
+          </div>
+          <small class="text-{% if view and view.id == s.id %}white-50{% else %}muted{% endif %}">{{ s.filename }}</small>
+          {% if s.unmatched_count and s.unmatched_count > 0 %}
+            <br><small class="text-{% if view and view.id == s.id %}warning{% else %}danger{% endif %}">{{ s.unmatched_count }} unmatched</small>
+          {% endif %}
+        </a>
+        {% else %}
+        <div class="list-group-item text-muted small">No statements yet</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="col-md-9">
+    {% if view %}
+    <!-- Summary cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-sm-3">
+        <div class="card text-center">
+          <div class="card-body py-2">
+            <div class="fs-4 fw-bold">{{ matched + ignored + unmatched }}</div>
+            <div class="small text-muted">Total Transactions</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="card text-center border-success">
+          <div class="card-body py-2">
+            <div class="fs-4 fw-bold text-success">{{ matched }}</div>
+            <div class="small text-muted">Matched</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="card text-center border-danger">
+          <div class="card-body py-2">
+            <div class="fs-4 fw-bold text-danger">{{ unmatched }}</div>
+            <div class="small text-muted">Unmatched</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="card text-center border-secondary">
+          <div class="card-body py-2">
+            <div class="fs-4 fw-bold text-secondary">{{ ignored }}</div>
+            <div class="small text-muted">Ignored</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opening / closing balance -->
+    {% if view.opening_balance is not none or view.closing_balance is not none %}
+    <div class="d-flex gap-4 mb-3 small text-muted">
+      {% if view.opening_balance is not none %}
+        <span>Opening balance: <strong>€{{ "%.2f"|format(view.opening_balance) }}</strong></span>
+      {% endif %}
+      {% if view.closing_balance is not none %}
+        <span>Closing balance: <strong>€{{ "%.2f"|format(view.closing_balance) }}</strong></span>
+      {% endif %}
+      <span>Debits: <strong>€{{ "%.2f"|format(view.debit_total or 0) }}</strong></span>
+      <span>Credits: <strong>€{{ "%.2f"|format(view.credit_total or 0) }}</strong></span>
+    </div>
+    {% endif %}
+
+    <!-- Filter tabs -->
+    <ul class="nav nav-tabs mb-3">
+      {% for label, key in [('All', 'all'), ('Unmatched', 'unmatched'), ('Matched', 'matched'), ('Ignored', 'ignored')] %}
+      <li class="nav-item">
+        <a class="nav-link {% if status_filter == key %}active{% endif %}"
+           href="{{ url_for('reconcile.reconcile_view', statement_id=view.id, status=key) }}">
+          {{ label }}
+          {% if key == 'unmatched' and unmatched > 0 %}
+            <span class="badge bg-danger ms-1">{{ unmatched }}</span>
+          {% endif %}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <!-- Transactions table -->
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th class="text-end">Debit</th>
+            <th class="text-end">Credit</th>
+            <th>Type</th>
+            <th>Status / Match</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for txn in transactions %}
+          {% set status = txn.match_status %}
+          <tr class="{% if status == 'matched' %}table-success{% elif status == 'unmatched' and txn.debit %}table-danger{% elif status == 'ignored' %}table-secondary{% endif %}">
+            <td class="text-nowrap small">{{ txn.txn_date }}</td>
+            <td class="small">
+              {{ txn.description }}
+              {% if txn.extracted_name %}
+                <br><span class="text-muted">{{ txn.extracted_name }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end small">
+              {% if txn.debit %}
+                <span class="text-danger">€{{ "%.2f"|format(txn.debit|abs) }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end small">
+              {% if txn.credit %}
+                <span class="text-success">€{{ "%.2f"|format(txn.credit) }}</span>
+              {% endif %}
+            </td>
+            <td class="small">
+              <span class="badge bg-secondary">{{ txn.txn_type.replace('_', ' ') }}</span>
+            </td>
+            <td class="small">
+              {% if status == 'matched' %}
+                <i class="bi bi-check-circle-fill text-success me-1"></i>
+                <span class="text-success">{{ txn.match_label }}</span>
+              {% elif status == 'ignored' %}
+                <span class="text-muted">Ignored</span>
+              {% else %}
+                <span class="text-danger fw-semibold">Unmatched</span>
+              {% endif %}
+            </td>
+            <td class="text-nowrap">
+              {% if txn.debit %}
+              <button class="btn btn-sm btn-outline-primary py-0"
+                      onclick="openMatchModal({{ txn.id }}, {{ view.id }}, '{{ txn.description|replace("'", "\\'") }}', {{ txn.debit|abs }})">
+                <i class="bi bi-link-45deg"></i>
+              </button>
+              {% if status != 'ignored' %}
+              <form method="post" action="{{ url_for('reconcile.txn_ignore', txn_id=txn.id, status=status_filter) }}" class="d-inline">
+                <input type="hidden" name="statement_id" value="{{ view.id }}">
+                <button class="btn btn-sm btn-outline-secondary py-0" title="Ignore this transaction">
+                  <i class="bi bi-dash-circle"></i>
+                </button>
+              </form>
+              {% endif %}
+              {% if status != 'unmatched' %}
+              <form method="post" action="{{ url_for('reconcile.txn_unmatch', txn_id=txn.id, status=status_filter) }}" class="d-inline">
+                <input type="hidden" name="statement_id" value="{{ view.id }}">
+                <button class="btn btn-sm btn-outline-warning py-0" title="Clear match">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </form>
+              {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-4">No transactions</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Delete statement -->
+    <div class="mt-3 text-end">
+      <form method="post" action="{{ url_for('reconcile.reconcile_delete', statement_id=view.id) }}"
+            onsubmit="return confirm('Delete this statement and all its transactions?')">
+        <button class="btn btn-outline-danger btn-sm">
+          <i class="bi bi-trash me-1"></i>Delete Statement
+        </button>
+      </form>
+    </div>
+
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-bank display-4 d-block mb-3"></i>
+      <p>Upload your AIB bank statement CSV to get started.</p>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+        <i class="bi bi-upload me-1"></i>Upload Statement
+      </button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Upload modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Upload Bank Statement</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('reconcile.reconcile_upload') }}" enctype="multipart/form-data">
+        <div class="modal-body">
+          <p class="text-muted small">Upload the AIB <code>BalanceAndTransactionReport.csv</code> file.
+            Transactions will be auto-matched against invoices and payroll records.</p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">CSV File</label>
+            <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-upload me-1"></i>Upload & Match
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Manual match modal -->
+<div class="modal fade" id="matchModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Match Transaction</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1 small text-muted">Transaction: <strong id="matchTxnDesc"></strong></p>
+        <p class="mb-3 small text-muted">Amount: <strong id="matchTxnAmt"></strong></p>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Search Invoices</label>
+          <input type="text" id="invoiceSearch" class="form-control" placeholder="Supplier name, invoice number…">
+        </div>
+
+        <div id="invoiceResults" class="list-group" style="max-height:300px;overflow-y:auto;"></div>
+
+        <form method="post" id="matchForm" action="" class="mt-3">
+          <input type="hidden" name="statement_id" id="matchStmtId">
+          <input type="hidden" name="match_type" value="invoice">
+          <input type="hidden" name="match_id" id="matchInvoiceId">
+          <input type="hidden" name="match_label" id="matchInvoiceLabel">
+          <button type="submit" class="btn btn-success w-100" id="matchConfirmBtn" disabled>
+            <i class="bi bi-check-circle me-1"></i>Confirm Match
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openMatchModal(txnId, stmtId, desc, amt) {
+  document.getElementById('matchTxnDesc').textContent = desc;
+  document.getElementById('matchTxnAmt').textContent = '€' + amt.toFixed(2);
+  document.getElementById('matchStmtId').value = stmtId;
+  document.getElementById('matchForm').action = '/reconcile/txn/' + txnId + '/match';
+  document.getElementById('matchInvoiceId').value = '';
+  document.getElementById('matchInvoiceLabel').value = '';
+  document.getElementById('matchConfirmBtn').disabled = true;
+  document.getElementById('invoiceResults').innerHTML = '';
+  document.getElementById('invoiceSearch').value = '';
+  new bootstrap.Modal(document.getElementById('matchModal')).show();
+  searchInvoices('');
+}
+
+let searchTimeout;
+document.getElementById('invoiceSearch').addEventListener('input', function() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => searchInvoices(this.value), 300);
+});
+
+function searchInvoices(q) {
+  fetch('/reconcile/txn/0/match-options?q=' + encodeURIComponent(q))
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById('invoiceResults');
+      el.innerHTML = '';
+      data.forEach(inv => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action small';
+        btn.textContent = inv.label;
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('#invoiceResults .list-group-item').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          document.getElementById('matchInvoiceId').value = inv.id;
+          document.getElementById('matchInvoiceLabel').value = inv.label;
+          document.getElementById('matchConfirmBtn').disabled = false;
+        });
+        el.appendChild(btn);
+      });
+    });
+}
+</script>
+{% endblock %}

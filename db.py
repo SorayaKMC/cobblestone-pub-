@@ -253,6 +253,40 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_statements_supplier ON statements(supplier_id);
         CREATE INDEX IF NOT EXISTS idx_statements_status ON statements(status);
 
+        -- Bank reconciliation
+        CREATE TABLE IF NOT EXISTS bank_statements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
+            date_from DATE,
+            date_to DATE,
+            opening_balance REAL,
+            closing_balance REAL,
+            transaction_count INTEGER,
+            debit_total REAL,
+            credit_total REAL,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS bank_transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            statement_id INTEGER NOT NULL,
+            txn_date DATE NOT NULL,
+            description TEXT NOT NULL,
+            debit REAL,
+            credit REAL,
+            balance REAL,
+            txn_type TEXT NOT NULL DEFAULT 'other',
+            extracted_name TEXT,
+            match_status TEXT NOT NULL DEFAULT 'unmatched',
+            match_type TEXT,
+            match_id INTEGER,
+            match_label TEXT,
+            FOREIGN KEY (statement_id) REFERENCES bank_statements(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_bank_txns_stmt ON bank_transactions(statement_id);
+        CREATE INDEX IF NOT EXISTS idx_bank_txns_date ON bank_transactions(txn_date);
+
         -- Backroom / Upstairs venue bookings
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2683,3 +2717,107 @@ def list_band_contacts():
     ).fetchall()
     conn.close()
     return rows
+
+
+# --- Bank reconciliation ---
+
+def save_bank_statement(filename, date_from, date_to, opening_balance, closing_balance,
+                        transaction_count, debit_total, credit_total):
+    conn = get_db()
+    cursor = conn.execute(
+        """INSERT INTO bank_statements
+           (filename, date_from, date_to, opening_balance, closing_balance,
+            transaction_count, debit_total, credit_total)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (filename, date_from, date_to, opening_balance, closing_balance,
+         transaction_count, debit_total, credit_total),
+    )
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return new_id
+
+
+def save_bank_transactions(statement_id, transactions):
+    """Bulk insert parsed bank transactions."""
+    conn = get_db()
+    conn.executemany(
+        """INSERT INTO bank_transactions
+           (statement_id, txn_date, description, debit, credit, balance,
+            txn_type, extracted_name)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        [
+            (statement_id, t["txn_date"], t["description"],
+             t.get("debit"), t.get("credit"), t.get("balance"),
+             t.get("txn_type", "other"), t.get("extracted_name"))
+            for t in transactions
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+
+def list_bank_statements():
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT bs.*,
+                  SUM(CASE WHEN bt.match_status='matched' THEN 1 ELSE 0 END) AS matched_count,
+                  SUM(CASE WHEN bt.match_status='unmatched' THEN 1 ELSE 0 END) AS unmatched_count,
+                  SUM(CASE WHEN bt.match_status='ignored' THEN 1 ELSE 0 END) AS ignored_count
+           FROM bank_statements bs
+           LEFT JOIN bank_transactions bt ON bt.statement_id = bs.id
+           GROUP BY bs.id
+           ORDER BY bs.uploaded_at DESC"""
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def get_bank_statement(statement_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM bank_statements WHERE id=?", (statement_id,)).fetchone()
+    conn.close()
+    return row
+
+
+def get_bank_transactions(statement_id):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM bank_transactions WHERE statement_id=? ORDER BY txn_date, id",
+        (statement_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def update_bank_transaction_match(txn_id, match_status, match_type=None, match_id=None, match_label=None):
+    conn = get_db()
+    conn.execute(
+        """UPDATE bank_transactions
+           SET match_status=?, match_type=?, match_id=?, match_label=?
+           WHERE id=?""",
+        (match_status, match_type, match_id, match_label, txn_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_all_pay_period_nets_with_dates():
+    """Return all pay_period_nets rows joined with pay_periods pay_date."""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT n.*, p.pay_date, p.iso_week, p.period_label
+           FROM pay_period_nets n
+           JOIN pay_periods p ON p.id = n.pay_period_id
+           ORDER BY p.pay_date DESC"""
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def delete_bank_statement(statement_id):
+    conn = get_db()
+    conn.execute("DELETE FROM bank_transactions WHERE statement_id=?", (statement_id,))
+    conn.execute("DELETE FROM bank_statements WHERE id=?", (statement_id,))
+    conn.commit()
+    conn.close()
