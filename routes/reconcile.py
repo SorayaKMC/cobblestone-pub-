@@ -302,14 +302,22 @@ def _auto_match(statement_id):
                 continue
 
         # --- Invoice match for all debit types (including B365 supplier payments) ---
-        candidates = inv_by_amount.get(debit_abs, [])
+        # Allow ±0.10 tolerance to handle 1-2 cent bank rounding differences
         best_inv = None
         best_diff = _DATE_TOLERANCE_INVOICE + 1
-        for inv in candidates:
+        best_amt_diff = 999
+        for inv in invoices:
+            inv_amt = round(float(inv["total_amount"] or 0), 2)
+            amt_diff = abs(inv_amt - debit_abs)
+            if amt_diff > 0.10:
+                continue
             diff = _date_diff(txn_date, inv["invoice_date"])
-            if diff <= _DATE_TOLERANCE_INVOICE and diff < best_diff:
+            if diff > _DATE_TOLERANCE_INVOICE:
+                continue
+            if diff < best_diff or (diff == best_diff and amt_diff < best_amt_diff):
                 best_inv = inv
                 best_diff = diff
+                best_amt_diff = amt_diff
         if best_inv:
             label = f"{best_inv['supplier_name']} – inv #{best_inv['invoice_number'] or best_inv['id']} (€{best_inv['total_amount']:.2f})"
             db.update_bank_transaction_match(txn["id"], "matched", "invoice", best_inv["id"], label)
