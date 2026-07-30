@@ -287,6 +287,17 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_bank_txns_stmt ON bank_transactions(statement_id);
         CREATE INDEX IF NOT EXISTS idx_bank_txns_date ON bank_transactions(txn_date);
 
+        CREATE TABLE IF NOT EXISTS bank_transaction_invoices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_txn_id INTEGER NOT NULL,
+            invoice_id INTEGER NOT NULL,
+            FOREIGN KEY (bank_txn_id) REFERENCES bank_transactions(id),
+            FOREIGN KEY (invoice_id) REFERENCES invoices(id),
+            UNIQUE(bank_txn_id, invoice_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_bti_txn ON bank_transaction_invoices(bank_txn_id);
+
         -- Backroom / Upstairs venue bookings
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2816,8 +2827,47 @@ def get_all_pay_period_nets_with_dates():
     return rows
 
 
+def set_bank_transaction_multi_invoice(txn_id, invoice_ids, label):
+    """Link a bank transaction to multiple invoices, replacing any previous links."""
+    conn = get_db()
+    conn.execute("DELETE FROM bank_transaction_invoices WHERE bank_txn_id=?", (txn_id,))
+    for inv_id in invoice_ids:
+        conn.execute(
+            "INSERT OR IGNORE INTO bank_transaction_invoices (bank_txn_id, invoice_id) VALUES (?, ?)",
+            (txn_id, inv_id),
+        )
+    conn.execute(
+        """UPDATE bank_transactions
+           SET match_status='matched', match_type='multi_invoice', match_id=NULL, match_label=?
+           WHERE id=?""",
+        (label, txn_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_bank_transaction_invoices(txn_id):
+    """Get all invoices linked to a transaction via multi-invoice match."""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT i.* FROM bank_transaction_invoices bti
+           JOIN invoices i ON i.id = bti.invoice_id
+           WHERE bti.bank_txn_id=?
+           ORDER BY i.invoice_date""",
+        (txn_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
 def delete_bank_statement(statement_id):
     conn = get_db()
+    # Clean up multi-invoice links for this statement's transactions
+    conn.execute(
+        """DELETE FROM bank_transaction_invoices
+           WHERE bank_txn_id IN (SELECT id FROM bank_transactions WHERE statement_id=?)""",
+        (statement_id,),
+    )
     conn.execute("DELETE FROM bank_transactions WHERE statement_id=?", (statement_id,))
     conn.execute("DELETE FROM bank_statements WHERE id=?", (statement_id,))
     conn.commit()

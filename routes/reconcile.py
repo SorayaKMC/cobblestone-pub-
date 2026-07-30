@@ -470,6 +470,34 @@ def reconcile_delete(statement_id):
     return redirect(url_for("reconcile.reconcile_index"))
 
 
+@bp.route("/reconcile/txn/<int:txn_id>/match-multi", methods=["POST"])
+def txn_match_multi(txn_id):
+    """Match a transaction to multiple invoices (bulk payment)."""
+    invoice_ids_raw = request.form.getlist("invoice_ids")
+    statement_id = request.form.get("statement_id")
+    status = request.args.get("status", "all")
+
+    invoice_ids = [int(x) for x in invoice_ids_raw if x.strip().isdigit()]
+    invoices = [db.get_invoice(iid) for iid in invoice_ids]
+    invoices = [inv for inv in invoices if inv]
+
+    if not invoices:
+        flash("Select at least one invoice.", "warning")
+        return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id, status=status))
+
+    if len(invoices) == 1:
+        inv = invoices[0]
+        label = f"{inv['supplier_name']} – inv #{inv['invoice_number'] or inv['id']} (€{inv['total_amount']:.2f})"
+        db.update_bank_transaction_match(txn_id, "matched", "invoice", inv["id"], label)
+    else:
+        total = sum(float(inv["total_amount"]) for inv in invoices)
+        suppliers = list(dict.fromkeys(inv["supplier_name"] for inv in invoices))
+        label = f"Multi-invoice: {', '.join(suppliers)} – {len(invoices)} invoices (€{total:,.2f})"
+        db.set_bank_transaction_multi_invoice(txn_id, [inv["id"] for inv in invoices], label)
+
+    return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id, status=status))
+
+
 @bp.route("/reconcile/txn/<int:txn_id>/match-options")
 def txn_match_options(txn_id):
     """Return JSON list of invoices for the manual match modal."""
@@ -478,6 +506,7 @@ def txn_match_options(txn_id):
     return jsonify([
         {
             "id": inv["id"],
+            "amount": float(inv["total_amount"]),
             "label": f"{inv['supplier_name']} – #{inv['invoice_number'] or inv['id']} – €{inv['total_amount']:.2f} – {inv['invoice_date']}",
         }
         for inv in invoices

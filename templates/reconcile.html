@@ -277,7 +277,11 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Match Transaction</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button id="multiModeToggle" type="button" class="btn btn-sm btn-outline-secondary ms-3"
+                onclick="toggleMultiMode()" title="Switch to multi-invoice mode for bulk payments">
+          <i class="bi bi-stack me-1"></i>Multi-invoice
+        </button>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <p class="mb-1 small text-muted">Transaction: <strong id="matchTxnDesc"></strong></p>
@@ -288,9 +292,16 @@
           <input type="text" id="invoiceSearch" class="form-control" placeholder="Supplier name, invoice number…">
         </div>
 
-        <div id="invoiceResults" class="list-group" style="max-height:300px;overflow-y:auto;"></div>
+        <!-- Multi-invoice running total (only shown in multi mode) -->
+        <div id="multiTotalDisplay" class="alert alert-light py-2 small mb-2" style="display:none;">
+          <span id="multiTotalText" class="fw-semibold"></span>
+          <span id="multiTotalHint" class="text-muted ms-2"></span>
+        </div>
 
-        <form method="post" id="matchForm" action="" class="mt-3">
+        <div id="invoiceResults" class="list-group" style="max-height:280px;overflow-y:auto;"></div>
+
+        <!-- Single-invoice form -->
+        <form method="post" id="matchForm" action="" class="mt-3" id="singleFormWrap">
           <input type="hidden" name="statement_id" id="matchStmtId">
           <input type="hidden" name="match_type" value="invoice">
           <input type="hidden" name="match_id" id="matchInvoiceId">
@@ -299,24 +310,90 @@
             <i class="bi bi-check-circle me-1"></i>Confirm Match
           </button>
         </form>
+
+        <!-- Multi-invoice form -->
+        <form method="post" id="matchMultiForm" action="" class="mt-3" style="display:none;">
+          <input type="hidden" name="statement_id" id="matchMultiStmtId">
+          <div id="multiInvoiceIds"></div>
+          <button type="submit" class="btn btn-success w-100" id="matchMultiConfirmBtn" disabled>
+            <i class="bi bi-check-circle me-1"></i>Confirm Multi-Invoice Match
+          </button>
+        </form>
       </div>
     </div>
   </div>
 </div>
 
 <script>
+let currentTxnAmt = 0;
+let isMultiMode = false;
+let selectedInvoices = {};
+
 function openMatchModal(txnId, stmtId, desc, amt) {
+  currentTxnAmt = amt;
+  isMultiMode = false;
+  selectedInvoices = {};
+
   document.getElementById('matchTxnDesc').textContent = desc;
   document.getElementById('matchTxnAmt').textContent = '€' + amt.toFixed(2);
   document.getElementById('matchStmtId').value = stmtId;
+  document.getElementById('matchMultiStmtId').value = stmtId;
   document.getElementById('matchForm').action = '/reconcile/txn/' + txnId + '/match';
+  document.getElementById('matchMultiForm').action = '/reconcile/txn/' + txnId + '/match-multi';
   document.getElementById('matchInvoiceId').value = '';
   document.getElementById('matchInvoiceLabel').value = '';
   document.getElementById('matchConfirmBtn').disabled = true;
+  document.getElementById('matchMultiConfirmBtn').disabled = true;
   document.getElementById('invoiceResults').innerHTML = '';
   document.getElementById('invoiceSearch').value = '';
+
+  updateModeUI();
   new bootstrap.Modal(document.getElementById('matchModal')).show();
   searchInvoices('');
+}
+
+function toggleMultiMode() {
+  isMultiMode = !isMultiMode;
+  selectedInvoices = {};
+  updateModeUI();
+  searchInvoices(document.getElementById('invoiceSearch').value);
+}
+
+function updateModeUI() {
+  const toggle = document.getElementById('multiModeToggle');
+  toggle.classList.toggle('btn-primary', isMultiMode);
+  toggle.classList.toggle('btn-outline-secondary', !isMultiMode);
+
+  document.getElementById('matchForm').style.display = isMultiMode ? 'none' : '';
+  document.getElementById('matchMultiForm').style.display = isMultiMode ? '' : 'none';
+  document.getElementById('multiTotalDisplay').style.display = isMultiMode ? '' : 'none';
+
+  if (isMultiMode) updateMultiTotal();
+}
+
+function updateMultiTotal() {
+  const total = Object.values(selectedInvoices).reduce((s, inv) => s + inv.amount, 0);
+  const diff = Math.abs(total - currentTxnAmt);
+  const ok = diff <= 0.10 && Object.keys(selectedInvoices).length > 0;
+
+  const textEl = document.getElementById('multiTotalText');
+  const hintEl = document.getElementById('multiTotalHint');
+  textEl.textContent = `Selected total: €${total.toFixed(2)} / €${currentTxnAmt.toFixed(2)}`;
+  textEl.style.color = ok ? 'var(--bs-success)' : (total > 0 ? 'var(--bs-warning-text-emphasis)' : '');
+  hintEl.textContent = ok ? '✓ totals match' : (total > 0 ? `difference: €${diff.toFixed(2)}` : 'tick invoices below');
+
+  document.getElementById('matchMultiConfirmBtn').disabled = !ok;
+
+  // Rebuild hidden inputs
+  const container = document.getElementById('multiInvoiceIds');
+  container.innerHTML = '';
+  Object.keys(selectedInvoices).forEach(id => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden';
+    inp.name = 'invoice_ids';
+    inp.value = id;
+    container.appendChild(inp);
+  });
 }
 
 let searchTimeout;
@@ -352,18 +429,40 @@ function searchInvoices(q) {
       const el = document.getElementById('invoiceResults');
       el.innerHTML = '';
       data.forEach(inv => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'list-group-item list-group-item-action small';
-        btn.textContent = inv.label;
-        btn.addEventListener('click', function() {
-          document.querySelectorAll('#invoiceResults .list-group-item').forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
-          document.getElementById('matchInvoiceId').value = inv.id;
-          document.getElementById('matchInvoiceLabel').value = inv.label;
-          document.getElementById('matchConfirmBtn').disabled = false;
-        });
-        el.appendChild(btn);
+        if (isMultiMode) {
+          const div = document.createElement('div');
+          div.className = 'list-group-item small d-flex align-items-center gap-2 py-2';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.className = 'form-check-input flex-shrink-0 mt-0';
+          cb.checked = !!selectedInvoices[inv.id];
+          cb.addEventListener('change', function() {
+            if (this.checked) {
+              selectedInvoices[inv.id] = {id: inv.id, label: inv.label, amount: inv.amount};
+            } else {
+              delete selectedInvoices[inv.id];
+            }
+            updateMultiTotal();
+          });
+          const lbl = document.createElement('span');
+          lbl.textContent = inv.label;
+          div.appendChild(cb);
+          div.appendChild(lbl);
+          el.appendChild(div);
+        } else {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'list-group-item list-group-item-action small';
+          btn.textContent = inv.label;
+          btn.addEventListener('click', function() {
+            document.querySelectorAll('#invoiceResults .list-group-item-action').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('matchInvoiceId').value = inv.id;
+            document.getElementById('matchInvoiceLabel').value = inv.label;
+            document.getElementById('matchConfirmBtn').disabled = false;
+          });
+          el.appendChild(btn);
+        }
       });
     });
 }
