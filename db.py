@@ -2763,7 +2763,8 @@ def list_bank_statements():
         """SELECT bs.*,
                   SUM(CASE WHEN bt.match_status='matched' THEN 1 ELSE 0 END) AS matched_count,
                   SUM(CASE WHEN bt.match_status='unmatched' THEN 1 ELSE 0 END) AS unmatched_count,
-                  SUM(CASE WHEN bt.match_status='ignored' THEN 1 ELSE 0 END) AS ignored_count
+                  SUM(CASE WHEN bt.match_status='ignored' THEN 1 ELSE 0 END) AS ignored_count,
+                  SUM(CASE WHEN bt.match_status='review' THEN 1 ELSE 0 END) AS review_count
            FROM bank_statements bs
            LEFT JOIN bank_transactions bt ON bt.statement_id = bs.id
            GROUP BY bs.id

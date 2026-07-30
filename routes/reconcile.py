@@ -209,23 +209,21 @@ def _auto_match(statement_id):
         if is_payroll:
             candidates = pay_by_amount.get(debit_abs, [])
             best = None
-            best_score = (-1, 9999)  # (name_score desc, date_diff asc)
+            best_score = (-1, 9999)
             for pn in candidates:
                 diff = _date_diff(txn_date, pn["pay_date"])
                 if diff > _DATE_TOLERANCE_PAYROLL:
                     continue
                 ns = _name_score(txn["extracted_name"], pn["raw_name"], "")
-                score = (ns, diff)
                 if best is None or (ns > best_score[0]) or (ns == best_score[0] and diff < best_score[1]):
                     best = pn
-                    best_score = score
+                    best_score = (ns, diff)
             if best:
                 label = f"Payroll – {best['raw_name']} ({best['period_label'] or best['iso_week']})"
                 db.update_bank_transaction_match(txn["id"], "matched", "payroll", best["id"], label)
                 continue
 
-            # --- Payroll fallback: match by employee name only ---
-            # Useful when payslip data doesn't exist for this pay period yet
+            # --- Payroll: try employee name match (no payslip needed) ---
             bank_name = txn["extracted_name"] or ""
             best_emp = None
             best_emp_score = 0
@@ -236,11 +234,11 @@ def _auto_match(statement_id):
                     best_emp_score = ns
             if best_emp and best_emp_score >= 2:
                 full_name = f"{best_emp['given_name']} {best_emp['family_name']}"
-                label = f"Payroll – {full_name} (name match, no payslip on file)"
+                label = f"Payroll – {full_name} (no payslip on file for this period)"
                 db.update_bank_transaction_match(txn["id"], "matched", "payroll_name", None, label)
                 continue
 
-        # --- Invoice match for all debit types ---
+        # --- Invoice match for all debit types (including B365 supplier payments) ---
         candidates = inv_by_amount.get(debit_abs, [])
         best_inv = None
         best_diff = _DATE_TOLERANCE_INVOICE + 1
@@ -252,6 +250,14 @@ def _auto_match(statement_id):
         if best_inv:
             label = f"{best_inv['supplier_name']} – inv #{best_inv['invoice_number'] or best_inv['id']} (€{best_inv['total_amount']:.2f})"
             db.update_bank_transaction_match(txn["id"], "matched", "invoice", best_inv["id"], label)
+            continue
+
+        # --- Final fallback: acknowledge payroll transactions with extracted name ---
+        # Covers casual staff, contractors, and one-off payments that have no payslip
+        # record and no invoice — at least record who was paid so it's not a mystery.
+        if is_payroll and txn["extracted_name"]:
+            label = f"Payroll/payment – {txn['extracted_name']} (no record on file)"
+            db.update_bank_transaction_match(txn["id"], "review", "payroll_unknown", None, label)
 
 
 # ---------------------------------------------------------------------------
@@ -312,9 +318,11 @@ def reconcile_view(statement_id):
     if status_filter != "all":
         transactions = [t for t in transactions if t["match_status"] == status_filter]
 
-    matched = sum(1 for t in db.get_bank_transactions(statement_id) if t["match_status"] == "matched")
-    unmatched = sum(1 for t in db.get_bank_transactions(statement_id) if t["match_status"] == "unmatched")
-    ignored = sum(1 for t in db.get_bank_transactions(statement_id) if t["match_status"] == "ignored")
+    all_txns = db.get_bank_transactions(statement_id)
+    matched = sum(1 for t in all_txns if t["match_status"] == "matched")
+    unmatched = sum(1 for t in all_txns if t["match_status"] == "unmatched")
+    ignored = sum(1 for t in all_txns if t["match_status"] == "ignored")
+    review = sum(1 for t in all_txns if t["match_status"] == "review")
 
     all_statements = db.list_bank_statements()
     invoices = db.list_invoices(limit=5000)
@@ -328,6 +336,7 @@ def reconcile_view(statement_id):
         matched=matched,
         unmatched=unmatched,
         ignored=ignored,
+        review=review,
         invoices=invoices,
     )
 
