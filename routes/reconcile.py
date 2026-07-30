@@ -268,6 +268,15 @@ def _auto_match(statement_id):
         txn_date = txn["txn_date"]
         is_payroll = txn["txn_type"] in ("payroll", "payroll_online", "standing_order")
 
+        # Edenrose rent — monthly standing orders of €5,000 and €10,000
+        if (txn["txn_type"] == "standing_order"
+                and txn["extracted_name"]
+                and "Edenrose" in txn["extracted_name"]
+                and debit_abs >= 4000):
+            label = f"Rent – Edenrose Ltd (€{debit_abs:,.2f})"
+            db.update_bank_transaction_match(txn["id"], "matched", "rent", None, label)
+            continue
+
         # --- Payroll: try exact amount + date match against payslip data ---
         if is_payroll:
             candidates = pay_by_amount.get(debit_abs, [])
