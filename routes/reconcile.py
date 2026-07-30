@@ -268,11 +268,19 @@ def _auto_match(statement_id):
         txn_date = txn["txn_date"]
         is_payroll = txn["txn_type"] in ("payroll", "payroll_online", "standing_order")
 
-        # Edenrose rent — monthly standing orders of €5,000 and €10,000
-        if (txn["txn_type"] == "standing_order"
+        # JC Kenny — deferred monthly billing (prior month's invoices split into 4 weekly SEPA DDs)
+        # Cannot match to specific invoices; handled via the period reconciliation panel.
+        if (txn["txn_type"] == "direct_debit"
                 and txn["extracted_name"]
-                and "Edenrose" in txn["extracted_name"]
-                and debit_abs >= 4000):
+                and "JOHN CARMEL" in txn["extracted_name"].upper()):
+            db.update_bank_transaction_match(
+                txn["id"], "review", "jc_kenny", None,
+                "JC Kenny – monthly installment (reconcile via JC Kenny panel)"
+            )
+            continue
+
+        # Edenrose rent — all debits (B365 €1,000 and SOs €5,000/€10,000) are rent
+        if txn["extracted_name"] and "Edenrose" in txn["extracted_name"]:
             label = f"Rent – Edenrose Ltd (€{debit_abs:,.2f})"
             db.update_bank_transaction_match(txn["id"], "matched", "rent", None, label)
             continue
@@ -341,6 +349,78 @@ def _auto_match(statement_id):
 
 
 # ---------------------------------------------------------------------------
+# JC Kenny period reconciliation
+# ---------------------------------------------------------------------------
+
+_MONTH_NAMES = ["January","February","March","April","May","June",
+                "July","August","September","October","November","December"]
+
+
+def _prior_month(ym):
+    """Return the calendar month before 'YYYY-MM', as 'YYYY-MM'."""
+    year, month = int(ym[:4]), int(ym[5:])
+    if month == 1:
+        return f"{year - 1}-12"
+    return f"{year}-{month - 1:02d}"
+
+
+def _month_label(ym):
+    year, month = int(ym[:4]), int(ym[5:])
+    return f"{_MONTH_NAMES[month - 1]} {year}"
+
+
+def _get_jc_kenny_summary(statement_id):
+    """Return per-payment-month summary for the JC Kenny reconciliation panel."""
+    from collections import defaultdict
+
+    all_txns = db.get_bank_transactions(statement_id)
+    jck_txns = [t for t in all_txns
+                if t["txn_type"] == "direct_debit"
+                and t["extracted_name"]
+                and "JOHN CARMEL" in t["extracted_name"].upper()]
+
+    if not jck_txns:
+        return []
+
+    # All JC Kenny invoices from the DB (supplier name contains "Kenny")
+    invoices = db.list_invoices(keyword="Kenny", limit=1000)
+    inv_by_month = defaultdict(list)
+    for inv in invoices:
+        inv_by_month[inv["invoice_date"][:7]].append(inv)
+
+    # Group payments by month
+    pay_by_month = defaultdict(list)
+    for t in jck_txns:
+        pay_by_month[t["txn_date"][:7]].append(t)
+
+    periods = []
+    for pm in sorted(pay_by_month.keys()):
+        txns = pay_by_month[pm]
+        inv_month = _prior_month(pm)
+        inv_list = inv_by_month.get(inv_month, [])
+
+        total_paid = round(sum(abs(float(t["debit"])) for t in txns if t["debit"]), 2)
+        total_invoiced = round(sum(float(inv["total_amount"]) for inv in inv_list), 2)
+        diff = round(total_paid - total_invoiced, 2)
+        all_matched = all(t["match_status"] == "matched" for t in txns)
+
+        periods.append({
+            "payment_month": pm,
+            "payment_month_label": _month_label(pm),
+            "invoice_month": inv_month,
+            "invoice_month_label": _month_label(inv_month),
+            "payment_count": len(txns),
+            "total_paid": total_paid,
+            "invoice_count": len(inv_list),
+            "total_invoiced": total_invoiced,
+            "difference": diff,
+            "all_matched": all_matched,
+        })
+
+    return periods
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -406,6 +486,7 @@ def reconcile_view(statement_id):
 
     all_statements = db.list_bank_statements()
     invoices = db.list_invoices(limit=5000)
+    jc_kenny_periods = _get_jc_kenny_summary(statement_id)
 
     return render_template(
         "reconcile.html",
@@ -418,6 +499,7 @@ def reconcile_view(statement_id):
         ignored=ignored,
         review=review,
         invoices=invoices,
+        jc_kenny_periods=jc_kenny_periods,
     )
 
 
@@ -453,6 +535,27 @@ def txn_unmatch(txn_id):
     db.update_bank_transaction_match(txn_id, "unmatched", None, None, None)
     return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id,
                             status=request.args.get("status", "all")))
+
+
+@bp.route("/reconcile/<int:statement_id>/jc-kenny-match", methods=["POST"])
+def jc_kenny_match(statement_id):
+    """Mark all JC Kenny SEPA DDs in a payment month as matched against prior month invoices."""
+    payment_month = request.form.get("payment_month")
+    invoice_month = request.form.get("invoice_month")
+
+    all_txns = db.get_bank_transactions(statement_id)
+    jck_txns = [t for t in all_txns
+                if t["txn_type"] == "direct_debit"
+                and t["extracted_name"]
+                and "JOHN CARMEL" in t["extracted_name"].upper()
+                and t["txn_date"][:7] == payment_month]
+
+    label = f"JC Kenny – {_month_label(invoice_month)} invoices (period reconciliation)"
+    for txn in jck_txns:
+        db.update_bank_transaction_match(txn["id"], "matched", "period_match", None, label)
+
+    flash(f"Matched {len(jck_txns)} JC Kenny payment(s) against {_month_label(invoice_month)} invoices.", "success")
+    return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id))
 
 
 @bp.route("/reconcile/<int:statement_id>/rematch", methods=["POST"])

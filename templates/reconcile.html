@@ -130,6 +130,61 @@
     </div>
     <div id="searchCount" class="small text-muted mb-2" style="display:none;"></div>
 
+    <!-- JC Kenny Period Reconciliation panel -->
+    {% if jc_kenny_periods %}
+    <div class="card border-warning mb-3">
+      <div class="card-header fw-semibold text-warning-emphasis bg-warning-subtle d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar3-range me-2"></i>JC Kenny – Period Reconciliation</span>
+        <small class="text-muted fw-normal">Payments cover prior month's invoices</small>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Payments in</th>
+              <th class="text-end">Total paid</th>
+              <th>vs Invoices from</th>
+              <th class="text-end">Total invoiced</th>
+              <th class="text-end">Difference</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for p in jc_kenny_periods %}
+          <tr class="{% if p.all_matched %}table-success{% endif %}">
+            <td class="small">{{ p.payment_month_label }} <span class="text-muted">({{ p.payment_count }} payments)</span></td>
+            <td class="text-end small fw-semibold">€{{ "%.2f"|format(p.total_paid) }}</td>
+            <td class="small">{{ p.invoice_month_label }} <span class="text-muted">({{ p.invoice_count }} invoice{% if p.invoice_count != 1 %}s{% endif %})</span></td>
+            <td class="text-end small fw-semibold">€{{ "%.2f"|format(p.total_invoiced) }}</td>
+            <td class="text-end small {% if p.difference|abs <= 0.10 %}text-success{% else %}text-danger fw-semibold{% endif %}">
+              {% if p.difference > 0 %}+{% endif %}€{{ "%.2f"|format(p.difference) }}
+            </td>
+            <td class="text-nowrap">
+              {% if p.all_matched %}
+                <span class="text-success small"><i class="bi bi-check-circle-fill me-1"></i>Matched</span>
+              {% elif p.invoice_count == 0 %}
+                <span class="text-muted small">No invoices on file</span>
+              {% else %}
+                <form method="post" action="{{ url_for('reconcile.jc_kenny_match', statement_id=view.id) }}">
+                  <input type="hidden" name="payment_month" value="{{ p.payment_month }}">
+                  <input type="hidden" name="invoice_month" value="{{ p.invoice_month }}">
+                  <button class="btn btn-sm btn-warning py-0"
+                          {% if p.difference|abs > 0.10 %}
+                          onclick="return confirm('Totals differ by €{{ '%.2f'|format(p.difference|abs) }}. Confirm anyway?')"
+                          {% endif %}>
+                    Confirm match
+                  </button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Filter tabs -->
     <ul class="nav nav-tabs mb-3">
       {% for label, key in [('All', 'all'), ('Unmatched', 'unmatched'), ('Needs Review', 'review'), ('Matched', 'matched'), ('Ignored', 'ignored')] %}
