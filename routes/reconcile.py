@@ -140,7 +140,7 @@ def _classify_transaction(description):
 # ---------------------------------------------------------------------------
 
 _DATE_TOLERANCE_INVOICE = 14   # days either side for invoice matching
-_DATE_TOLERANCE_PAYROLL = 4    # days either side for payroll matching
+_DATE_TOLERANCE_PAYROLL = 7    # days either side for payroll matching
 
 
 def _date_diff(d1_iso, d2_iso):
@@ -150,10 +150,33 @@ def _date_diff(d1_iso, d2_iso):
         return 9999
 
 
+def _name_score(bank_name, given_name, family_name):
+    """Score how well a bank extracted name matches an employee. Returns 0–3."""
+    if not bank_name:
+        return 0
+    bank_tokens = bank_name.upper().split()
+    full = (given_name + " " + family_name).upper()
+    # Strip titles
+    clean_given = re.sub(r"^(MR|MRS|MS|DR)\.?\s+", "", given_name.upper())
+    clean_family = family_name.upper().replace("'", "").replace("-", " ")
+
+    score = 0
+    for tok in bank_tokens:
+        if len(tok) < 2:
+            continue
+        if clean_given.startswith(tok) or tok.startswith(clean_given[:min(len(tok), len(clean_given))]):
+            score += 2
+        elif any(part.startswith(tok) or tok.startswith(part[:min(len(tok), len(part))])
+                 for part in clean_family.split()):
+            score += 1
+    return score
+
+
 def _auto_match(statement_id):
     transactions = db.get_bank_transactions(statement_id)
     invoices = db.list_invoices(limit=5000)
     pay_nets = db.get_all_pay_period_nets_with_dates()
+    employees = db.get_employee_categories()
 
     # Index invoices by rounded total_amount
     inv_by_amount = {}
@@ -161,43 +184,63 @@ def _auto_match(statement_id):
         key = round(float(inv["total_amount"] or 0), 2)
         inv_by_amount.setdefault(key, []).append(inv)
 
-    # Index payroll by rounded net_pay
+    # Index payroll nets by rounded net_pay
     pay_by_amount = {}
     for pn in pay_nets:
         key = round(float(pn["net_pay"] or 0), 2)
         pay_by_amount.setdefault(key, []).append(pn)
 
     for txn in transactions:
-        # Only try to match debit transactions
         if not txn["debit"]:
             continue
         if txn["match_status"] == "matched":
             continue
 
-        # Skip bank charges — auto-ignore
+        # Auto-ignore bank charges
         if txn["txn_type"] == "bank_charge":
             db.update_bank_transaction_match(txn["id"], "ignored", "bank_charge", None, "Bank charge")
             continue
 
         debit_abs = round(abs(float(txn["debit"])), 2)
         txn_date = txn["txn_date"]
+        is_payroll = txn["txn_type"] in ("payroll", "payroll_online")
 
-        # Try payroll match for payroll transaction types
-        if txn["txn_type"] in ("payroll", "payroll_online"):
+        # --- Payroll: try exact amount + date match against payslip data ---
+        if is_payroll:
             candidates = pay_by_amount.get(debit_abs, [])
             best = None
-            best_diff = _DATE_TOLERANCE_PAYROLL + 1
+            best_score = (-1, 9999)  # (name_score desc, date_diff asc)
             for pn in candidates:
                 diff = _date_diff(txn_date, pn["pay_date"])
-                if diff <= _DATE_TOLERANCE_PAYROLL and diff < best_diff:
+                if diff > _DATE_TOLERANCE_PAYROLL:
+                    continue
+                ns = _name_score(txn["extracted_name"], pn["raw_name"], "")
+                score = (ns, diff)
+                if best is None or (ns > best_score[0]) or (ns == best_score[0] and diff < best_score[1]):
                     best = pn
-                    best_diff = diff
+                    best_score = score
             if best:
                 label = f"Payroll – {best['raw_name']} ({best['period_label'] or best['iso_week']})"
                 db.update_bank_transaction_match(txn["id"], "matched", "payroll", best["id"], label)
                 continue
 
-        # Try invoice match for all debit types
+            # --- Payroll fallback: match by employee name only ---
+            # Useful when payslip data doesn't exist for this pay period yet
+            bank_name = txn["extracted_name"] or ""
+            best_emp = None
+            best_emp_score = 0
+            for emp in employees:
+                ns = _name_score(bank_name, emp["given_name"], emp["family_name"])
+                if ns > best_emp_score:
+                    best_emp = emp
+                    best_emp_score = ns
+            if best_emp and best_emp_score >= 2:
+                full_name = f"{best_emp['given_name']} {best_emp['family_name']}"
+                label = f"Payroll – {full_name} (name match, no payslip on file)"
+                db.update_bank_transaction_match(txn["id"], "matched", "payroll_name", None, label)
+                continue
+
+        # --- Invoice match for all debit types ---
         candidates = inv_by_amount.get(debit_abs, [])
         best_inv = None
         best_diff = _DATE_TOLERANCE_INVOICE + 1
@@ -321,6 +364,14 @@ def txn_unmatch(txn_id):
     db.update_bank_transaction_match(txn_id, "unmatched", None, None, None)
     return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id,
                             status=request.args.get("status", "all")))
+
+
+@bp.route("/reconcile/<int:statement_id>/rematch", methods=["POST"])
+def reconcile_rematch(statement_id):
+    """Re-run auto-matching on all unmatched transactions in a statement."""
+    _auto_match(statement_id)
+    flash("Auto-matching re-run complete.", "success")
+    return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id))
 
 
 @bp.route("/reconcile/<int:statement_id>/delete", methods=["POST"])
