@@ -249,6 +249,11 @@ def _auto_match(statement_id):
             db.update_bank_transaction_match(txn["id"], "ignored", "bank_charge", None, "Bank charge")
             continue
 
+        # Internal transfers between Cobblestone accounts
+        if txn["txn_type"] == "standing_order" and txn["extracted_name"] == "Cobblestone Bar":
+            db.update_bank_transaction_match(txn["id"], "ignored", "internal_transfer", None, "Internal transfer – Cobblestone Bar account")
+            continue
+
         debit_abs = round(abs(float(txn["debit"])), 2)
         txn_date = txn["txn_date"]
         is_payroll = txn["txn_type"] in ("payroll", "payroll_online")
