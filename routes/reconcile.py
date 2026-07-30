@@ -266,7 +266,7 @@ def _auto_match(statement_id):
 
         debit_abs = round(abs(float(txn["debit"])), 2)
         txn_date = txn["txn_date"]
-        is_payroll = txn["txn_type"] in ("payroll", "payroll_online")
+        is_payroll = txn["txn_type"] in ("payroll", "payroll_online", "standing_order")
 
         # --- Payroll: try exact amount + date match against payslip data ---
         if is_payroll:
