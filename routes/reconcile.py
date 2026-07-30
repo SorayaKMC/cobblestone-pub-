@@ -254,6 +254,16 @@ def _auto_match(statement_id):
             db.update_bank_transaction_match(txn["id"], "ignored", "internal_transfer", None, "Internal transfer – Cobblestone Bar account")
             continue
 
+        # 365 Online to known internal accounts
+        if txn["txn_type"] == "supplier_transfer":
+            desc = txn["description"]
+            if "96216286" in desc:
+                db.update_bank_transaction_match(txn["id"], "ignored", "internal_transfer", None, "VAT/PAYE account transfer (96216286)")
+                continue
+            if "92952008" in desc:
+                db.update_bank_transaction_match(txn["id"], "ignored", "internal_transfer", None, "Cobblestone savings transfer (92952008)")
+                continue
+
         debit_abs = round(abs(float(txn["debit"])), 2)
         txn_date = txn["txn_date"]
         is_payroll = txn["txn_type"] in ("payroll", "payroll_online")
