@@ -122,6 +122,14 @@
       </form>
     </div>
 
+    <!-- Search -->
+    <div class="input-group mb-3">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" id="txnSearch" class="form-control" placeholder="Search transactions…" autocomplete="off">
+      <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('txnSearch').value=''; filterTable()">Clear</button>
+    </div>
+    <div id="searchCount" class="small text-muted mb-2" style="display:none;"></div>
+
     <!-- Filter tabs -->
     <ul class="nav nav-tabs mb-3">
       {% for label, key in [('All', 'all'), ('Unmatched', 'unmatched'), ('Needs Review', 'review'), ('Matched', 'matched'), ('Ignored', 'ignored')] %}
@@ -141,7 +149,7 @@
 
     <!-- Transactions table -->
     <div class="table-responsive">
-      <table class="table table-sm table-hover align-middle">
+      <table class="table table-sm table-hover align-middle" id="txnTable">
         <thead class="table-light">
           <tr>
             <th>Date</th>
@@ -316,6 +324,26 @@ document.getElementById('invoiceSearch').addEventListener('input', function() {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => searchInvoices(this.value), 300);
 });
+
+function filterTable() {
+  const q = document.getElementById('txnSearch').value.toLowerCase().trim();
+  const rows = document.querySelectorAll('#txnTable tbody tr');
+  let visible = 0;
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    const show = !q || text.includes(q);
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const countEl = document.getElementById('searchCount');
+  if (q) {
+    countEl.textContent = `${visible} result${visible !== 1 ? 's' : ''} for "${document.getElementById('txnSearch').value}"`;
+    countEl.style.display = '';
+  } else {
+    countEl.style.display = 'none';
+  }
+}
+document.getElementById('txnSearch').addEventListener('input', filterTable);
 
 function searchInvoices(q) {
   fetch('/reconcile/txn/0/match-options?q=' + encodeURIComponent(q))
