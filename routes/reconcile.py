@@ -191,9 +191,23 @@ def _auto_match(statement_id):
         pay_by_amount.setdefault(key, []).append(pn)
 
     for txn in transactions:
-        if not txn["debit"]:
-            continue
         if txn["match_status"] == "matched":
+            continue
+
+        # Auto-label income credits
+        if txn["credit"] and not txn["debit"]:
+            desc = txn["description"]
+            if re.match(r"T3[A-Z0-9]{8,}", desc):
+                db.update_bank_transaction_match(txn["id"], "matched", "income", None, "Square payout – bar & online sales")
+            elif desc.startswith("LATM CR"):
+                db.update_bank_transaction_match(txn["id"], "matched", "income", None, "Square cash lodgment")
+            elif desc.startswith("LODGMENT"):
+                db.update_bank_transaction_match(txn["id"], "matched", "income", None, "Cash lodgment")
+            else:
+                db.update_bank_transaction_match(txn["id"], "review", "income", None, f"Income – {desc}")
+            continue
+
+        if not txn["debit"]:
             continue
 
         # Auto-ignore bank charges
