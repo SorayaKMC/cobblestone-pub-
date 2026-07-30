@@ -556,6 +556,75 @@ def get_tshirt_inventory_counts(variation_ids, location_ids=None):
     return result
 
 
+# --- Payouts ---
+
+def get_payouts(begin_date, end_date):
+    """Fetch Square payouts for a date range.
+
+    begin_date / end_date: 'YYYY-MM-DD' strings.
+    Returns list of dicts: {id, amount (Decimal EUR), arrival_date (YYYY-MM-DD), status}
+    Cached for 24 hours per date range.
+    """
+    import db as _db
+    from datetime import datetime as _dt
+
+    cache_key = f"square_payouts_{begin_date}_{end_date}"
+    cached, synced_at = _db.get_cache(cache_key)
+    if cached is not None and synced_at:
+        try:
+            if (_dt.now() - _dt.fromisoformat(synced_at)).total_seconds() < 86400:
+                return [
+                    {**p, "amount": Decimal(str(p["amount"]))}
+                    for p in cached
+                ]
+        except Exception:
+            pass
+
+    location_id = config.SQUARE_LOCATION_ID
+    if not location_id:
+        return []
+
+    url = f"{config.SQUARE_BASE_URL}/payouts"
+    params = {
+        "location_id": location_id,
+        "begin_time": f"{begin_date}T00:00:00Z",
+        "end_time": f"{end_date}T23:59:59Z",
+        "status": "PAID",
+        "limit": 100,
+    }
+
+    all_payouts = []
+    while True:
+        try:
+            resp = requests.get(url, headers=_headers(), params=params, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            print(f"[square] payouts fetch failed: {e}")
+            break
+
+        for p in data.get("payouts", []):
+            amt = _money_to_decimal(p.get("amount_money"))
+            all_payouts.append({
+                "id": p["id"],
+                "amount": amt,
+                "arrival_date": p.get("arrival_date", ""),
+                "status": p.get("status", ""),
+            })
+
+        cursor = data.get("cursor")
+        if not cursor:
+            break
+        params["cursor"] = cursor
+
+    try:
+        _db.set_cache(cache_key, [{**p, "amount": str(p["amount"])} for p in all_payouts])
+    except Exception:
+        pass
+
+    return all_payouts
+
+
 # --- Booking Payment Links ---
 
 def create_door_fee_payment_link(booking_id, act_name, event_date, redirect_url=None):

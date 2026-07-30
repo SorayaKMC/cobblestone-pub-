@@ -172,11 +172,31 @@ def _name_score(bank_name, given_name, family_name):
     return score
 
 
+def _fetch_payouts_for_statement(statement_id):
+    """Fetch Square payouts for the date range of a statement."""
+    try:
+        import square_client
+        stmt = db.get_bank_statement(statement_id)
+        if not stmt or not stmt["date_from"]:
+            return {}
+        payouts = square_client.get_payouts(stmt["date_from"], stmt["date_to"])
+        # Index by (arrival_date, rounded_amount) for fast lookup
+        idx = {}
+        for p in payouts:
+            key = (p["arrival_date"], round(float(p["amount"]), 2))
+            idx[key] = p
+        return idx
+    except Exception as e:
+        print(f"[reconcile] Square payouts fetch failed: {e}")
+        return {}
+
+
 def _auto_match(statement_id):
     transactions = db.get_bank_transactions(statement_id)
     invoices = db.list_invoices(limit=5000)
     pay_nets = db.get_all_pay_period_nets_with_dates()
     employees = db.get_employee_categories()
+    square_payouts = _fetch_payouts_for_statement(statement_id)
 
     # Index invoices by rounded total_amount
     inv_by_amount = {}
@@ -197,8 +217,22 @@ def _auto_match(statement_id):
         # Auto-label income credits
         if txn["credit"] and not txn["debit"]:
             desc = txn["description"]
+            credit_amt = round(float(txn["credit"]), 2)
             if re.match(r"T3[A-Z0-9]{8,}", desc):
-                db.update_bank_transaction_match(txn["id"], "matched", "income", None, "Square payout – bar & online sales")
+                # Try to verify against Square's payout records
+                payout = square_payouts.get((txn["txn_date"], credit_amt))
+                if not payout:
+                    # Try ±1 day (bank processing lag)
+                    for delta in (1, -1):
+                        adj = (date.fromisoformat(txn["txn_date"]) + timedelta(days=delta)).isoformat()
+                        payout = square_payouts.get((adj, credit_amt))
+                        if payout:
+                            break
+                if payout:
+                    label = f"Square payout – verified (id: {payout['id']})"
+                else:
+                    label = f"Square payout – bar & online sales (€{credit_amt:.2f})"
+                db.update_bank_transaction_match(txn["id"], "matched", "income", None, label)
             elif desc.startswith("LATM CR"):
                 db.update_bank_transaction_match(txn["id"], "matched", "income", None, "Square cash lodgment")
             elif desc.startswith("LODGMENT"):
