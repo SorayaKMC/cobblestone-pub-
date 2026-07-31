@@ -349,6 +349,45 @@ def _auto_match(statement_id):
 
 
 # ---------------------------------------------------------------------------
+# Split-payment relabelling
+# ---------------------------------------------------------------------------
+
+def _relabel_invoice_splits(invoice_id):
+    """After any match/unmatch, check how many transactions share this invoice
+    and relabel them all consistently."""
+    conn = db.get_db()
+    txns = conn.execute(
+        """SELECT id, debit, credit FROM bank_transactions
+           WHERE match_type = 'invoice' AND match_id = ?
+           ORDER BY txn_date, id""",
+        (invoice_id,),
+    ).fetchall()
+    inv = db.get_invoice(invoice_id)
+    if not inv:
+        conn.close()
+        return
+
+    base_label = (f"{inv['supplier_name']} – inv "
+                  f"#{inv['invoice_number'] or inv['id']} (€{inv['total_amount']:.2f})")
+
+    if len(txns) == 1:
+        conn.execute("UPDATE bank_transactions SET match_label=? WHERE id=?",
+                     (base_label, txns[0]["id"]))
+    elif len(txns) > 1:
+        inv_total = float(inv["total_amount"])
+        short = f"{inv['supplier_name']} – inv #{inv['invoice_number'] or inv['id']}"
+        for i, txn in enumerate(txns, 1):
+            amt = abs(float(txn["debit"])) if txn["debit"] else float(txn["credit"] or 0)
+            label = (f"{short} – part payment {i}/{len(txns)} "
+                     f"(€{amt:.2f} of €{inv_total:.2f})")
+            conn.execute("UPDATE bank_transactions SET match_label=? WHERE id=?",
+                         (label, txn["id"]))
+
+    conn.commit()
+    conn.close()
+
+
+# ---------------------------------------------------------------------------
 # JC Kenny period reconciliation
 # ---------------------------------------------------------------------------
 
@@ -514,6 +553,8 @@ def txn_match(txn_id):
         db.update_bank_transaction_match(
             txn_id, "matched", match_type, int(match_id), match_label
         )
+        if match_type == "invoice":
+            _relabel_invoice_splits(int(match_id))
     else:
         flash("Please select a match.", "warning")
 
@@ -532,7 +573,17 @@ def txn_ignore(txn_id):
 @bp.route("/reconcile/txn/<int:txn_id>/unmatch", methods=["POST"])
 def txn_unmatch(txn_id):
     statement_id = request.form.get("statement_id")
+    # Capture invoice link before clearing so we can relabel remaining splits
+    conn = db.get_db()
+    row = conn.execute("SELECT match_type, match_id FROM bank_transactions WHERE id=?",
+                       (txn_id,)).fetchone()
+    conn.close()
+    prev_invoice_id = row["match_id"] if row and row["match_type"] == "invoice" else None
+
     db.update_bank_transaction_match(txn_id, "unmatched", None, None, None)
+    if prev_invoice_id:
+        _relabel_invoice_splits(prev_invoice_id)
+
     return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id,
                             status=request.args.get("status", "all")))
 
