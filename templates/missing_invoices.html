@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Missing Invoices - Cobblestone Pub{% endblock %}
+{% block page_title %}Missing Invoices{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h5 class="mb-1">Bank payments with no invoice on file</h5>
+        <p class="text-muted small mb-0">
+            Shows SEPA DD payments from uploaded bank statements where no corresponding invoice exists in the system for that month.
+        </p>
+    </div>
+    <a href="/bookkeeping" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Back to Bookkeeping
+    </a>
+</div>
+
+{% if report %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <div>
+        <strong>{{ report|length }} payment{{ 's' if report|length != 1 }} found with no invoice</strong>
+        — total outstanding: <strong>€{{ "%.2f"|format(total_outstanding) }}</strong>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Month</th>
+                        <th>Bank payee</th>
+                        <th>Matched supplier</th>
+                        <th class="text-center">Payments</th>
+                        <th class="text-end">Total paid</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in report %}
+                <tr>
+                    <td class="text-nowrap">
+                        {% set parts = row.month.split('-') %}
+                        {% set month_names = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] %}
+                        {{ month_names[parts[1]|int] }} {{ parts[0] }}
+                    </td>
+                    <td>
+                        <code class="text-danger">{{ row.payee }}</code>
+                    </td>
+                    <td>
+                        {% if row.matched_supplier %}
+                            <span class="badge bg-warning text-dark">{{ row.matched_supplier }}</span>
+                        {% else %}
+                            <span class="text-muted small">No match</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ row.payment_count }}</td>
+                    <td class="text-end fw-semibold text-danger">€{{ "%.2f"|format(row.total_paid) }}</td>
+                    <td>
+                        {% if row.matched_supplier %}
+                        <a href="/bookkeeping/new?supplier_name={{ row.matched_supplier|urlencode }}&invoice_date={{ row.month }}-01"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-plus-lg me-1"></i>Add invoice
+                        </a>
+                        {% else %}
+                        <a href="/bookkeeping/new" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-plus-lg me-1"></i>Add invoice
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+                <tfoot class="table-light fw-semibold">
+                    <tr>
+                        <td colspan="4" class="text-end">Total outstanding:</td>
+                        <td class="text-end text-danger">€{{ "%.2f"|format(total_outstanding) }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<p class="text-muted small mt-3">
+    <i class="bi bi-info-circle me-1"></i>
+    Only SEPA direct debits are checked. Rent (Edenrose), JC Kenny installments, payroll, and internal transfers are excluded.
+    Month matching is approximate — an invoice dated in the same calendar month as the payment clears the flag.
+</p>
+
+{% else %}
+<div class="card shadow-sm">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-check-circle-fill text-success fs-1 mb-3 d-block"></i>
+        <h5 class="text-success">All clear!</h5>
+        <p class="text-muted mb-0">
+            Every SEPA DD payment in your uploaded bank statements has a matching invoice on file.
+        </p>
+        {% if not report %}
+        <p class="text-muted small mt-2">
+            (This may also mean no bank statements have been uploaded yet — upload a statement from the
+            <a href="/bookkeeping/reconcile">Reconciliation</a> page first.)
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

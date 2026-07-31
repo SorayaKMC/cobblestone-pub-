@@ -100,6 +100,17 @@ def late_vat_action(invoice_id):
     return redirect(url_for("bookkeeping.bookkeeping_page") + "#late-vat")
 
 
+@bp.route("/bookkeeping/missing")
+def missing_invoices():
+    report = db.get_missing_invoice_report()
+    total_outstanding = sum(r["total_paid"] for r in report)
+    return render_template(
+        "missing_invoices.html",
+        report=report,
+        total_outstanding=total_outstanding,
+    )
+
+
 @bp.route("/bookkeeping/statements")
 def statements_list():
     start = request.args.get("start_date", "")
