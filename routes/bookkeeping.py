@@ -61,6 +61,11 @@ def bookkeeping_page():
                         "processed_url": None}
     drive_last_run, _ = db.get_cache("drive_watcher_last_run")
 
+    late_vat = db.get_late_vat_invoices()
+    late_vat_pending = [i for i in late_vat if i["reclaim_status"] == "pending"]
+    late_vat_vat_total = sum(float(i["vat_amount"] or 0) for i in late_vat_pending)
+    late_vat_net_total = sum(float(i["net_amount"] or 0) for i in late_vat_pending)
+
     return render_template(
         "bookkeeping.html",
         invoices=invoices,
@@ -80,7 +85,19 @@ def bookkeeping_page():
         today=today.isoformat(),
         drive_status=drive_status,
         drive_last_run=drive_last_run,
+        late_vat=late_vat_pending,
+        late_vat_vat_total=late_vat_vat_total,
+        late_vat_net_total=late_vat_net_total,
     )
+
+
+@bp.route("/bookkeeping/late-vat/<int:invoice_id>/action", methods=["POST"])
+def late_vat_action(invoice_id):
+    action = request.form.get("action")  # 'reclaimed' or 'written_off'
+    note = request.form.get("note", "").strip() or None
+    if action in ("reclaimed", "written_off"):
+        db.set_vat_reclaim_status(invoice_id, action, note)
+    return redirect(url_for("bookkeeping.bookkeeping_page") + "#late-vat")
 
 
 @bp.route("/bookkeeping/statements")

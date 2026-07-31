@@ -285,6 +285,15 @@ def init_db():
         );
 
         CREATE INDEX IF NOT EXISTS idx_bank_txns_stmt ON bank_transactions(statement_id);
+
+        -- Tracks late-VAT invoices that slipped past a filing deadline
+        CREATE TABLE IF NOT EXISTS vat_reclaim_log (
+            invoice_id INTEGER PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'pending',
+            note TEXT,
+            actioned_at TIMESTAMP,
+            FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+        );
         CREATE INDEX IF NOT EXISTS idx_bank_txns_date ON bank_transactions(txn_date);
 
         CREATE TABLE IF NOT EXISTS bank_transaction_invoices (
@@ -2863,6 +2872,81 @@ def get_bank_transaction_invoices(txn_id):
     ).fetchall()
     conn.close()
     return rows
+
+
+# --- Late VAT reclaim tracking ---
+
+def _vat_deadline_for_date(invoice_date_iso):
+    """Return the Irish bi-monthly VAT filing deadline for a given invoice date."""
+    d = date.fromisoformat(invoice_date_iso[:10])
+    m = d.month
+    y = d.year
+    # Jan-Feb → 23 Mar | Mar-Apr → 23 May | May-Jun → 23 Jul
+    # Jul-Aug → 23 Sep | Sep-Oct → 23 Nov | Nov-Dec → 23 Jan next year
+    deadlines = {1:(3,y), 2:(3,y), 3:(5,y), 4:(5,y), 5:(7,y), 6:(7,y),
+                 7:(9,y), 8:(9,y), 9:(11,y), 10:(11,y), 11:(1,y+1), 12:(1,y+1)}
+    dm, dy = deadlines[m]
+    return date(dy, dm, 23)
+
+
+def _vat_period_label(invoice_date_iso):
+    d = date.fromisoformat(invoice_date_iso[:10])
+    pairs = {1:"Jan–Feb", 2:"Jan–Feb", 3:"Mar–Apr", 4:"Mar–Apr",
+             5:"May–Jun", 6:"May–Jun", 7:"Jul–Aug", 8:"Jul–Aug",
+             9:"Sep–Oct", 10:"Sep–Oct", 11:"Nov–Dec", 12:"Nov–Dec"}
+    return f"{pairs[d.month]} {d.year}"
+
+
+def get_late_vat_invoices():
+    """Invoices entered after their VAT filing deadline, not yet actioned.
+
+    Returns list of dicts with invoice fields plus:
+      vat_deadline, vat_period, days_late, reclaim_status, reclaim_note
+    """
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT i.*,
+                  COALESCE(v.status, 'pending') AS reclaim_status,
+                  v.note AS reclaim_note
+           FROM invoices i
+           LEFT JOIN vat_reclaim_log v ON v.invoice_id = i.id
+           WHERE i.status = 'approved'
+           ORDER BY i.invoice_date DESC"""
+    ).fetchall()
+    conn.close()
+
+    today = date.today()
+    late = []
+    for inv in rows:
+        deadline = _vat_deadline_for_date(inv["invoice_date"])
+        if deadline >= today:
+            continue  # deadline not yet passed — not late
+        created = date.fromisoformat(inv["created_at"][:10])
+        if created <= deadline:
+            continue  # was in the system before the deadline — fine
+        late.append({
+            **dict(inv),
+            "vat_deadline": deadline.isoformat(),
+            "vat_period": _vat_period_label(inv["invoice_date"]),
+            "days_late": (created - deadline).days,
+        })
+    return late
+
+
+def set_vat_reclaim_status(invoice_id, status, note=None):
+    """Mark a late invoice as reclaimed or written off."""
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO vat_reclaim_log (invoice_id, status, note, actioned_at)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(invoice_id) DO UPDATE SET
+               status=excluded.status,
+               note=excluded.note,
+               actioned_at=excluded.actioned_at""",
+        (invoice_id, status, note, datetime.now().isoformat()),
+    )
+    conn.commit()
+    conn.close()
 
 
 def delete_bank_statement(statement_id):
