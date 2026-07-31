@@ -519,6 +519,11 @@ def init_db():
             (default_amount, tm_id),
         )
 
+    # Migrate invoice categories to consolidated naming (idempotent — no-op once remapped)
+    for old_cat, new_cat in config.CATEGORY_REMAP.items():
+        cursor.execute("UPDATE invoices SET category=? WHERE category=?", (new_cat, old_cat))
+        cursor.execute("UPDATE suppliers SET default_category=? WHERE default_category=?", (new_cat, old_cat))
+
     # Seed suppliers if the table is empty
     supplier_count = cursor.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0]
     if supplier_count == 0:
