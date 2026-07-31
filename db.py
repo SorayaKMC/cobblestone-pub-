@@ -2934,18 +2934,21 @@ def get_late_vat_invoices():
 
 
 def get_missing_invoice_report():
-    """Cross-reference SEPA DD payments in bank statements against invoices.
+    """Return direct-debit bank transactions that haven't been reconciled to an invoice.
 
-    For each month where we have bank data, returns supplier payments that
-    have no corresponding invoice on file for that month.
+    Uses the actual match_type on each transaction — the ground truth set by the
+    reconciliation engine — rather than fuzzy name+month cross-referencing.
 
-    Returns list of dicts: payee, matched_supplier, month, payment_count,
-    total_paid, has_invoice.  Only rows with has_invoice=False are included.
+    A transaction is 'missing an invoice' when it is a direct_debit debit that
+    has NOT been matched to invoice / multi_invoice / rent / payroll /
+    internal_transfer / bank_charge / jc_kenny / period_match.
+
+    Results are grouped by payee + month so the user sees "Water Ireland – May 2026
+    – 2 payments – €150 total" rather than individual rows.
     """
     conn = get_db()
 
-    # All SEPA DD payments grouped by payee + month
-    payments = conn.execute(
+    rows = conn.execute(
         """SELECT
                COALESCE(extracted_name, description) AS payee,
                strftime('%Y-%m', txn_date) AS month,
@@ -2954,58 +2957,45 @@ def get_missing_invoice_report():
            FROM bank_transactions
            WHERE txn_type = 'direct_debit'
              AND debit IS NOT NULL
-             AND match_type NOT IN ('internal_transfer', 'bank_charge',
-                                    'jc_kenny', 'period_match', 'rent')
+             AND COALESCE(match_type, '') NOT IN (
+                 'invoice', 'multi_invoice',
+                 'rent', 'payroll', 'payroll_name', 'payroll_unknown',
+                 'internal_transfer', 'bank_charge',
+                 'jc_kenny', 'period_match'
+             )
            GROUP BY payee, month
            ORDER BY month DESC, total_paid DESC"""
     ).fetchall()
 
-    # Invoice presence: set of (upper supplier_name, YYYY-MM)
-    inv_rows = conn.execute(
-        """SELECT UPPER(supplier_name) AS s, strftime('%Y-%m', invoice_date) AS m
-           FROM invoices WHERE status != 'rejected'"""
-    ).fetchall()
-    invoice_set = {(r["s"], r["m"]) for r in inv_rows}
-
-    # All supplier names for fuzzy matching
-    sup_rows = conn.execute("SELECT name FROM suppliers ORDER BY LENGTH(name) DESC").fetchall()
-    sup_names = [r["name"] for r in sup_rows]
+    # Best-effort supplier name matching for the "Add invoice" shortcut
+    sup_names = [r["name"] for r in conn.execute(
+        "SELECT name FROM suppliers ORDER BY LENGTH(name) DESC"
+    ).fetchall()]
 
     conn.close()
 
     def _match_supplier(payee):
-        """Return the best matching supplier name, or None."""
         p = payee.upper()
         for name in sup_names:
             n = name.upper()
-            # supplier name contained in payee, or vice versa
             if n in p or p in n:
                 return name
-            # any token of supplier name (≥4 chars) appears in payee
             if any(tok in p for tok in n.split() if len(tok) >= 4):
                 return name
         return None
 
     results = []
-    for pmt in payments:
-        payee = (pmt["payee"] or "").strip()
+    for row in rows:
+        payee = (row["payee"] or "").strip()
         if not payee:
             continue
-        month = pmt["month"]
-        matched = _match_supplier(payee)
-        lookup = (matched or payee).upper()
-
-        # Check invoice set with the matched supplier name (and raw payee as fallback)
-        has_invoice = (lookup, month) in invoice_set or (payee.upper(), month) in invoice_set
-
-        if not has_invoice:
-            results.append({
-                "payee":            payee,
-                "matched_supplier": matched,
-                "month":            month,
-                "payment_count":    pmt["payment_count"],
-                "total_paid":       float(pmt["total_paid"] or 0),
-            })
+        results.append({
+            "payee":            payee,
+            "matched_supplier": _match_supplier(payee),
+            "month":            row["month"],
+            "payment_count":    row["payment_count"],
+            "total_paid":       float(row["total_paid"] or 0),
+        })
 
     return results
 
