@@ -127,7 +127,7 @@ def _get_week_sales_with_daily(year, week):
 
     Returns dict: total (ex-VAT), by_location, daily (Mon-Sun), tshirt_units, tshirt_revenue
     """
-    cache_key = f"week_sales_v4_{year}_W{week:02d}"
+    cache_key = f"week_sales_v5_{year}_W{week:02d}"
 
     current_year, current_week = square_client.current_week()
     is_current = (year == current_year and week == current_week)
@@ -171,18 +171,18 @@ def _get_week_sales_with_daily(year, week):
     try:
         raw_orders = _fetch_orders(start_date, end_date)
 
-        # Build the full set of variation IDs from Square catalog (cached 24h).
-        # TSHIRT_VARIATION_IDS only holds one default ID per item — the actual
-        # catalog has one variation ID per size×colour, so we load them all here.
-        live_variation_ids = set()
+        # Build the full set of variation IDs to match against order line items.
+        # Start with the hardcoded fallback IDs — these are the "default/parent"
+        # variation IDs Square uses when an item is sold without a specific
+        # size/colour selected on the POS (e.g. early Cobblestone T-Shirt sales).
+        # Then add every named size×colour variation from the catalog.
+        effective_variation_ids = set(TSHIRT_VARIATION_IDS)
         for item_id in TSHIRT_ITEM_IDS:
             try:
                 for v in square_client.get_tshirt_catalog_variations(item_id):
-                    live_variation_ids.add(v["variation_id"])
+                    effective_variation_ids.add(v["variation_id"])
             except Exception:
                 pass
-        # Fall back to hardcoded set if catalog call fails
-        effective_variation_ids = live_variation_ids or TSHIRT_VARIATION_IDS
 
         total = Decimal("0")
         by_location = {BACK_ROOM: Decimal("0"), MAIN_BAR: Decimal("0"), OUTSIDE: Decimal("0")}
@@ -438,7 +438,7 @@ def _monthly_net_from_cache(year):
     month_net = {}  # month int -> Decimal
     for week in range(2, 54):
         # Try v4 first (new cache); fall back to v3 during rebuild transition
-        data, _ = db.get_cache(f"week_sales_v4_{year}_W{week:02d}")
+        data, _ = db.get_cache(f"week_sales_v5_{year}_W{week:02d}")
         if not data:
             data, _ = db.get_cache(f"week_sales_v3_{year}_W{week:02d}")
         if not data:
@@ -559,7 +559,7 @@ def _cache_coverage(current_year, current_week):
     """Return how many weeks of the current year have v4 sales data cached."""
     cached = 0
     for week in range(2, current_week + 1):
-        key = f"week_sales_v4_{current_year}_W{week:02d}"
+        key = f"week_sales_v5_{current_year}_W{week:02d}"
         data, _ = db.get_cache(key)
         if data:
             cached += 1
@@ -955,7 +955,7 @@ def refresh_dashboard():
     conn = db.get_db()
 
     keys_to_clear = [
-        f"week_sales_v4_{current_year}_W{current_week:02d}",
+        f"week_sales_v5_{current_year}_W{current_week:02d}",
         f"week_payroll_v2_{current_year}_W{current_week:02d}",
         f"timecard_hours_by_day_{current_year}_W{current_week:02d}",
         f"vat_periods_{current_year}",
@@ -966,7 +966,7 @@ def refresh_dashboard():
     for wk in range(max(2, current_week - 4), current_week):
         _, end_date = square_client.week_dates(current_year, wk)
         week_end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-        for prefix in ("week_sales_v4", "week_payroll_v2", "timecard_hours_by_day"):
+        for prefix in ("week_sales_v5", "week_payroll_v2", "timecard_hours_by_day"):
             key = f"{prefix}_{current_year}_W{wk:02d}"
             row = conn.execute(
                 "SELECT last_synced_at FROM cache_metadata WHERE cache_key = ?", (key,)
