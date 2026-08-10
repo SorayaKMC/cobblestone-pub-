@@ -763,6 +763,7 @@ def dashboard_page():
     out = {}
     payroll_data = []
     tshirt_weekly = []
+    tshirt_revenue_total = 0.0
     hrs_by_week = {}
 
     # Iterate W02 through current week
@@ -805,6 +806,7 @@ def dashboard_page():
         wks[-1]["pay"] = round(payroll["total"], 2)
 
         tshirt_weekly.append(sales.get("tshirt_units", 0))
+        tshirt_revenue_total += sales.get("tshirt_revenue", 0)
 
         wk_hrs = _get_week_timecard_hours_by_day(current_year, week)
         if wk_hrs:
@@ -839,10 +841,7 @@ def dashboard_page():
 
     # Merch totals (all items tracked in TSHIRT_ITEMS)
     tshirt_total_units = sum(tshirt_weekly)
-    tshirt_total_revenue = round(sum(
-        (wks[i].get("tshirt_revenue", 0) if isinstance(wks[i], dict) else 0)
-        for i in range(len(wks))
-    )) or round(tshirt_total_units * 20)  # fallback estimate if revenue not cached yet
+    tshirt_total_revenue = round(tshirt_revenue_total) if tshirt_revenue_total > 0 else round(tshirt_total_units * 20)
 
     # Cobblestone T-shirt inventory — run in a thread so a slow/failed Square call can't hang the page
     tshirt_inventory = None
