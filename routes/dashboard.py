@@ -696,7 +696,7 @@ def _get_kiki_inventory_report():
         except Exception as e:
             print(f"Kiki inventory fetch failed for {name}: {e}")
 
-    result = {"items": items, "last_updated": datetime.now().isoformat()}
+    result = {"products": items, "last_updated": datetime.now().isoformat()}
     if items:
         db.set_cache(cache_key, result)
     return result
