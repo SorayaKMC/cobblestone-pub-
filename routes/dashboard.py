@@ -24,11 +24,22 @@ TSHIRT_SIZE_MIN   = {"XS": 2, "S": 7,  "M": 15, "L": 15, "XL": 9,  "2XL": 3, "3X
 TSHIRT_SIZE_IDEAL = {"XS": 6, "S": 20, "M": 44, "L": 44, "XL": 26, "2XL": 9, "3XL": 3, "XXL": 9, "XXXL": 3}
 TSHIRT_COLOUR_MIN_TOTAL = 52   # reorder if a colour's total drops below this
 
-# T-shirt catalog items in Square - only the Cobblestone T-Shirt
-# (Ispini Touched and Six Counties excluded per user request)
-# name -> (item_id, variation_id, default_price_eur)
+# Merch catalog items in Square tracked for sales + inventory.
+# name -> (item_id, fallback_variation_id, default_price_eur)
+# The fallback variation_id is only used if the catalog API is unreachable;
+# the dynamic loader in _get_week_sales_with_daily fetches all variation IDs.
 TSHIRT_ITEMS = {
-    "Cobblestone T-Shirt Tee": ("LA2QN4K476BNS5FFK2WASUS6", "OI7FSQ7OJUBQISCSXRYUMUS6", 20),
+    "Cobblestone T-Shirt": ("LA2QN4K476BNS5FFK2WASUS6", "OI7FSQ7OJUBQISCSXRYUMUS6", 20),
+    "KIKI T-Shirt":        ("QZQ2RDLDRB4BK4VSPWGO7RWM", "4JIH3XTQWPZZ6OK34ZQJDMGW", 35),
+    "KIKI Tote":           ("OGKOG5DUBZZZA3DWU7AZLNUQ", "YT4L5PPR6US5VMVBLM34TT73", 20),
+    "KIKI Print":          ("3PUBSDV3XSGITHH6LT3GNLPL", "77LAJXLQ23HMCXR6LVPW7UMC", 35),
+}
+
+# Kiki item IDs — used for the dedicated Kiki inventory panel
+KIKI_ITEM_IDS = {
+    "KIKI T-Shirt": ("QZQ2RDLDRB4BK4VSPWGO7RWM", 35),
+    "KIKI Tote":    ("OGKOG5DUBZZZA3DWU7AZLNUQ", 20),
+    "KIKI Print":   ("3PUBSDV3XSGITHH6LT3GNLPL", 35),
 }
 
 # Set of all t-shirt item IDs for filtering order line items
@@ -116,7 +127,7 @@ def _get_week_sales_with_daily(year, week):
 
     Returns dict: total (ex-VAT), by_location, daily (Mon-Sun), tshirt_units, tshirt_revenue
     """
-    cache_key = f"week_sales_v3_{year}_W{week:02d}"
+    cache_key = f"week_sales_v4_{year}_W{week:02d}"
 
     current_year, current_week = square_client.current_week()
     is_current = (year == current_year and week == current_week)
@@ -160,6 +171,19 @@ def _get_week_sales_with_daily(year, week):
     try:
         raw_orders = _fetch_orders(start_date, end_date)
 
+        # Build the full set of variation IDs from Square catalog (cached 24h).
+        # TSHIRT_VARIATION_IDS only holds one default ID per item — the actual
+        # catalog has one variation ID per size×colour, so we load them all here.
+        live_variation_ids = set()
+        for item_id in TSHIRT_ITEM_IDS:
+            try:
+                for v in square_client.get_tshirt_catalog_variations(item_id):
+                    live_variation_ids.add(v["variation_id"])
+            except Exception:
+                pass
+        # Fall back to hardcoded set if catalog call fails
+        effective_variation_ids = live_variation_ids or TSHIRT_VARIATION_IDS
+
         total = Decimal("0")
         by_location = {BACK_ROOM: Decimal("0"), MAIN_BAR: Decimal("0"), OUTSIDE: Decimal("0")}
         daily = [Decimal("0")] * 7
@@ -190,10 +214,10 @@ def _get_week_sales_with_daily(year, week):
                 if 0 <= day_idx <= 6:
                     daily[day_idx] += order_total_net
 
-            # Count t-shirt line items
+            # Count t-shirt line items — match against all size/colour variation IDs
             for li in order.get("line_items", []):
                 catalog_obj_id = li.get("catalog_object_id", "")
-                if catalog_obj_id in TSHIRT_VARIATION_IDS:
+                if catalog_obj_id in effective_variation_ids:
                     qty = int(li.get("quantity", "0") or 0)
                     tshirt_units += qty
                     li_gross = square_client._money_to_decimal(li.get("total_money"))
@@ -640,6 +664,44 @@ def _get_tshirt_inventory_report():
     return result
 
 
+def _get_kiki_inventory_report():
+    """Fetch inventory for the three KIKI special edition items. Cached 1 hour."""
+    cache_key = "kiki_inventory_v1"
+    cached, synced_at = db.get_cache(cache_key)
+    if cached and synced_at:
+        try:
+            if (datetime.now() - datetime.fromisoformat(synced_at)).total_seconds() < 3600:
+                cached["last_updated"] = synced_at
+                return cached
+        except Exception:
+            pass
+
+    items = []
+    for name, (item_id, price) in KIKI_ITEM_IDS.items():
+        try:
+            variations = square_client.get_tshirt_catalog_variations(item_id)
+            variation_ids = [v["variation_id"] for v in variations]
+            counts = square_client.get_tshirt_inventory_counts(variation_ids)
+            item_variations = [
+                {"name": v["name"], "qty": counts.get(v["variation_id"], 0)}
+                for v in variations
+            ]
+            total = sum(v["qty"] for v in item_variations)
+            items.append({
+                "name": name,
+                "price": price,
+                "variations": item_variations,
+                "total": total,
+            })
+        except Exception as e:
+            print(f"Kiki inventory fetch failed for {name}: {e}")
+
+    result = {"items": items, "last_updated": datetime.now().isoformat()}
+    if items:
+        db.set_cache(cache_key, result)
+    return result
+
+
 @bp.route("/dashboard/refresh-vat", methods=["POST"])
 def refresh_vat():
     """Drop the cached VAT-period rollup so the dashboard recomputes
@@ -775,20 +837,31 @@ def dashboard_page():
             for _i in range(7)
         ]
 
-    # T-shirt totals (revenue from cached weekly data)
+    # Merch totals (all items tracked in TSHIRT_ITEMS)
     tshirt_total_units = sum(tshirt_weekly)
-    tshirt_total_revenue = round(tshirt_total_units * 20)  # €20/unit average
+    tshirt_total_revenue = round(sum(
+        (wks[i].get("tshirt_revenue", 0) if isinstance(wks[i], dict) else 0)
+        for i in range(len(wks))
+    )) or round(tshirt_total_units * 20)  # fallback estimate if revenue not cached yet
 
-    # T-shirt inventory — run in a thread so a slow/failed Square call can't hang the page
+    # Cobblestone T-shirt inventory — run in a thread so a slow/failed Square call can't hang the page
     tshirt_inventory = None
+    kiki_inventory = None
     try:
         import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            future = ex.submit(_get_tshirt_inventory_report)
-            tshirt_inventory = future.result(timeout=12)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            f_tshirt = ex.submit(_get_tshirt_inventory_report)
+            f_kiki = ex.submit(_get_kiki_inventory_report)
+            try:
+                tshirt_inventory = f_tshirt.result(timeout=12)
+            except Exception as e:
+                print(f"T-shirt inventory failed: {e}")
+            try:
+                kiki_inventory = f_kiki.result(timeout=12)
+            except Exception as e:
+                print(f"Kiki inventory failed: {e}")
     except Exception as e:
-        print(f"T-shirt inventory failed: {e}")
-        tshirt_inventory = None
+        print(f"Inventory thread pool failed: {e}")
 
     # Compute VAT periods live
     try:
@@ -823,6 +896,7 @@ def dashboard_page():
 
     return render_template("dashboard.html",
         tshirt_inventory=tshirt_inventory,
+        kiki_inventory=kiki_inventory,
         tshirt_size_min=TSHIRT_SIZE_MIN,
         tshirt_size_ideal=TSHIRT_SIZE_IDEAL,
         tshirt_colour_min_total=TSHIRT_COLOUR_MIN_TOTAL,
@@ -854,17 +928,15 @@ def dashboard_trend():
 
 @bp.route("/dashboard/refresh-inventory", methods=["POST"])
 def refresh_inventory():
-    """Bust the t-shirt inventory cache so the next dashboard load re-fetches from Square."""
+    """Bust all inventory caches so the next dashboard load re-fetches from Square."""
     conn = db.get_db()
-    conn.execute("DELETE FROM cache_metadata WHERE cache_key = 'tshirt_inventory_v1'")
+    # Clear main inventory caches
+    conn.execute("DELETE FROM cache_metadata WHERE cache_key IN ('tshirt_inventory_v1', 'kiki_inventory_v1')")
+    # Clear all catalog variation caches for tracked items
+    for item_id, _, _ in TSHIRT_ITEMS.values():
+        conn.execute("DELETE FROM cache_metadata WHERE cache_key = ?", (f"catalog_variations_{item_id}",))
     conn.commit()
     conn.close()
-    # Also bust catalog cache so new variations are picked up
-    conn2 = db.get_db()
-    item_id = list(TSHIRT_ITEMS.values())[0][0]
-    conn2.execute("DELETE FROM cache_metadata WHERE cache_key = ?", (f"catalog_variations_{item_id}",))
-    conn2.commit()
-    conn2.close()
     flash("Inventory refreshed from Square.", "success")
     return redirect(url_for("dashboard.dashboard_page") + "#inventory")
 

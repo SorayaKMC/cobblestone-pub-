@@ -231,6 +231,36 @@ html, body{overflow-x:hidden;max-width:100vw}
   {% endif %}
 </div>
 
+{% if kiki_inventory and kiki_inventory.items %}
+<div class="sec">
+  <div class="sec-lbl">KIKI NA ART × Cobblestone — Special Edition stock</div>
+  <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:4px">
+    {% for item in kiki_inventory.items %}
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;min-width:200px">
+      <div style="font-weight:600;font-size:13px;color:#111827;margin-bottom:8px">
+        {{ item.name }} <span style="font-weight:400;color:#6b7280">· €{{ item.price }}</span>
+      </div>
+      {% for v in item.variations %}
+      <div style="display:flex;justify-content:space-between;gap:24px;padding:2px 0;font-size:13px;border-bottom:1px solid #f3f4f6">
+        <span style="color:#374151">{{ v.name }}</span>
+        <span style="font-weight:{% if v.qty == 0 %}700{% else %}500{% endif %};color:{% if v.qty == 0 %}#ef4444{% elif v.qty <= 3 %}#b45309{% else %}#111827{% endif %}">
+          {{ v.qty }}
+        </span>
+      </div>
+      {% endfor %}
+      <div style="margin-top:8px;font-size:12px;color:#6b7280;font-weight:600">Total: {{ item.total }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="note" style="margin-top:8px">
+    {% if kiki_inventory.last_updated %}Updated {{ kiki_inventory.last_updated[:16]|replace('T',' ') }}{% endif %}
+    · <form method="POST" action="/dashboard/refresh-inventory" style="display:inline;margin:0">
+        <button type="submit" style="background:none;border:none;padding:0;color:#6b7280;font-size:12px;cursor:pointer;text-decoration:underline">Refresh</button>
+      </form>
+  </div>
+</div>
+{% endif %}
+
 <div class="sec">
   <div class="sec-lbl" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
     <span>VAT reporting periods — Scheme 2 · 23%</span>
