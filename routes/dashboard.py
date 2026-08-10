@@ -437,8 +437,10 @@ def _monthly_net_from_cache(year):
     """
     month_net = {}  # month int -> Decimal
     for week in range(2, 54):
-        wk_key = f"week_sales_v3_{year}_W{week:02d}"
-        data, _ = db.get_cache(wk_key)
+        # Try v4 first (new cache); fall back to v3 during rebuild transition
+        data, _ = db.get_cache(f"week_sales_v4_{year}_W{week:02d}")
+        if not data:
+            data, _ = db.get_cache(f"week_sales_v3_{year}_W{week:02d}")
         if not data:
             continue
         try:
@@ -554,10 +556,10 @@ def _compute_vat(year):
 
 
 def _cache_coverage(current_year, current_week):
-    """Return how many weeks of the current year have sales data cached."""
+    """Return how many weeks of the current year have v4 sales data cached."""
     cached = 0
     for week in range(2, current_week + 1):
-        key = f"week_sales_v3_{current_year}_W{week:02d}"
+        key = f"week_sales_v4_{current_year}_W{week:02d}"
         data, _ = db.get_cache(key)
         if data:
             cached += 1
@@ -953,7 +955,7 @@ def refresh_dashboard():
     conn = db.get_db()
 
     keys_to_clear = [
-        f"week_sales_v3_{current_year}_W{current_week:02d}",
+        f"week_sales_v4_{current_year}_W{current_week:02d}",
         f"week_payroll_v2_{current_year}_W{current_week:02d}",
         f"timecard_hours_by_day_{current_year}_W{current_week:02d}",
         f"vat_periods_{current_year}",
@@ -964,7 +966,7 @@ def refresh_dashboard():
     for wk in range(max(2, current_week - 4), current_week):
         _, end_date = square_client.week_dates(current_year, wk)
         week_end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-        for prefix in ("week_sales_v3", "week_payroll_v2", "timecard_hours_by_day"):
+        for prefix in ("week_sales_v4", "week_payroll_v2", "timecard_hours_by_day"):
             key = f"{prefix}_{current_year}_W{wk:02d}"
             row = conn.execute(
                 "SELECT last_synced_at FROM cache_metadata WHERE cache_key = ?", (key,)
