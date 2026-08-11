@@ -78,8 +78,13 @@
             </thead>
             <tbody>
                 {% for r in rows %}
-                <tr {% if not r.team_member_id %}class="table-warning"{% endif %}>
-                    <td>{{ r.ref }}</td>
+                <tr {% if not r.team_member_id %}class="table-warning"{% elif r.is_manual %}class="table-info"{% endif %}>
+                    <td>
+                        {{ r.ref }}
+                        {% if r.is_manual %}
+                        <span class="badge bg-info text-dark ms-1" style="font-size:.6rem" title="Manually added — not from Peter's PDF">manual</span>
+                        {% endif %}
+                    </td>
                     <td>{{ r.raw_name }}</td>
                     <td>
                         <select name="map_{{ r.ref }}" class="form-select form-select-sm">
@@ -124,6 +129,63 @@
     </div>
 </div>
 </form>
+
+{% if possibly_missing %}
+<!-- Missing employees panel -->
+<div class="card mb-4 border-warning">
+    <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+        <strong>{{ possibly_missing|length }} employee{{ '' if possibly_missing|length == 1 else 's' }} not found in Peter's PDF</strong>
+        <span class="text-muted small ms-auto">Add manually if they worked this week and Peter missed them.</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Employee</th>
+                    <th>Category</th>
+                    <th class="text-end" style="width:140px">Gross Pay</th>
+                    <th class="text-end" style="width:140px">Net Pay</th>
+                    <th style="width:100px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in possibly_missing %}
+                <tr>
+                    <form method="POST" action="/payroll/accountant/add-manual-net" class="d-contents">
+                    <input type="hidden" name="pay_period_id" value="{{ period.id }}">
+                    <input type="hidden" name="team_member_id" value="{{ emp.id }}">
+                    <td>
+                        <span class="fw-semibold">{{ emp.name }}</span>
+                    </td>
+                    <td><span class="badge {% if emp.category == 'Upper Management' %}cat-upper-management{% elif emp.category == 'Management' %}cat-management{% else %}cat-staff{% endif %}">{{ emp.category }}</span></td>
+                    <td class="text-end">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text px-1">&euro;</span>
+                            <input type="number" step="0.01" min="0" name="gross_pay"
+                                   class="form-control form-control-sm text-end" placeholder="0.00">
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text px-1">&euro;</span>
+                            <input type="number" step="0.01" min="0" name="net_pay"
+                                   class="form-control form-control-sm text-end" placeholder="0.00">
+                        </div>
+                    </td>
+                    <td>
+                        <button type="submit" class="btn btn-warning btn-sm w-100">
+                            <i class="bi bi-plus-lg me-1"></i>Add
+                        </button>
+                    </td>
+                    </form>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 
 <!-- Generate drafts -->
 <div class="card mb-4">

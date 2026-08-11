@@ -931,13 +931,28 @@ def _build_accountant_view_model(period):
             "gross_pay": n["gross_pay"],
             "net_pay": n["net_pay"],
             "has_payslip": n["ref_no"] in payslip_refs,
+            "is_manual": str(n["ref_no"]).startswith("manual_"),
         })
+
+    # Work out which active employees are completely absent from this upload.
+    # Shown as a "possibly missing" warning so the user can add them manually
+    # if Peter forgot to include them (e.g. forgot holiday pay, new employee).
+    mapped_tm_ids = {r["team_member_id"] for r in rows if r["team_member_id"]}
+    possibly_missing = [
+        {"id": e["team_member_id"],
+         "name": f"{e['given_name']} {e['family_name']}",
+         "category": e["category"]}
+        for e in active_employees
+        if e["team_member_id"] not in mapped_tm_ids
+    ]
+    possibly_missing.sort(key=lambda x: x["name"])
 
     all_resolved = all(r["team_member_id"] for r in rows) and bool(rows)
     return {
         "period": period,
         "rows": rows,
         "employees": employees_options,
+        "possibly_missing": possibly_missing,
         "all_resolved": all_resolved,
     }
 
@@ -1095,6 +1110,64 @@ def accountant_upload():
             if _p:
                 try: os.unlink(_p)
                 except OSError: pass
+
+
+@bp.route("/payroll/accountant/add-manual-net", methods=["POST"])
+def accountant_add_manual_net():
+    """Manually add a net-pay row for an employee who was missing from Peter's PDF.
+
+    Uses a synthetic ref_no ('manual_<tm_id>') so it doesn't clash with real
+    PDF rows and is visually flagged as a manual entry on the accountant page.
+    """
+    period_id = int(request.form.get("pay_period_id", 0) or 0)
+    if not period_id:
+        flash("Missing pay period.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+
+    period = db.get_pay_period_by_id(period_id)
+    if not period:
+        flash("Pay period not found.", "danger")
+        return redirect(url_for("payroll.accountant_page"))
+
+    tm_id = (request.form.get("team_member_id") or "").strip()
+    if not tm_id:
+        flash("Select an employee.", "danger")
+        return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
+
+    try:
+        gross = float(request.form.get("gross_pay") or 0)
+        net = float(request.form.get("net_pay") or 0)
+    except (TypeError, ValueError):
+        flash("Invalid gross or net pay amount.", "danger")
+        return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
+
+    # Look up display name for the raw_name field
+    cats = {c["team_member_id"]: c for c in db.get_employee_categories()}
+    cat = cats.get(tm_id)
+    raw_name = f"{cat['given_name']} {cat['family_name']}" if cat else tm_id
+
+    ref_no = f"manual_{tm_id}"
+
+    conn = db.get_db()
+    # Remove any existing manual entry for this employee in this period
+    conn.execute(
+        "DELETE FROM pay_period_nets WHERE pay_period_id=? AND ref_no=?",
+        (period_id, ref_no),
+    )
+    conn.execute(
+        """INSERT INTO pay_period_nets
+           (pay_period_id, ref_no, team_member_id, raw_name,
+            gross_pay, employee_pension, tax_due, employee_prsi, usc_due,
+            net_pay, employer_prsi)
+           VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0, ?, 0)""",
+        (period_id, ref_no, tm_id, raw_name, gross, net),
+    )
+    conn.commit()
+    conn.close()
+
+    flash(f"Manually added {raw_name} — gross €{gross:.2f}, net €{net:.2f}. "
+          "This row is marked as a manual entry.", "success")
+    return redirect(url_for("payroll.accountant_page", week=period["iso_week"]))
 
 
 @bp.route("/payroll/accountant/save", methods=["POST"])

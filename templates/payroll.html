@@ -447,6 +447,12 @@
                     <td class="text-end">
                         {% if emp.net_pay_accountant is not none %}
                             <span class="text-success fw-semibold">&euro;{{ "%.2f"|format(emp.net_pay_accountant|float) }}</span>
+                        {% elif has_accountant_data and (emp.hours > 0 or emp.pay_type == 'salaried') %}
+                            <a href="/payroll/accountant?week={{ iso_week }}"
+                               class="text-warning text-decoration-none"
+                               title="A PDF was uploaded this week but this employee wasn't found in it. Click to add manually.">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Missing from PDF
+                            </a>
                         {% else %}
                             <span class="text-muted">—</span>
                         {% endif %}
