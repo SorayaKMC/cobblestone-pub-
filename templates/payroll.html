@@ -426,6 +426,9 @@
                             {% if emp.holiday_days and emp.holiday_days > 0 %}
                             <br><small class="text-muted">({{ "%.1f"|format(emp.holiday_days|float) }}d)</small>
                             {% endif %}
+                            {% if emp.holiday_pay and emp.holiday_pay > 0 %}
+                            <br><small class="text-success">&euro;{{ "%.2f"|format(emp.holiday_pay|float) }}</small>
+                            {% endif %}
                         {% else %}
                             —
                         {% endif %}

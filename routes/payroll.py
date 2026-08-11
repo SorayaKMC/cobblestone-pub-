@@ -255,6 +255,13 @@ def _load_week_payroll(year, week, iso_week, start_date, end_date):
         except (ValueError, TypeError, ArithmeticError):
             current_labor = Decimal("0.00")
         p["total_for_labor"] = (current_labor + hp).quantize(Decimal("0.01"))
+        # Holiday pay is also part of what the employee gets — add it to total
+        # so it shows in the Total column on the payroll page, not just Labor Cost.
+        try:
+            current_total = Decimal(str(p["total"]))
+        except (ValueError, TypeError, ArithmeticError):
+            current_total = Decimal("0.00")
+        p["total"] = (current_total + hp).quantize(Decimal("0.01"))
 
     return payroll, pto_taken
 
@@ -836,13 +843,18 @@ def _fuzzy_name_match(raw_name, active_employees):
     The accountant's PDFs format names inconsistently: 'Mr Thomas Mulligan',
     'Mc Mahon Soraya' (surname-first), 'Carlos Manuel Dia Soto' (multi-token).
     Apostrophes in names like O'Maolagain may appear as spaces in the PDF.
+    PDF text extraction can also introduce one-character typos (e.g. 'Wyne'
+    instead of 'Wynne', 'Muhammad' vs 'Muhammed').
     """
+    import difflib
+
     if not raw_name:
         return None
     raw_parts = _strip_titles(_normalise_name(raw_name))
     raw_tokens = set(p.lower() for p in raw_parts)
     norm_raw = " ".join(p.lower() for p in raw_parts)
 
+    # Pass 1: exact first+last or last+first
     for emp in active_employees:
         first_parts = _normalise_name(emp["given_name"])
         last_parts = _normalise_name(emp["family_name"])
@@ -851,6 +863,7 @@ def _fuzzy_name_match(raw_name, active_employees):
         if norm_raw == first_last or norm_raw == last_first:
             return emp["team_member_id"]
 
+    # Pass 2: exact token-set match (handles name-order swaps and multi-token names)
     for emp in active_employees:
         emp_tokens = set()
         for field in (emp["given_name"], emp["family_name"]):
@@ -860,6 +873,36 @@ def _fuzzy_name_match(raw_name, active_employees):
                            raw_tokens.issubset(emp_tokens) or
                            emp_tokens.issubset(raw_tokens)):
             return emp["team_member_id"]
+
+    # Pass 3: fuzzy token match — tolerate one-character differences per token.
+    # Catches OCR/PDF-extraction typos like "Wyne" vs "Wynne", "Maclnnes" vs
+    # "MacInnes", "Muhammad" vs "Muhammed". Requires all tokens to find a
+    # close match bidirectionally, and token counts within 1 of each other.
+    def _tokens_all_close(a_set, b_set, cutoff=0.80):
+        """True if every token in a_set has a close match in b_set."""
+        b_list = list(b_set)
+        for tok in a_set:
+            if not difflib.get_close_matches(tok, b_list, n=1, cutoff=cutoff):
+                return False
+        return True
+
+    for emp in active_employees:
+        emp_tokens = set()
+        for field in (emp["given_name"], emp["family_name"]):
+            for tok in _normalise_name(field):
+                emp_tokens.add(tok.lower())
+        if not raw_tokens or not emp_tokens:
+            continue
+        # Token counts must be similar (within 1) to avoid matching e.g.
+        # "Carlos Manuel Dia Soto" (4 tokens) to "Carlos Soto" (2 tokens).
+        if abs(len(raw_tokens) - len(emp_tokens)) > 1:
+            continue
+        if (_tokens_all_close(raw_tokens, emp_tokens) and
+                _tokens_all_close(emp_tokens, raw_tokens)):
+            print(f"[payroll] fuzzy-name pass3 matched '{raw_name}' → "
+                  f"{emp['given_name']} {emp['family_name']}", flush=True)
+            return emp["team_member_id"]
+
     return None
 
 
