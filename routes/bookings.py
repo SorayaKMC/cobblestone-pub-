@@ -503,6 +503,9 @@ def quick_hold():
     if event_date < _today_iso():
         flash("Cannot hold a date in the past.", "danger")
         return redirect(url_for("bookings.bookings_list"))
+    if not contact_phone:
+        flash("A phone number is required.", "danger")
+        return redirect(url_for("bookings.bookings_list"))
 
     try:
         dow = datetime.strptime(event_date, "%Y-%m-%d").strftime("%A")
@@ -1992,13 +1995,17 @@ def new_series():
         if end_date < start_date:
             raise ValueError("End date must be on or after start date.")
 
+        contact_phone = _opt("contact_phone")
+        if not contact_phone:
+            raise ValueError("A phone number is required.")
+
         data = {
             "venue":         _opt("venue", "Backroom"),
             "event_type":    _opt("event_type", "Class"),
             "act_name":      act_name,
             "contact_name":  _opt("contact_name"),
             "contact_email": _opt("contact_email"),
-            "contact_phone": _opt("contact_phone"),
+            "contact_phone": contact_phone,
             "recurrence":    _opt("recurrence", "weekly"),
             "start_date":    start_date,
             "end_date":      end_date,
