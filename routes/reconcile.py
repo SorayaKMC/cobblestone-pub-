@@ -619,9 +619,9 @@ def reconcile_rematch(statement_id):
 
 @bp.route("/reconcile/<int:statement_id>/delete", methods=["POST"])
 def reconcile_delete(statement_id):
-    db.delete_bank_statement(statement_id)
-    flash("Statement deleted.", "success")
-    return redirect(url_for("reconcile.reconcile_index"))
+    # Delete has been disabled — only an admin can remove statements.
+    flash("Statement deletion has been disabled. Contact an admin if you need to remove a statement.", "warning")
+    return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id))
 
 
 @bp.route("/reconcile/txn/<int:txn_id>/match-multi", methods=["POST"])
