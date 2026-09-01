@@ -142,6 +142,12 @@ def _classify_transaction(description):
 _DATE_TOLERANCE_INVOICE = 14   # days either side for invoice matching
 _DATE_TOLERANCE_PAYROLL = 7    # days either side for payroll matching
 
+# Suppliers that pay by direct debit on a longer cycle get an extended window.
+# Key = substring of supplier name (case-insensitive); value = days tolerance.
+_SUPPLIER_DATE_TOLERANCE = {
+    "diageo": 28,   # Diageo direct debit lands ~3 weeks after invoice date
+}
+
 
 def _date_diff(d1_iso, d2_iso):
     try:
@@ -319,7 +325,9 @@ def _auto_match(statement_id):
                 continue
 
         # --- Invoice match for all debit types (including B365 supplier payments) ---
-        # Allow ±0.10 tolerance to handle 1-2 cent bank rounding differences
+        # Allow ±0.10 tolerance to handle 1-2 cent bank rounding differences.
+        # Some suppliers (e.g. Diageo direct debit) pay ~3 weeks after invoice
+        # date, so they get a wider per-supplier window.
         best_inv = None
         best_diff = _DATE_TOLERANCE_INVOICE + 1
         best_amt_diff = 999
@@ -328,8 +336,14 @@ def _auto_match(statement_id):
             amt_diff = abs(inv_amt - debit_abs)
             if amt_diff > 0.10:
                 continue
+            supplier_lower = (inv.get("supplier_name") or "").lower()
+            tolerance = _DATE_TOLERANCE_INVOICE
+            for key, extended in _SUPPLIER_DATE_TOLERANCE.items():
+                if key in supplier_lower:
+                    tolerance = extended
+                    break
             diff = _date_diff(txn_date, inv["invoice_date"])
-            if diff > _DATE_TOLERANCE_INVOICE:
+            if diff > tolerance:
                 continue
             if diff < best_diff or (diff == best_diff and amt_diff < best_amt_diff):
                 best_inv = inv
