@@ -139,7 +139,7 @@ def _classify_transaction(description):
 # Auto-matcher
 # ---------------------------------------------------------------------------
 
-_DATE_TOLERANCE_INVOICE = 14   # days either side for invoice matching
+_DATE_TOLERANCE_INVOICE = 31   # days either side for invoice matching
 _DATE_TOLERANCE_PAYROLL = 7    # days either side for payroll matching
 
 # Suppliers that pay by direct debit on a longer cycle get an extended window.
