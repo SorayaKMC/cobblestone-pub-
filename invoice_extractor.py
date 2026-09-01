@@ -41,6 +41,9 @@ Rules:
 - Prefer cleaner totals (e.g., "Total EUR" or "Amount due") over subtotals.
 - If any field can't be read reliably, use null and mark confidence "low".
 - Supplier name should be the trading name, not legal entity (e.g., "BWG" not "BWG Foods Ireland Ltd").
+- IMPORTANT supplier distinctions for this pub:
+  - If the invoice is from "JC Kenny" or "J.C. Kenny" (drinks distributor), use "JC Kenny" — even if BWG branding also appears on the invoice. JC Kenny and BWG are separate suppliers despite shared ownership.
+  - Use "BWG" only for invoices that are genuinely from BWG (cash & carry / food).
 """
 
 
