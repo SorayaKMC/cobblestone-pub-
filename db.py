@@ -2764,22 +2764,91 @@ def save_bank_statement(filename, date_from, date_to, opening_balance, closing_b
 
 
 def save_bank_transactions(statement_id, transactions):
-    """Bulk insert parsed bank transactions."""
+    """Bulk insert parsed bank transactions, skipping any row that already
+    exists in another statement (same date + description + debit + credit)."""
     conn = get_db()
-    conn.executemany(
-        """INSERT INTO bank_transactions
-           (statement_id, txn_date, description, debit, credit, balance,
-            txn_type, extracted_name)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        [
+    inserted = 0
+    skipped = 0
+    for t in transactions:
+        # Check whether this transaction already exists in any other statement.
+        dup = conn.execute(
+            """SELECT id FROM bank_transactions
+               WHERE txn_date = ?
+                 AND description = ?
+                 AND (debit IS ? OR debit = ?)
+                 AND (credit IS ? OR credit = ?)
+                 AND statement_id != ?
+               LIMIT 1""",
+            (
+                t["txn_date"], t["description"],
+                t.get("debit"), t.get("debit"),
+                t.get("credit"), t.get("credit"),
+                statement_id,
+            ),
+        ).fetchone()
+        if dup:
+            skipped += 1
+            continue
+        conn.execute(
+            """INSERT INTO bank_transactions
+               (statement_id, txn_date, description, debit, credit, balance,
+                txn_type, extracted_name)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (statement_id, t["txn_date"], t["description"],
              t.get("debit"), t.get("credit"), t.get("balance"),
-             t.get("txn_type", "other"), t.get("extracted_name"))
-            for t in transactions
-        ],
+             t.get("txn_type", "other"), t.get("extracted_name")),
+        )
+        inserted += 1
+    # Keep transaction_count in sync with what was actually inserted.
+    conn.execute(
+        "UPDATE bank_statements SET transaction_count = ? WHERE id = ?",
+        (inserted, statement_id),
     )
     conn.commit()
     conn.close()
+    return inserted, skipped
+
+
+def dedupe_bank_transactions():
+    """Remove duplicate transactions across all statements.
+
+    A duplicate is defined as a row with the same (txn_date, description,
+    debit, credit) as a row in an *older* statement.  The older copy is kept
+    because it may already carry match data.  Statement transaction_counts are
+    updated to reflect the cleanup.
+
+    Returns the number of rows deleted.
+    """
+    conn = get_db()
+    # Find the ids of rows that are duplicates of rows in an older statement.
+    dups = conn.execute(
+        """SELECT newer.id
+           FROM bank_transactions newer
+           JOIN bank_transactions older
+             ON older.txn_date    = newer.txn_date
+            AND older.description = newer.description
+            AND (older.debit  IS newer.debit  OR older.debit  = newer.debit)
+            AND (older.credit IS newer.credit OR older.credit = newer.credit)
+            AND older.statement_id < newer.statement_id"""
+    ).fetchall()
+    dup_ids = [r[0] for r in dups]
+    if dup_ids:
+        placeholders = ",".join("?" * len(dup_ids))
+        conn.execute(
+            f"DELETE FROM bank_transactions WHERE id IN ({placeholders})",
+            dup_ids,
+        )
+        # Recount each statement.
+        conn.execute(
+            """UPDATE bank_statements
+               SET transaction_count = (
+                   SELECT COUNT(*) FROM bank_transactions
+                   WHERE statement_id = bank_statements.id
+               )"""
+        )
+        conn.commit()
+    conn.close()
+    return len(dup_ids)
 
 
 def list_bank_statements():

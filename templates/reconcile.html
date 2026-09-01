@@ -3,9 +3,17 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2 class="mb-0"><i class="bi bi-bank me-2"></i>Bank Reconciliation</h2>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-    <i class="bi bi-upload me-1"></i>Upload Statement
-  </button>
+  <div class="d-flex gap-2">
+    <form method="post" action="{{ url_for('reconcile.reconcile_dedupe') }}"
+          onsubmit="return confirm('Remove duplicate transactions that appear in more than one statement? Older copies are kept.')">
+      <button class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-subtract me-1"></i>Remove Duplicates
+      </button>
+    </form>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+      <i class="bi bi-upload me-1"></i>Upload Statement
+    </button>
+  </div>
 </div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}

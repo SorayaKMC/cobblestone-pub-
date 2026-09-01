@@ -497,11 +497,28 @@ def reconcile_upload():
         debit_total=round(sum(debits), 2),
         credit_total=round(sum(credits), 2),
     )
-    db.save_bank_transactions(stmt_id, transactions)
+    inserted, skipped = db.save_bank_transactions(stmt_id, transactions)
     _auto_match(stmt_id)
 
-    flash(f"Uploaded {len(transactions)} transactions. Auto-matching complete.", "success")
+    if skipped:
+        flash(
+            f"Uploaded {inserted} transactions ({skipped} skipped — already exist in a previous statement). Auto-matching complete.",
+            "success",
+        )
+    else:
+        flash(f"Uploaded {inserted} transactions. Auto-matching complete.", "success")
     return redirect(url_for("reconcile.reconcile_view", statement_id=stmt_id))
+
+
+@bp.route("/reconcile/dedupe", methods=["POST"])
+def reconcile_dedupe():
+    """One-off: remove duplicate transactions that span multiple statements."""
+    removed = db.dedupe_bank_transactions()
+    if removed:
+        flash(f"Removed {removed} duplicate transaction(s) that already existed in an earlier statement.", "success")
+    else:
+        flash("No duplicates found — everything looks clean.", "success")
+    return redirect(url_for("reconcile.reconcile_index"))
 
 
 @bp.route("/reconcile/<int:statement_id>")
