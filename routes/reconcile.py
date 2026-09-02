@@ -642,7 +642,26 @@ def jc_kenny_match(statement_id):
 
 @bp.route("/reconcile/<int:statement_id>/rematch", methods=["POST"])
 def reconcile_rematch(statement_id):
-    """Re-run auto-matching on all unmatched transactions in a statement."""
+    """Re-run auto-matching on a statement.
+
+    Resets every transaction that was auto-matched (i.e. not manually ignored
+    and not manually linked to an invoice) back to 'unmatched' first, so the
+    full matcher runs fresh against the current invoice/payroll data.
+    Manually-ignored rows are left alone.
+    """
+    conn = db.get_db()
+    conn.execute(
+        """UPDATE bank_transactions
+           SET match_status = 'unmatched',
+               match_type   = NULL,
+               match_id     = NULL,
+               match_label  = NULL
+           WHERE statement_id = ?
+             AND match_status != 'ignored'""",
+        (statement_id,),
+    )
+    conn.commit()
+    conn.close()
     _auto_match(statement_id)
     flash("Auto-matching re-run complete.", "success")
     return redirect(url_for("reconcile.reconcile_view", statement_id=statement_id))
