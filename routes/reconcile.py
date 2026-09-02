@@ -336,7 +336,7 @@ def _auto_match(statement_id):
             amt_diff = abs(inv_amt - debit_abs)
             if amt_diff > 0.10:
                 continue
-            supplier_lower = (inv.get("supplier_name") or "").lower()
+            supplier_lower = (inv["supplier_name"] or "").lower()
             tolerance = _DATE_TOLERANCE_INVOICE
             for key, extended in _SUPPLIER_DATE_TOLERANCE.items():
                 if key in supplier_lower:
