@@ -674,3 +674,116 @@ def create_door_fee_payment_link(booking_id, act_name, event_date, redirect_url=
     except Exception as e:
         print(f"[square] Failed to create payment link for booking #{booking_id}: {e}")
         return None, None
+
+
+# --- VAT period sales breakdown ---
+
+def get_monthly_sales_by_rate(start_date: str, end_date: str) -> dict:
+    """Return sales and VAT totals grouped by Irish VAT rate for a date range.
+
+    Queries completed orders including full line-item detail so we can read
+    each tax applied. Order taxes carry a ``percentage`` string (e.g. "23",
+    "13.5", "0") and ``applied_money`` (the tax amount in cents). Line items
+    without a tax applied are treated as 0 %.
+
+    Args:
+        start_date: 'YYYY-MM-DD' inclusive
+        end_date:   'YYYY-MM-DD' inclusive
+
+    Returns:
+        {
+          "by_rate": {
+              23.0:  {"sales": Decimal, "tax": Decimal},
+              13.5:  {"sales": Decimal, "tax": Decimal},
+              0.0:   {"sales": Decimal, "tax": Decimal},
+          },
+          "total_sales": Decimal,
+          "total_tax":   Decimal,
+        }
+
+    Note: Square returns pre-tax line-item amounts. Where a line item has
+    multiple taxes the amounts are summed. Mixed-rate bundles (rare) are
+    split proportionally by their tax amounts.
+    """
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+    body = {
+        "location_ids": config.ALL_LOCATION_IDS,
+        "query": {
+            "filter": {
+                "state_filter": {"states": ["COMPLETED"]},
+                "date_time_filter": {
+                    "closed_at": {
+                        "start_at": f"{start_date}T00:00:00+00:00",
+                        "end_at":   f"{end_dt.strftime('%Y-%m-%d')}T00:00:00+00:00",
+                    }
+                },
+            },
+            "sort": {"sort_field": "CLOSED_AT", "sort_order": "ASC"},
+        },
+        "limit": 500,
+        "return_entries": False,
+    }
+
+    raw_orders = _paginated_post("orders/search", body, "orders")
+
+    by_rate: dict[float, dict] = {}
+
+    def _ensure(rate: float):
+        if rate not in by_rate:
+            by_rate[rate] = {"sales": Decimal("0"), "tax": Decimal("0")}
+
+    for order in raw_orders:
+        tenders = order.get("tenders", [])
+        if any(t.get("type") == "NO_SALE" for t in tenders):
+            continue
+
+        # Build a map of tax_uid → (percentage, applied_money) from order-level taxes
+        order_taxes: dict[str, tuple[float, Decimal]] = {}
+        for tax in order.get("taxes", []):
+            pct_str = tax.get("percentage", "0")
+            try:
+                pct = float(pct_str)
+            except ValueError:
+                pct = 0.0
+            applied = _money_to_decimal(tax.get("applied_money")) if tax.get("scope") != "LINE_ITEM" else Decimal("0")
+            order_taxes[tax.get("uid", "")] = (pct, applied)
+
+        # Walk line items
+        for item in order.get("line_items", []):
+            base_price = _money_to_decimal(item.get("base_price_money"))
+            qty_str = item.get("quantity", "1")
+            try:
+                qty = Decimal(qty_str)
+            except Exception:
+                qty = Decimal("1")
+            line_sales = base_price * qty
+
+            # Applied taxes on this line item
+            applied_taxes = item.get("applied_taxes", [])
+            if not applied_taxes:
+                _ensure(0.0)
+                by_rate[0.0]["sales"] += line_sales
+                continue
+
+            # Sum tax amounts per rate on this line item
+            rate_tax_totals: dict[float, Decimal] = {}
+            for at in applied_taxes:
+                uid = at.get("tax_uid", "")
+                tax_amt = _money_to_decimal(at.get("applied_money"))
+                if uid in order_taxes:
+                    pct = order_taxes[uid][0]
+                else:
+                    # Fallback: infer from applied_money and sales
+                    pct = float(round((tax_amt / line_sales * 100) if line_sales else 0, 1))
+                rate_tax_totals[pct] = rate_tax_totals.get(pct, Decimal("0")) + tax_amt
+
+            for pct, tax_amt in rate_tax_totals.items():
+                _ensure(pct)
+                # Apportion sales proportionally (most lines have one rate)
+                share = tax_amt / sum(rate_tax_totals.values()) if len(rate_tax_totals) > 1 else Decimal("1")
+                by_rate[pct]["sales"] += line_sales * share
+                by_rate[pct]["tax"]   += tax_amt
+
+    total_sales = sum(v["sales"] for v in by_rate.values())
+    total_tax   = sum(v["tax"]   for v in by_rate.values())
+    return {"by_rate": by_rate, "total_sales": total_sales, "total_tax": total_tax}

@@ -371,3 +371,203 @@ def generate_invoice_monthly_excel(period_label, invoices):
     wb.save(buf)
     buf.seek(0)
     return buf
+
+
+# ─── VAT Period Export (Peter format) ────────────────────────────────────────
+
+def generate_vat_period_excel(m1_label: str, m2_label: str,
+                               m1_invoices: list, m2_invoices: list,
+                               m1_sales, m2_sales) -> BytesIO:
+    """Generate a bimonthly VAT summary matching the accountant (Peter) format.
+
+    Five sheets:
+      SUMMARY           — one-glance totals for both months
+      {m1} VAT Collected — sales by VAT rate from Square
+      {m1} VAT Paid      — approved invoices for month 1
+      {m2} VAT Collected — sales by VAT rate from Square
+      {m2} VAT Paid      — approved invoices for month 2
+
+    Args:
+        m1_label / m2_label: e.g. "March", "April"
+        m1_invoices / m2_invoices: list of approved invoice dicts (from db.list_invoices)
+        m1_sales / m2_sales: dict from square_client.get_monthly_sales_by_rate,
+            or None if Square data is unavailable (leaves collected sheet blank).
+    """
+    GREY_HDR = "343A40"
+    WHITE    = "FFFFFF"
+    GREY_BG  = "E9ECEF"
+
+    def _hdr(ws, row, col, val, bg=GREY_HDR):
+        c = ws.cell(row=row, column=col, value=val)
+        c.font = Font(bold=True, color=WHITE, size=10, name="Arial")
+        c.fill = PatternFill("solid", fgColor=bg)
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.border = THIN_BORDER
+        return c
+
+    def _body(ws, row, col, val, fmt=None, bold=False, align="right"):
+        c = ws.cell(row=row, column=col, value=val)
+        c.font = Font(bold=bold, size=10, name="Arial")
+        c.alignment = Alignment(horizontal=align)
+        c.border = THIN_BORDER
+        if fmt:
+            c.number_format = fmt
+        return c
+
+    def _total_row_ws(ws, row, ncols, label, *values, bg=GREY_BG):
+        c = ws.cell(row=row, column=1, value=label)
+        c.font = Font(bold=True, size=10, name="Arial")
+        c.fill = PatternFill("solid", fgColor=bg)
+        c.border = THIN_BORDER
+        for col, val in enumerate(values, start=2):
+            cell = ws.cell(row=row, column=col, value=float(val) if val is not None else None)
+            cell.font = Font(bold=True, size=10, name="Arial")
+            cell.fill = PatternFill("solid", fgColor=bg)
+            cell.alignment = Alignment(horizontal="right")
+            if val is not None:
+                cell.number_format = MONEY_FORMAT
+            cell.border = THIN_BORDER
+        for col in range(len(values) + 2, ncols + 1):
+            ws.cell(row=row, column=col).fill = PatternFill("solid", fgColor=bg)
+            ws.cell(row=row, column=col).border = THIN_BORDER
+
+    def _inv_totals(invoices):
+        net = sum(Decimal(str(i["net_amount"] or 0)) for i in invoices)
+        vat = sum(Decimal(str(i["vat_amount"] or 0)) for i in invoices)
+        tot = sum(Decimal(str(i["total_amount"] or 0)) for i in invoices)
+        return net, vat, tot
+
+    def _sales_vat(sales):
+        if not sales:
+            return Decimal("0")
+        return sales.get("total_tax", Decimal("0"))
+
+    m1_net, m1_vat_paid, m1_total_paid = _inv_totals(m1_invoices)
+    m2_net, m2_vat_paid, m2_total_paid = _inv_totals(m2_invoices)
+    m1_vat_collected = _sales_vat(m1_sales)
+    m2_vat_collected = _sales_vat(m2_sales)
+
+    wb = Workbook()
+
+    # ── SUMMARY ──────────────────────────────────────────────────────────────
+    ws = wb.active
+    ws.title = "SUMMARY"
+    ws.sheet_view.showGridLines = False
+    for col_letter, width in [("A", 22), ("B", 16), ("C", 22), ("D", 16)]:
+        ws.column_dimensions[col_letter].width = width
+
+    def _sum(row, col, label=None, val=None, bold=False):
+        if label is not None:
+            c = ws.cell(row=row, column=col, value=label)
+            c.font = Font(bold=bold, size=11, name="Arial")
+        if val is not None:
+            c = ws.cell(row=row, column=col, value=float(val))
+            c.font = Font(bold=bold, size=11, name="Arial")
+            c.alignment = Alignment(horizontal="right")
+            c.number_format = MONEY_FORMAT
+
+    ws.row_dimensions[1].height = 6
+    _sum(2, 1, label=f"{m1_label} VAT Paid",      bold=True)
+    _sum(2, 2, val=-m1_vat_paid,                   bold=True)
+    _sum(2, 3, label=f"{m2_label} VAT Paid",       bold=True)
+    _sum(2, 4, val=-m2_vat_paid,                   bold=True)
+
+    _sum(3, 1, label=f"{m1_label} VAT Collected")
+    _sum(3, 2, val=m1_vat_collected)
+    _sum(3, 3, label=f"{m2_label} VAT Collected")
+    _sum(3, 4, val=m2_vat_collected)
+
+    m1_net_pos = m1_vat_collected - m1_vat_paid
+    m2_net_pos = m2_vat_collected - m2_vat_paid
+    _sum(4, 1, label="Total",      bold=True)
+    _sum(4, 2, val=m1_net_pos,     bold=True)
+    _sum(4, 3, label="",           bold=False)
+    _sum(4, 4, val=m2_net_pos,     bold=True)
+
+    _sum(5, 1, label="Total owed", bold=True)
+    _sum(5, 2, val=m1_net_pos + m2_net_pos, bold=True)
+
+    # ── VAT Collected sheet ───────────────────────────────────────────────────
+    def _write_collected(month_label, sales):
+        ws2 = wb.create_sheet(title=f"{month_label} VAT Collected")
+        ws2.sheet_view.showGridLines = False
+        ws2.column_dimensions["A"].width = 22
+        ws2.column_dimensions["B"].width = 16
+        ws2.column_dimensions["C"].width = 16
+        _hdr(ws2, 1, 1, "")
+        _hdr(ws2, 1, 2, "Sales")
+        _hdr(ws2, 1, 3, "Tax")
+
+        row = 2
+        total_s = Decimal("0")
+        total_t = Decimal("0")
+        if sales and sales.get("by_rate"):
+            for pct in sorted(sales["by_rate"], reverse=True):
+                v = sales["by_rate"][pct]
+                if not (v["sales"] or v["tax"]):
+                    continue
+                _body(ws2, row, 1, f"Sales @ {pct:g}%", align="left")
+                _body(ws2, row, 2, float(v["sales"]), MONEY_FORMAT)
+                _body(ws2, row, 3, float(v["tax"]),   MONEY_FORMAT)
+                total_s += v["sales"]
+                total_t += v["tax"]
+                row += 1
+        else:
+            _body(ws2, row, 1, "Square data unavailable — enter manually", align="left")
+            _body(ws2, row, 2, None)
+            _body(ws2, row, 3, None)
+            row += 1
+
+        _total_row_ws(ws2, row, 3, "Total",
+                      float(total_s) if sales else None,
+                      float(total_t) if sales else None)
+
+    # ── VAT Paid sheet ────────────────────────────────────────────────────────
+    def _write_paid(month_label, invoices):
+        ws3 = wb.create_sheet(title=f"{month_label} VAT Paid")
+        ws3.sheet_view.showGridLines = False
+
+        t = ws3.cell(row=1, column=1,
+                     value=f"Cobblestone Pub - Invoice Summary - {month_label}")
+        t.font = Font(bold=True, size=14, name="Arial")
+        ws3.merge_cells("A1:I1")
+
+        s = ws3.cell(row=2, column=1, value=f"{len(invoices)} approved invoice(s)")
+        s.font = Font(italic=True, size=10, name="Arial", color="666666")
+        ws3.merge_cells("A2:I2")
+
+        for col, h in enumerate(["Date","Supplier","Invoice #","Category",
+                                  "Net","VAT %","VAT","Total","Status"], 1):
+            _hdr(ws3, 4, col, h)
+
+        row = 5
+        total_net = total_vat_amt = total_total = Decimal("0")
+        for inv in sorted(invoices, key=lambda i: (i["invoice_date"] or "", i["supplier_name"] or "")):
+            _body(ws3, row, 1, inv["invoice_date"] or "",        align="left")
+            _body(ws3, row, 2, inv["supplier_name"] or "",       align="left")
+            _body(ws3, row, 3, inv["invoice_number"] or "",      align="left")
+            _body(ws3, row, 4, inv["category"] or "",            align="left")
+            _body(ws3, row, 5, float(inv["net_amount"] or 0),   MONEY_FORMAT)
+            _body(ws3, row, 6, float(inv["vat_rate"] or 0),     '0.0"%"')
+            _body(ws3, row, 7, float(inv["vat_amount"] or 0),   MONEY_FORMAT)
+            _body(ws3, row, 8, float(inv["total_amount"] or 0), MONEY_FORMAT)
+            _body(ws3, row, 9, (inv["status"] or "").title(),   align="left")
+            total_net     += Decimal(str(inv["net_amount"] or 0))
+            total_vat_amt += Decimal(str(inv["vat_amount"] or 0))
+            total_total   += Decimal(str(inv["total_amount"] or 0))
+            row += 1
+
+        _total_row_ws(ws3, row, 9, "TOTAL",
+                      float(total_net), None, float(total_vat_amt), float(total_total))
+        for i, w in enumerate([12, 28, 16, 20, 12, 8, 12, 12, 10], 1):
+            ws3.column_dimensions[ws3.cell(row=4, column=i).column_letter].width = w
+
+    _write_collected(m1_label, m1_sales)
+    _write_paid(m1_label, m1_invoices)
+    _write_collected(m2_label, m2_sales)
+    _write_paid(m2_label, m2_invoices)
+
+    buf2 = BytesIO()
+    wb.save(buf2)
+    buf2.seek(0)
+    return buf2
