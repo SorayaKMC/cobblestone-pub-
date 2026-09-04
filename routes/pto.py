@@ -1,12 +1,52 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import db
 import square_client
 import pto_engine
 import pto_historical_import
 
 bp = Blueprint("pto", __name__)
+
+
+def _auto_recalc(tm_id, from_iso):
+    """Recalculate ONE employee's PTO balance from the week of `from_iso`
+    forward to today, so logging/editing leave (or an adjustment) updates the
+    running balance immediately — no separate "Recalculate PTO" click needed.
+
+    We snap `from_iso` back to its Monday so recalculate_pto picks the correct
+    prior balance (the week *before* the change) and recomputes forward from
+    there. Balances are cumulative, so every later week is refreshed too.
+
+    Returns True on success. Failures (e.g. Square unreachable) are swallowed
+    with a log line — the entry is still saved; the user can hit Recalculate.
+    """
+    try:
+        d = datetime.strptime(from_iso, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        d = date.today()
+    monday = d - timedelta(days=d.weekday())
+    try:
+        team_members = square_client.get_team_members()
+        pto_engine.recalculate_pto(
+            tm_id, monday.isoformat(), date.today().isoformat(), team_members
+        )
+        return True
+    except Exception as e:
+        print(f"[pto] auto-recalc failed for {tm_id} from {monday}: {e}")
+        return False
+
+
+def _taken_row(taken_id):
+    """Fetch (team_member_id, date) for a pto_taken row, or (None, None)."""
+    conn = db.get_db()
+    row = conn.execute(
+        "SELECT team_member_id, date FROM pto_taken WHERE id = ?", (taken_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None, None
+    return row["team_member_id"], row["date"]
 
 
 @bp.route("/pto")
@@ -130,11 +170,11 @@ def add_manual_hours():
         return redirect(url_for("pto.pto_page"))
 
     db.set_manual_hours(tm_id, week_start, hours, note=note)
+    _auto_recalc(tm_id, week_start)
     cat = db.get_employee_category(tm_id)
     name = f"{cat['given_name']} {cat['family_name']}" if cat else tm_id
     flash(
-        f"Saved {hours} manual hour(s) for {name}, week starting {week_start}. "
-        "Click Recalculate PTO to apply.",
+        f"Saved {hours} manual hour(s) for {name}, week starting {week_start} — balance updated.",
         "success",
     )
     return redirect(url_for("pto.pto_page"))
@@ -146,7 +186,8 @@ def delete_manual_hours():
     week_start = request.form.get("week_start")
     if tm_id and week_start:
         db.delete_manual_hours(tm_id, week_start)
-        flash(f"Manual-hours entry removed. Recalculate to apply.", "info")
+        _auto_recalc(tm_id, week_start)
+        flash("Manual-hours entry removed — balance updated.", "info")
     return redirect(url_for("pto.pto_page"))
 
 
@@ -166,10 +207,18 @@ def log_pto_taken():
     hours_equiv = days * avg_shift
 
     db.add_pto_taken(tm_id, pto_date, days, hours_equiv, reason)
+    recalced = _auto_recalc(tm_id, pto_date)
 
     cat = db.get_employee_category(tm_id)
     name = f"{cat['given_name']} {cat['family_name']}" if cat else tm_id
-    flash(f"Logged {days} day(s) PTO for {name} on {pto_date}.", "success")
+    if recalced:
+        flash(f"Logged {days} day(s) PTO for {name} on {pto_date} — balance updated.", "success")
+    else:
+        flash(
+            f"Logged {days} day(s) PTO for {name} on {pto_date}. "
+            "Couldn't refresh the balance automatically — click Recalculate PTO.",
+            "warning",
+        )
     return redirect(url_for("pto.pto_page"))
 
 
@@ -182,11 +231,13 @@ def edit_pto_taken(taken_id):
         if days <= 0:
             flash("Days taken must be greater than 0.", "warning")
             return redirect(url_for("pto.pto_page"))
+        tm_id, pto_date = _taken_row(taken_id)
         db.update_pto_taken(taken_id, days, hours, reason)
-        flash(
-            f"PTO entry updated. Run Recalculate PTO to update balances.",
-            "warning",
-        )
+        recalced = tm_id and _auto_recalc(tm_id, pto_date)
+        if recalced:
+            flash("PTO entry updated — balance refreshed.", "success")
+        else:
+            flash("PTO entry updated. Click Recalculate PTO to refresh balances.", "warning")
     except Exception as e:
         flash(f"Could not update PTO entry: {e}", "danger")
     return redirect(url_for("pto.pto_page"))
@@ -195,8 +246,13 @@ def edit_pto_taken(taken_id):
 @bp.route("/pto/taken/<int:taken_id>/delete", methods=["POST"])
 def delete_pto_taken(taken_id):
     try:
+        tm_id, pto_date = _taken_row(taken_id)
         db.delete_pto_taken(taken_id)
-        flash("PTO entry deleted. Run Recalculate PTO to update balances.", "warning")
+        recalced = tm_id and _auto_recalc(tm_id, pto_date)
+        if recalced:
+            flash("PTO entry deleted — balance refreshed.", "success")
+        else:
+            flash("PTO entry deleted. Click Recalculate PTO to refresh balances.", "warning")
     except Exception as e:
         flash(f"Could not delete PTO entry: {e}", "danger")
     return redirect(url_for("pto.pto_page"))
@@ -214,11 +270,12 @@ def adjust_pto():
         return redirect(url_for("pto.pto_page"))
 
     db.add_pto_adjustment(tm_id, adj_days, reason, eff_date)
+    _auto_recalc(tm_id, eff_date)
 
     cat = db.get_employee_category(tm_id)
     name = f"{cat['given_name']} {cat['family_name']}" if cat else tm_id
     sign = "+" if adj_days > 0 else ""
-    flash(f"Adjusted PTO for {name}: {sign}{adj_days} days ({reason}).", "success")
+    flash(f"Adjusted PTO for {name}: {sign}{adj_days} days ({reason}) — balance updated.", "success")
     return redirect(url_for("pto.pto_page"))
 
 
