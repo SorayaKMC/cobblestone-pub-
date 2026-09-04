@@ -144,28 +144,17 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h6 class="card-title mb-0">{{ current_year }} — Monthly Input VAT from Invoices</h6>
-            <div class="d-flex gap-3 align-items-center flex-wrap">
-                <form method="GET" action="/bookkeeping/monthly-summary"
-                      class="d-flex gap-2 align-items-center">
-                    <label class="small text-muted mb-0">Single month:</label>
-                    <input type="month" name="month" value="{{ today[:7] }}"
-                           class="form-control form-control-sm" style="width:auto" required>
-                    <button type="submit" class="btn btn-outline-success btn-sm">
-                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Download
-                    </button>
-                </form>
-                <form method="GET" action="/bookkeeping/vat-period"
-                      class="d-flex gap-2 align-items-center">
-                    <label class="small text-muted mb-0 fw-semibold">For Peter:</label>
-                    <input type="month" name="m1" placeholder="Month 1"
-                           class="form-control form-control-sm" style="width:auto" required>
-                    <input type="month" name="m2" placeholder="Month 2"
-                           class="form-control form-control-sm" style="width:auto" required>
-                    <button type="submit" class="btn btn-success btn-sm">
-                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>VAT Period
-                    </button>
-                </form>
-            </div>
+            <form method="GET" action="/bookkeeping/vat-period"
+                  class="d-flex gap-2 align-items-center flex-wrap">
+                <input type="month" name="m1" value="{{ today[:7] }}"
+                       class="form-control form-control-sm" style="width:auto" required>
+                <input type="month" name="m2"
+                       class="form-control form-control-sm" style="width:auto"
+                       placeholder="2nd month (optional)">
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Download
+                </button>
+            </form>
         </div>
         <div class="row g-2">
             {% for m in range(1, 13) %}

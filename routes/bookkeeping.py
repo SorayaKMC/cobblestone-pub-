@@ -1022,14 +1022,14 @@ def suppliers():
 
 @bp.route("/bookkeeping/vat-period")
 def download_vat_period():
-    """Download a bimonthly VAT period summary in the accountant (Peter) format.
+    """Download a VAT summary for one or two months in the accountant (Peter) format.
 
     Query params:
-      ?m1=YYYY-MM  (first month, e.g. 2026-03)
-      ?m2=YYYY-MM  (second month, e.g. 2026-04)
+      ?m1=YYYY-MM          (required — first/only month)
+      ?m2=YYYY-MM          (optional — second month for bimonthly)
 
-    Generates:
-      SUMMARY | {M1} VAT Collected | {M1} VAT Paid | {M2} VAT Collected | {M2} VAT Paid
+    One month  → SUMMARY | {M1} VAT Collected | {M1} VAT Paid
+    Two months → SUMMARY | {M1} VAT Collected | {M1} VAT Paid | {M2} VAT Collected | {M2} VAT Paid
     """
     from calendar import monthrange
     import excel_export
@@ -1038,51 +1038,67 @@ def download_vat_period():
     m1_str = request.args.get("m1", "").strip()
     m2_str = request.args.get("m2", "").strip()
 
-    if not m1_str or not m2_str:
-        flash("Provide both ?m1=YYYY-MM and ?m2=YYYY-MM", "warning")
+    if not m1_str:
+        flash("Please select at least one month.", "warning")
         return redirect(url_for("bookkeeping.bookkeeping_page"))
 
     try:
         y1, mo1 = map(int, m1_str.split("-"))
-        y2, mo2 = map(int, m2_str.split("-"))
     except (ValueError, AttributeError):
-        flash("Invalid month format — use YYYY-MM (e.g. 2026-03)", "danger")
+        flash("Invalid month format.", "danger")
         return redirect(url_for("bookkeeping.bookkeeping_page"))
+
+    two_months = bool(m2_str)
+    if two_months:
+        try:
+            y2, mo2 = map(int, m2_str.split("-"))
+        except (ValueError, AttributeError):
+            flash("Invalid second month format.", "danger")
+            return redirect(url_for("bookkeeping.bookkeeping_page"))
 
     def _month_range(year, mon):
         last = monthrange(year, mon)[1]
         return f"{year:04d}-{mon:02d}-01", f"{year:04d}-{mon:02d}-{last:02d}"
 
     m1_start, m1_end = _month_range(y1, mo1)
-    m2_start, m2_end = _month_range(y2, mo2)
-    m1_label = datetime(y1, mo1, 1).strftime("%B %Y")
-    m2_label = datetime(y2, mo2, 1).strftime("%B %Y")
-    # Short label for sheet name (Excel limit: 31 chars)
     m1_short = datetime(y1, mo1, 1).strftime("%B")
-    m2_short = datetime(y2, mo2, 1).strftime("%B")
 
     m1_invoices = db.list_invoices(start_date=m1_start, end_date=m1_end,
                                     status="approved", limit=5000)
-    m2_invoices = db.list_invoices(start_date=m2_start, end_date=m2_end,
-                                    status="approved", limit=5000)
 
-    # Fetch Square sales — fail gracefully if Square is unavailable
-    m1_sales = m2_sales = None
+    m1_sales = None
     if config.SQUARE_ACCESS_TOKEN:
         try:
             m1_sales = square_client.get_monthly_sales_by_rate(m1_start, m1_end)
-            m2_sales = square_client.get_monthly_sales_by_rate(m2_start, m2_end)
         except Exception as e:
             print(f"[vat-period] Square sales fetch failed: {e}")
-            flash("Square sales data unavailable — VAT Collected sheets left blank.", "warning")
+            flash("Square sales data unavailable — VAT Collected sheet left blank.", "warning")
 
-    buf = excel_export.generate_vat_period_excel(
-        m1_short, m2_short,
-        m1_invoices, m2_invoices,
-        m1_sales, m2_sales,
-    )
+    if two_months:
+        m2_start, m2_end = _month_range(y2, mo2)
+        m2_short = datetime(y2, mo2, 1).strftime("%B")
+        m2_invoices = db.list_invoices(start_date=m2_start, end_date=m2_end,
+                                        status="approved", limit=5000)
+        m2_sales = None
+        if config.SQUARE_ACCESS_TOKEN:
+            try:
+                m2_sales = square_client.get_monthly_sales_by_rate(m2_start, m2_end)
+            except Exception as e:
+                print(f"[vat-period] Square sales fetch failed (m2): {e}")
+        buf = excel_export.generate_vat_period_excel(
+            m1_short, m2_short,
+            m1_invoices, m2_invoices,
+            m1_sales, m2_sales,
+        )
+        period_slug = f"{m1_str}_{m2_str}".replace("-", "")
+    else:
+        buf = excel_export.generate_vat_period_excel(
+            m1_short, m1_short,
+            m1_invoices, [],
+            m1_sales, None,
+        )
+        period_slug = m1_str.replace("-", "")
 
-    period_slug = f"{m1_str}_{m2_str}".replace("-", "")
     filename = f"Cobblestone_VAT_{period_slug}.xlsx"
     return send_file(
         buf, download_name=filename, as_attachment=True,
