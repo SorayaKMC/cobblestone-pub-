@@ -502,11 +502,16 @@ def generate_vat_period_excel(m1_label: str, m2_label: str,
         total_s = Decimal("0")
         total_t = Decimal("0")
         if sales and sales.get("by_rate"):
-            for pct in sorted(sales["by_rate"], reverse=True):
-                v = sales["by_rate"][pct]
+            for key in sales["by_rate"]:
+                v = sales["by_rate"][key]
                 if not (v["sales"] or v["tax"]):
                     continue
-                _body(ws2, row, 1, f"Sales @ {pct:g}%", align="left")
+                # key is either a float rate (e.g. 23.0) or "Total"
+                if isinstance(key, float):
+                    label_txt = f"Sales @ {key:g}%"
+                else:
+                    label_txt = "Sales"
+                _body(ws2, row, 1, label_txt, align="left")
                 _body(ws2, row, 2, float(v["sales"]), MONEY_FORMAT)
                 _body(ws2, row, 3, float(v["tax"]),   MONEY_FORMAT)
                 total_s += v["sales"]

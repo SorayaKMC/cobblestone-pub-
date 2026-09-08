@@ -679,12 +679,11 @@ def create_door_fee_payment_link(booking_id, act_name, event_date, redirect_url=
 # --- VAT period sales breakdown ---
 
 def get_monthly_sales_by_rate(start_date: str, end_date: str) -> dict:
-    """Return sales and VAT totals grouped by Irish VAT rate for a date range.
+    """Return sales and VAT totals for a date range from completed Square orders.
 
-    Queries completed orders including full line-item detail so we can read
-    each tax applied. Order taxes carry a ``percentage`` string (e.g. "23",
-    "13.5", "0") and ``applied_money`` (the tax amount in cents). Line items
-    without a tax applied are treated as 0 %.
+    Cobblestone uses Square as a card terminal (not a full catalog POS), so
+    orders don't contain line-item tax breakdowns. We sum total_money and
+    total_tax_money from net_amounts across all completed orders.
 
     Args:
         start_date: 'YYYY-MM-DD' inclusive
@@ -692,18 +691,10 @@ def get_monthly_sales_by_rate(start_date: str, end_date: str) -> dict:
 
     Returns:
         {
-          "by_rate": {
-              23.0:  {"sales": Decimal, "tax": Decimal},
-              13.5:  {"sales": Decimal, "tax": Decimal},
-              0.0:   {"sales": Decimal, "tax": Decimal},
-          },
-          "total_sales": Decimal,
-          "total_tax":   Decimal,
+          "by_rate": {"Total": {"sales": Decimal, "tax": Decimal}},
+          "total_sales": Decimal,   # pre-tax revenue
+          "total_tax":   Decimal,   # VAT collected
         }
-
-    Note: Square returns pre-tax line-item amounts. Where a line item has
-    multiple taxes the amounts are summed. Mixed-rate bundles (rare) are
-    split proportionally by their tax amounts.
     """
     end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
     body = {
@@ -721,69 +712,36 @@ def get_monthly_sales_by_rate(start_date: str, end_date: str) -> dict:
             "sort": {"sort_field": "CLOSED_AT", "sort_order": "ASC"},
         },
         "limit": 500,
-        "return_entries": False,
     }
 
     raw_orders = _paginated_post("orders/search", body, "orders")
 
-    by_rate: dict[float, dict] = {}
-
-    def _ensure(rate: float):
-        if rate not in by_rate:
-            by_rate[rate] = {"sales": Decimal("0"), "tax": Decimal("0")}
+    total_gross = Decimal("0")   # total charged (inc. tax, exc. tips)
+    total_tax   = Decimal("0")   # VAT collected
+    total_tips  = Decimal("0")
 
     for order in raw_orders:
         tenders = order.get("tenders", [])
         if any(t.get("type") == "NO_SALE" for t in tenders):
             continue
 
-        # Build a map of tax_uid → (percentage, applied_money) from order-level taxes
-        order_taxes: dict[str, tuple[float, Decimal]] = {}
-        for tax in order.get("taxes", []):
-            pct_str = tax.get("percentage", "0")
-            try:
-                pct = float(pct_str)
-            except ValueError:
-                pct = 0.0
-            applied = _money_to_decimal(tax.get("applied_money")) if tax.get("scope") != "LINE_ITEM" else Decimal("0")
-            order_taxes[tax.get("uid", "")] = (pct, applied)
+        net = order.get("net_amounts", {})
+        gross = _money_to_decimal(net.get("total_money"))
+        tax   = _money_to_decimal(net.get("tax_money"))
+        tips  = _money_to_decimal(net.get("tip_money"))
 
-        # Walk line items
-        for item in order.get("line_items", []):
-            base_price = _money_to_decimal(item.get("base_price_money"))
-            qty_str = item.get("quantity", "1")
-            try:
-                qty = Decimal(qty_str)
-            except Exception:
-                qty = Decimal("1")
-            line_sales = base_price * qty
+        if gross == Decimal("0"):
+            continue
 
-            # Applied taxes on this line item
-            applied_taxes = item.get("applied_taxes", [])
-            if not applied_taxes:
-                _ensure(0.0)
-                by_rate[0.0]["sales"] += line_sales
-                continue
+        total_gross += gross
+        total_tax   += tax
+        total_tips  += tips
 
-            # Sum tax amounts per rate on this line item
-            rate_tax_totals: dict[float, Decimal] = {}
-            for at in applied_taxes:
-                uid = at.get("tax_uid", "")
-                tax_amt = _money_to_decimal(at.get("applied_money"))
-                if uid in order_taxes:
-                    pct = order_taxes[uid][0]
-                else:
-                    # Fallback: infer from applied_money and sales
-                    pct = float(round((tax_amt / line_sales * 100) if line_sales else 0, 1))
-                rate_tax_totals[pct] = rate_tax_totals.get(pct, Decimal("0")) + tax_amt
+    # Pre-tax sales = gross collected minus tax and tips
+    total_sales = total_gross - total_tax - total_tips
 
-            for pct, tax_amt in rate_tax_totals.items():
-                _ensure(pct)
-                # Apportion sales proportionally (most lines have one rate)
-                share = tax_amt / sum(rate_tax_totals.values()) if len(rate_tax_totals) > 1 else Decimal("1")
-                by_rate[pct]["sales"] += line_sales * share
-                by_rate[pct]["tax"]   += tax_amt
-
-    total_sales = sum(v["sales"] for v in by_rate.values())
-    total_tax   = sum(v["tax"]   for v in by_rate.values())
-    return {"by_rate": by_rate, "total_sales": total_sales, "total_tax": total_tax}
+    return {
+        "by_rate": {"Total": {"sales": total_sales, "tax": total_tax}},
+        "total_sales": total_sales,
+        "total_tax":   total_tax,
+    }
