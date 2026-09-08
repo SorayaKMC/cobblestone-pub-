@@ -144,14 +144,26 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h6 class="card-title mb-0">{{ current_year }} — Monthly Input VAT from Invoices</h6>
-            <form method="GET" action="/bookkeeping/vat-period"
+            <form method="POST" action="/bookkeeping/vat-period"
+                  enctype="multipart/form-data"
                   class="d-flex gap-2 align-items-center flex-wrap">
-                <input type="month" name="m1" value="{{ today[:7] }}"
-                       class="form-control form-control-sm" style="width:auto" required>
-                <input type="month" name="m2"
-                       class="form-control form-control-sm" style="width:auto"
-                       placeholder="2nd month (optional)">
-                <button type="submit" class="btn btn-success btn-sm">
+                <div class="d-flex flex-column gap-1">
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="month" name="m1" value="{{ today[:7] }}"
+                               class="form-control form-control-sm" style="width:auto" required>
+                        <label class="small text-muted mb-0" style="white-space:nowrap">Square tax CSV:</label>
+                        <input type="file" name="csv_m1" accept=".csv"
+                               class="form-control form-control-sm" style="width:auto">
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="month" name="m2"
+                               class="form-control form-control-sm" style="width:auto">
+                        <label class="small text-muted mb-0" style="white-space:nowrap">Square tax CSV:</label>
+                        <input type="file" name="csv_m2" accept=".csv"
+                               class="form-control form-control-sm" style="width:auto">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success btn-sm align-self-center">
                     <i class="bi bi-file-earmark-spreadsheet me-1"></i>Download
                 </button>
             </form>

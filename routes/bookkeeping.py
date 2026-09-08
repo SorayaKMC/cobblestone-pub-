@@ -1020,23 +1020,103 @@ def suppliers():
     )
 
 
-@bp.route("/bookkeeping/vat-period")
+def _parse_square_tax_csv(file_storage) -> dict | None:
+    """Parse a Square tax summary CSV export into the sales-by-rate dict.
+
+    Square exports UTF-16 LE tab-separated files with columns:
+      Tax Name | Taxable Amount | Taxable Item Sales | Taxable Service Charges | Tax Collected
+
+    Plus summary rows: 'Non Taxable Sales', 'Total Net Sales'.
+
+    Returns:
+        {
+          "by_rate": {23.0: {"sales": Decimal, "tax": Decimal}, ...},
+          "total_sales": Decimal,
+          "total_tax": Decimal,
+        }
+    or None if parsing fails.
+    """
+    from decimal import Decimal
+    import csv, io
+
+    TAX_NAME_MAP = {
+        "reg vat":     23.0,
+        "special vat": 13.5,
+    }
+
+    def _parse_money(s):
+        """Strip currency symbols and commas, return Decimal."""
+        s = s.strip().lstrip("€$£").replace(",", "").strip()
+        try:
+            return Decimal(s)
+        except Exception:
+            return Decimal("0")
+
+    try:
+        raw = file_storage.read()
+        # Square exports UTF-16 LE with BOM
+        try:
+            text = raw.decode("utf-16")
+        except Exception:
+            text = raw.decode("utf-8", errors="replace")
+
+        by_rate = {}
+        non_taxable = Decimal("0")
+        total_tax = Decimal("0")
+
+        reader = csv.reader(io.StringIO(text), delimiter="\t")
+        for row in reader:
+            row = [c.strip() for c in row if c.strip()]
+            if not row:
+                continue
+
+            name = row[0].lower()
+
+            # Tax rate rows: Tax Name | Taxable Amount | ... | Tax Collected
+            if name in TAX_NAME_MAP and len(row) >= 5:
+                pct = TAX_NAME_MAP[name]
+                sales = _parse_money(row[1])   # Taxable Amount (pre-tax)
+                tax   = _parse_money(row[4])   # Tax Collected
+                by_rate[pct] = {"sales": sales, "tax": tax}
+                total_tax += tax
+
+            elif "non taxable" in name and len(row) >= 2:
+                non_taxable = _parse_money(row[1])
+
+        if non_taxable:
+            by_rate[0.0] = {"sales": non_taxable, "tax": Decimal("0")}
+
+        total_sales = sum(v["sales"] for v in by_rate.values())
+        return {"by_rate": by_rate, "total_sales": total_sales, "total_tax": total_tax}
+
+    except Exception as e:
+        print(f"[vat-period] CSV parse error: {e}")
+        return None
+
+
+@bp.route("/bookkeeping/vat-period", methods=["GET", "POST"])
 def download_vat_period():
     """Download a VAT summary for one or two months in the accountant (Peter) format.
 
-    Query params:
-      ?m1=YYYY-MM          (required — first/only month)
-      ?m2=YYYY-MM          (optional — second month for bimonthly)
+    POST form fields:
+      m1        YYYY-MM  (required)
+      m2        YYYY-MM  (optional — second month)
+      csv_m1    Square tax summary CSV for month 1 (optional)
+      csv_m2    Square tax summary CSV for month 2 (optional)
 
     One month  → SUMMARY | {M1} VAT Collected | {M1} VAT Paid
     Two months → SUMMARY | {M1} VAT Collected | {M1} VAT Paid | {M2} VAT Collected | {M2} VAT Paid
     """
     from calendar import monthrange
     import excel_export
-    import square_client
 
-    m1_str = request.args.get("m1", "").strip()
-    m2_str = request.args.get("m2", "").strip()
+    if request.method == "GET":
+        # Support legacy GET links (redirect to bookkeeping page)
+        flash("Use the Download form to generate a VAT period report.", "info")
+        return redirect(url_for("bookkeeping.bookkeeping_page"))
+
+    m1_str = request.form.get("m1", "").strip()
+    m2_str = request.form.get("m2", "").strip()
 
     if not m1_str:
         flash("Please select at least one month.", "warning")
@@ -1060,31 +1140,22 @@ def download_vat_period():
         last = monthrange(year, mon)[1]
         return f"{year:04d}-{mon:02d}-01", f"{year:04d}-{mon:02d}-{last:02d}"
 
+    # Parse uploaded Square tax CSVs (optional)
+    csv_m1 = request.files.get("csv_m1")
+    csv_m2 = request.files.get("csv_m2")
+    m1_sales = _parse_square_tax_csv(csv_m1) if csv_m1 and csv_m1.filename else None
+    m2_sales = _parse_square_tax_csv(csv_m2) if csv_m2 and csv_m2.filename else None
+
     m1_start, m1_end = _month_range(y1, mo1)
     m1_short = datetime(y1, mo1, 1).strftime("%B")
-
     m1_invoices = db.list_invoices(start_date=m1_start, end_date=m1_end,
                                     status="approved", limit=5000)
-
-    m1_sales = None
-    if config.SQUARE_ACCESS_TOKEN:
-        try:
-            m1_sales = square_client.get_monthly_sales_by_rate(m1_start, m1_end)
-        except Exception as e:
-            print(f"[vat-period] Square sales fetch failed: {e}")
-            flash("Square sales data unavailable — VAT Collected sheet left blank.", "warning")
 
     if two_months:
         m2_start, m2_end = _month_range(y2, mo2)
         m2_short = datetime(y2, mo2, 1).strftime("%B")
         m2_invoices = db.list_invoices(start_date=m2_start, end_date=m2_end,
                                         status="approved", limit=5000)
-        m2_sales = None
-        if config.SQUARE_ACCESS_TOKEN:
-            try:
-                m2_sales = square_client.get_monthly_sales_by_rate(m2_start, m2_end)
-            except Exception as e:
-                print(f"[vat-period] Square sales fetch failed (m2): {e}")
         buf = excel_export.generate_vat_period_excel(
             m1_short, m2_short,
             m1_invoices, m2_invoices,
