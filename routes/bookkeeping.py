@@ -1070,7 +1070,10 @@ def _parse_square_tax_csv(file_storage) -> dict | None:
             ws = wb.active
 
             by_rate = {}
+            non_taxable = Decimal("0")
             total_tax = Decimal("0")
+            # Labels to skip from the non-taxable bucket (summary rows, not line items)
+            SKIP_LABELS = {"gross sales", "net sales", "total", "total net sales"}
 
             for row in ws.iter_rows(values_only=True):
                 col_b = row[1] if len(row) > 1 else None
@@ -1084,6 +1087,17 @@ def _parse_square_tax_csv(file_storage) -> dict | None:
                     tax   = _to_decimal(col_d)
                     by_rate[pct] = {"sales": sales, "tax": tax}
                     total_tax += tax
+
+                # Non-taxable rows: col B is a text label, col D is explicitly 0.0,
+                # col C has a positive sales amount (e.g. Tips, Staffing)
+                elif (isinstance(col_b, str)
+                      and col_b.strip().lower() not in SKIP_LABELS
+                      and col_d == 0.0
+                      and isinstance(col_c, (int, float)) and col_c > 0):
+                    non_taxable += _to_decimal(col_c)
+
+            if non_taxable:
+                by_rate[0.0] = {"sales": non_taxable, "tax": Decimal("0")}
 
             total_sales = sum(v["sales"] for v in by_rate.values())
             return {"by_rate": by_rate, "total_sales": total_sales, "total_tax": total_tax}
