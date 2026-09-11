@@ -1021,20 +1021,20 @@ def suppliers():
 
 
 def _parse_square_tax_csv(file_storage) -> dict | None:
-    """Parse a tax summary file (Square CSV export or corrected .xlsx) into the sales-by-rate dict.
+    """Parse a VAT tax summary file into the sales-by-rate dict.
 
-    Columns expected:
+    Accepts two formats:
+
+    Format A — user-compiled .xlsx (new format):
+      Col A: month label (first data row) or empty
+      Col B: rate as decimal (0.23, 0.09) or label ('Gross Sales', 'Net Sales', etc.)
+      Col C: Sales amount
+      Col D: Tax amount
+      Rows where col B is a float between 0 and 1 are the VAT rate rows.
+
+    Format B — Square CSV export (UTF-16 tab-separated):
       Tax Name | Taxable Amount | Taxable Item Sales | Taxable Service Charges | Tax Collected
-
-    We use:
-      - Taxable Item Sales (col C / index 2) as the net sales figure for each rate
-      - Tax Collected (col E / index 4) as the VAT collected
-
-    Summary rows: 'Non Taxable Sales', 'Total Net Sales' (used for 0% bucket / totals).
-
-    Accepts:
-      - .xlsx  — parsed with openpyxl (user-compiled corrected format)
-      - .csv   — Square UTF-16 tab-separated export
+      'Reg VAT' → 23%, 'Special VAT' → 9%
 
     Returns:
         {
@@ -1047,92 +1047,89 @@ def _parse_square_tax_csv(file_storage) -> dict | None:
     from decimal import Decimal
     import csv, io
 
-    TAX_NAME_MAP = {
-        "reg vat":      23.0,
-        "special vat":   9.0,   # Irish reduced rate changed from 13.5% to 9%
-        "reduced vat":   9.0,
-        "9% vat":        9.0,
-        "vat 9%":        9.0,
-        "food vat":      9.0,
-    }
-
     def _to_decimal(val):
-        """Convert a cell value (number or string with currency symbols) to Decimal."""
         if val is None:
             return Decimal("0")
         if isinstance(val, (int, float)):
-            return Decimal(str(val))
+            return Decimal(str(round(val, 2)))
         s = str(val).strip().lstrip("€$£").replace(",", "").strip()
         try:
             return Decimal(s)
         except Exception:
             return Decimal("0")
 
-    def _process_rows(rows):
-        """rows: iterable of lists/tuples. Returns the by_rate dict."""
-        by_rate = {}
-        non_taxable = Decimal("0")
-        total_tax = Decimal("0")
-
-        for row in rows:
-            if not row or row[0] is None:
-                continue
-            name = str(row[0]).strip().lower()
-
-            # Tax rate rows: must have at least 5 columns
-            if name in TAX_NAME_MAP and len(row) >= 5:
-                pct = TAX_NAME_MAP[name]
-                sales = _to_decimal(row[2])   # Taxable Item Sales (col C)
-                tax   = _to_decimal(row[4])   # Tax Collected (col E)
-                by_rate[pct] = {"sales": sales, "tax": tax}
-                total_tax += tax
-
-            elif "non taxable" in name and len(row) >= 2:
-                non_taxable = _to_decimal(row[1])
-
-        if non_taxable:
-            by_rate[0.0] = {"sales": non_taxable, "tax": Decimal("0")}
-
-        total_sales = sum(v["sales"] for v in by_rate.values())
-        return {"by_rate": by_rate, "total_sales": total_sales, "total_tax": total_tax}
-
     try:
         filename = (file_storage.filename or "").lower()
 
         if filename.endswith(".xlsx") or filename.endswith(".xls"):
-            # Excel format (user-compiled corrected report)
+            # Format A — user-compiled Excel
+            # Col B holds the rate as a decimal (0.09, 0.23); col C = Sales; col D = Tax
             import openpyxl, io as _io
             raw = file_storage.read()
             wb = openpyxl.load_workbook(_io.BytesIO(raw), data_only=True)
             ws = wb.active
-            rows = []
+
+            by_rate = {}
+            total_tax = Decimal("0")
+
             for row in ws.iter_rows(values_only=True):
-                if any(c is not None for c in row):
-                    rows.append(list(row))
-            # Skip header row if it contains "Tax Name"
-            if rows and str(rows[0][0] or "").strip().lower() == "tax name":
-                rows = rows[1:]
-            return _process_rows(rows)
+                col_b = row[1] if len(row) > 1 else None
+                col_c = row[2] if len(row) > 2 else None
+                col_d = row[3] if len(row) > 3 else None
+
+                # Rate rows: col B is a number between 0 and 1 (e.g. 0.23, 0.09)
+                if isinstance(col_b, (int, float)) and 0 < col_b <= 1:
+                    pct = round(col_b * 100, 4)   # 0.23 → 23.0, 0.09 → 9.0
+                    sales = _to_decimal(col_c)
+                    tax   = _to_decimal(col_d)
+                    by_rate[pct] = {"sales": sales, "tax": tax}
+                    total_tax += tax
+
+            total_sales = sum(v["sales"] for v in by_rate.values())
+            return {"by_rate": by_rate, "total_sales": total_sales, "total_tax": total_tax}
 
         else:
-            # CSV format (Square export — UTF-16 tab-separated)
+            # Format B — Square CSV export (UTF-16 tab-separated)
+            # Reg VAT → 23%, Special VAT → 9%
+            TAX_NAME_MAP = {
+                "reg vat":     23.0,
+                "special vat":  9.0,
+                "reduced vat":  9.0,
+                "9% vat":       9.0,
+                "food vat":     9.0,
+            }
             raw = file_storage.read()
             try:
                 text = raw.decode("utf-16")
             except Exception:
                 text = raw.decode("utf-8", errors="replace")
 
+            by_rate = {}
+            non_taxable = Decimal("0")
+            total_tax = Decimal("0")
+
             reader = csv.reader(io.StringIO(text), delimiter="\t")
-            rows = []
-            first = True
             for row in reader:
                 row = [c.strip() for c in row]
-                if first and row and row[0].lower() == "tax name":
-                    first = False
+                if not row or not row[0]:
                     continue
-                first = False
-                rows.append(row)
-            return _process_rows(rows)
+                name = row[0].lower()
+                if name == "tax name":
+                    continue
+                if name in TAX_NAME_MAP and len(row) >= 5:
+                    pct = TAX_NAME_MAP[name]
+                    sales = _to_decimal(row[2])   # Taxable Item Sales
+                    tax   = _to_decimal(row[4])   # Tax Collected
+                    by_rate[pct] = {"sales": sales, "tax": tax}
+                    total_tax += tax
+                elif "non taxable" in name and len(row) >= 2:
+                    non_taxable = _to_decimal(row[1])
+
+            if non_taxable:
+                by_rate[0.0] = {"sales": non_taxable, "tax": Decimal("0")}
+
+            total_sales = sum(v["sales"] for v in by_rate.values())
+            return {"by_rate": by_rate, "total_sales": total_sales, "total_tax": total_tax}
 
     except Exception as e:
         print(f"[vat-period] tax report parse error: {e}")
