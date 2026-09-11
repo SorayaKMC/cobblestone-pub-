@@ -1049,7 +1049,7 @@ def _parse_square_tax_csv(file_storage) -> dict | None:
 
     TAX_NAME_MAP = {
         "reg vat":      23.0,
-        "special vat":  13.5,
+        "special vat":   9.0,   # Irish reduced rate changed from 13.5% to 9%
         "reduced vat":   9.0,
         "9% vat":        9.0,
         "vat 9%":        9.0,
