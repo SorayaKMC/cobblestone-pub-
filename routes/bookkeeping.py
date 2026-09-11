@@ -1021,12 +1021,20 @@ def suppliers():
 
 
 def _parse_square_tax_csv(file_storage) -> dict | None:
-    """Parse a Square tax summary CSV export into the sales-by-rate dict.
+    """Parse a tax summary file (Square CSV export or corrected .xlsx) into the sales-by-rate dict.
 
-    Square exports UTF-16 LE tab-separated files with columns:
+    Columns expected:
       Tax Name | Taxable Amount | Taxable Item Sales | Taxable Service Charges | Tax Collected
 
-    Plus summary rows: 'Non Taxable Sales', 'Total Net Sales'.
+    We use:
+      - Taxable Item Sales (col C / index 2) as the net sales figure for each rate
+      - Tax Collected (col E / index 4) as the VAT collected
+
+    Summary rows: 'Non Taxable Sales', 'Total Net Sales' (used for 0% bucket / totals).
+
+    Accepts:
+      - .xlsx  — parsed with openpyxl (user-compiled corrected format)
+      - .csv   — Square UTF-16 tab-separated export
 
     Returns:
         {
@@ -1040,48 +1048,47 @@ def _parse_square_tax_csv(file_storage) -> dict | None:
     import csv, io
 
     TAX_NAME_MAP = {
-        "reg vat":     23.0,
-        "special vat": 13.5,
+        "reg vat":      23.0,
+        "special vat":  13.5,
+        "reduced vat":   9.0,
+        "9% vat":        9.0,
+        "vat 9%":        9.0,
+        "food vat":      9.0,
     }
 
-    def _parse_money(s):
-        """Strip currency symbols and commas, return Decimal."""
-        s = s.strip().lstrip("€$£").replace(",", "").strip()
+    def _to_decimal(val):
+        """Convert a cell value (number or string with currency symbols) to Decimal."""
+        if val is None:
+            return Decimal("0")
+        if isinstance(val, (int, float)):
+            return Decimal(str(val))
+        s = str(val).strip().lstrip("€$£").replace(",", "").strip()
         try:
             return Decimal(s)
         except Exception:
             return Decimal("0")
 
-    try:
-        raw = file_storage.read()
-        # Square exports UTF-16 LE with BOM
-        try:
-            text = raw.decode("utf-16")
-        except Exception:
-            text = raw.decode("utf-8", errors="replace")
-
+    def _process_rows(rows):
+        """rows: iterable of lists/tuples. Returns the by_rate dict."""
         by_rate = {}
         non_taxable = Decimal("0")
         total_tax = Decimal("0")
 
-        reader = csv.reader(io.StringIO(text), delimiter="\t")
-        for row in reader:
-            row = [c.strip() for c in row if c.strip()]
-            if not row:
+        for row in rows:
+            if not row or row[0] is None:
                 continue
+            name = str(row[0]).strip().lower()
 
-            name = row[0].lower()
-
-            # Tax rate rows: Tax Name | Taxable Amount | ... | Tax Collected
+            # Tax rate rows: must have at least 5 columns
             if name in TAX_NAME_MAP and len(row) >= 5:
                 pct = TAX_NAME_MAP[name]
-                sales = _parse_money(row[1])   # Taxable Amount (pre-tax)
-                tax   = _parse_money(row[4])   # Tax Collected
+                sales = _to_decimal(row[2])   # Taxable Item Sales (col C)
+                tax   = _to_decimal(row[4])   # Tax Collected (col E)
                 by_rate[pct] = {"sales": sales, "tax": tax}
                 total_tax += tax
 
             elif "non taxable" in name and len(row) >= 2:
-                non_taxable = _parse_money(row[1])
+                non_taxable = _to_decimal(row[1])
 
         if non_taxable:
             by_rate[0.0] = {"sales": non_taxable, "tax": Decimal("0")}
@@ -1089,8 +1096,46 @@ def _parse_square_tax_csv(file_storage) -> dict | None:
         total_sales = sum(v["sales"] for v in by_rate.values())
         return {"by_rate": by_rate, "total_sales": total_sales, "total_tax": total_tax}
 
+    try:
+        filename = (file_storage.filename or "").lower()
+
+        if filename.endswith(".xlsx") or filename.endswith(".xls"):
+            # Excel format (user-compiled corrected report)
+            import openpyxl, io as _io
+            raw = file_storage.read()
+            wb = openpyxl.load_workbook(_io.BytesIO(raw), data_only=True)
+            ws = wb.active
+            rows = []
+            for row in ws.iter_rows(values_only=True):
+                if any(c is not None for c in row):
+                    rows.append(list(row))
+            # Skip header row if it contains "Tax Name"
+            if rows and str(rows[0][0] or "").strip().lower() == "tax name":
+                rows = rows[1:]
+            return _process_rows(rows)
+
+        else:
+            # CSV format (Square export — UTF-16 tab-separated)
+            raw = file_storage.read()
+            try:
+                text = raw.decode("utf-16")
+            except Exception:
+                text = raw.decode("utf-8", errors="replace")
+
+            reader = csv.reader(io.StringIO(text), delimiter="\t")
+            rows = []
+            first = True
+            for row in reader:
+                row = [c.strip() for c in row]
+                if first and row and row[0].lower() == "tax name":
+                    first = False
+                    continue
+                first = False
+                rows.append(row)
+            return _process_rows(rows)
+
     except Exception as e:
-        print(f"[vat-period] CSV parse error: {e}")
+        print(f"[vat-period] tax report parse error: {e}")
         return None
 
 
