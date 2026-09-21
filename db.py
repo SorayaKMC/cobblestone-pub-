@@ -1473,6 +1473,17 @@ def save_invoice(data, invoice_id=None):
     return new_id
 
 
+def update_invoice_pdf_path(invoice_id, pdf_path):
+    """Update the pdf_path for an invoice (e.g. after archiving to Drive)."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE invoices SET pdf_path=?, updated_at=? WHERE id=?",
+        (pdf_path, datetime.now().isoformat(), invoice_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 def delete_invoice(invoice_id):
     conn = get_db()
     conn.execute("DELETE FROM invoices WHERE id=?", (invoice_id,))

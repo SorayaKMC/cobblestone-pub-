@@ -1231,3 +1231,25 @@ def download_vat_period():
         buf, download_name=filename, as_attachment=True,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+@bp.route("/bookkeeping/archive-pdfs", methods=["POST"])
+def archive_pdfs_to_drive():
+    """Archive all local invoice PDFs to Google Drive and free disk space."""
+    try:
+        import drive_archive
+        result = drive_archive.archive_all_pdfs()
+    except Exception as e:
+        flash(f"Archive failed: {e}", "danger")
+        return redirect(url_for("bookkeeping.bookkeeping_page"))
+
+    msg = (
+        f"Archive complete — {result['archived']} uploaded to Drive, "
+        f"{result['skipped']} skipped (already archived or no file), "
+        f"{result['failed']} failed."
+    )
+    flash(msg, "success" if result["failed"] == 0 else "warning")
+    if result["errors"]:
+        for err in result["errors"][:5]:
+            flash(err, "warning")
+    return redirect(url_for("bookkeeping.bookkeeping_page"))
