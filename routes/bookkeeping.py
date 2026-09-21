@@ -1020,7 +1020,7 @@ def suppliers():
     )
 
 
-def _parse_square_tax_csv(file_storage) -> dict | None:
+def _parse_square_tax_csv(file_storage):
     """Parse a VAT tax summary file into the sales-by-rate dict.
 
     Accepts two formats:
