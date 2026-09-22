@@ -471,3 +471,22 @@ def recalculate():
         flash(f"Recalculation failed: {str(e)}", "danger")
 
     return redirect(url_for("pto.pto_page"))
+
+
+@bp.route("/pto/fix-future-accruals/<tm_id>", methods=["POST"])
+def fix_future_accruals(tm_id):
+    """Delete v4_import accrual rows dated after today."""
+    import db as _db
+    from datetime import date
+    today = date.today().isoformat()
+    conn = _db.get_db()
+    result = conn.execute(
+        """DELETE FROM pto_accruals
+           WHERE team_member_id = ? AND period_start > ? AND source = 'v4_import'""",
+        (tm_id, today),
+    )
+    deleted = result.rowcount
+    conn.commit()
+    conn.close()
+    flash(f"Removed {deleted} future accrual rows for {tm_id}.", "success")
+    return redirect(url_for("pto.pto_page"))
