@@ -2282,3 +2282,17 @@ def weekly_summary():
         prev_monday=prev_monday,
         next_monday=next_monday,
     )
+
+
+@bp.route("/bookings/weekly-summary/refresh/<week>", methods=["POST"])
+def weekly_summary_refresh(week):
+    """Manually regenerate the weekly summary cache and redirect back."""
+    from datetime import date, timedelta
+    try:
+        monday = date.fromisoformat(week)
+        monday -= timedelta(days=monday.weekday())
+    except ValueError:
+        monday = date.today()
+    db.set_cache("weekly_gig_summary_last_run", monday.isoformat())
+    flash("Weekly summary refreshed.", "success")
+    return redirect(url_for("bookings.weekly_summary", week=monday.isoformat()))

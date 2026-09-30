@@ -4,10 +4,8 @@
 
 {% block content %}
 <style>
-/* ── Social card ─────────────────────────────────────── */
-#social-card {
-  width: 1080px;
-  height: 1350px;  /* 4:5 portrait — ideal for Instagram */
+/* ── Social card shared ───────────────────────────────── */
+.sc-card {
   background: #1a4427;
   padding: 48px 44px 36px;
   display: flex;
@@ -18,39 +16,60 @@
   color: #fff;
 }
 
+/* Post: 1080×1350 (4:5) */
+#social-card {
+  width: 1080px;
+  height: 1350px;
+}
+
+/* Story: 1080×1920 (9:16) */
+#social-card-story {
+  width: 1080px;
+  height: 1920px;
+}
+
 /* Header row */
-#social-card .sc-header {
+.sc-card .sc-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 28px;
 }
-#social-card .sc-this-week {
+.sc-card .sc-this-week {
   font-size: 72px;
   font-weight: 900;
   line-height: 0.9;
   letter-spacing: -1px;
   text-transform: uppercase;
 }
-#social-card .sc-this-week span {
+#social-card-story .sc-this-week {
+  font-size: 90px;
+}
+.sc-card .sc-this-week span {
   display: block;
   font-size: 22px;
   font-weight: 400;
   letter-spacing: 4px;
   margin-top: 6px;
 }
-#social-card .sc-logo-block {
+#social-card-story .sc-this-week span {
+  font-size: 28px;
+}
+.sc-card .sc-logo-block {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
 }
-#social-card .sc-logo-block img {
+.sc-card .sc-logo-block img {
   width: 220px;
   height: auto;
   object-fit: contain;
 }
-#social-card .sc-date-range {
+#social-card-story .sc-logo-block img {
+  width: 280px;
+}
+.sc-card .sc-date-range {
   text-align: right;
   font-size: 62px;
   font-weight: 900;
@@ -58,27 +77,36 @@
   text-transform: uppercase;
   color: #c9a227;
 }
-#social-card .sc-date-range span {
+#social-card-story .sc-date-range {
+  font-size: 78px;
+}
+.sc-card .sc-date-range span {
   display: block;
   font-size: 36px;
   color: #c9a227;
 }
+#social-card-story .sc-date-range span {
+  font-size: 44px;
+}
 
 /* Divider */
-#social-card .sc-divider {
+.sc-card .sc-divider {
   height: 2px;
   background: rgba(255,255,255,0.3);
   margin-bottom: 20px;
 }
 
 /* Day rows */
-#social-card .sc-rows {
+.sc-card .sc-rows {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-#social-card .sc-day-row {
+#social-card-story .sc-rows {
+  gap: 16px;
+}
+.sc-card .sc-day-row {
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.2);
   border-left: 4px solid #c9a227;
@@ -88,11 +116,15 @@
   flex-direction: column;
   justify-content: center;
 }
-#social-card .sc-day-row.is-empty {
+#social-card-story .sc-day-row {
+  min-height: 140px;
+  padding: 20px 26px;
+}
+.sc-card .sc-day-row.is-empty {
   border-left-color: rgba(255,255,255,0.2);
   opacity: 0.5;
 }
-#social-card .sc-day-label {
+.sc-card .sc-day-label {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 3px;
@@ -100,32 +132,45 @@
   color: #fff;
   margin-bottom: 4px;
 }
-#social-card .sc-day-events {
+#social-card-story .sc-day-label {
+  font-size: 24px;
+  letter-spacing: 4px;
+}
+.sc-card .sc-day-events {
   font-size: 20px;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: rgba(255,255,255,0.9);
   line-height: 1.4;
 }
-#social-card .sc-day-events .private {
+#social-card-story .sc-day-events {
+  font-size: 26px;
+}
+.sc-card .sc-day-events .private {
   color: rgba(255,255,255,0.45);
   font-style: italic;
   text-transform: none;
   letter-spacing: 0;
 }
-#social-card .sc-day-events .sold-out {
+.sc-card .sc-day-events .sold-out {
   color: #e74c3c;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 2px;
 }
-#social-card .sc-day-events .ticket-price {
+#social-card-story .sc-day-events .sold-out {
+  font-size: 18px;
+}
+.sc-card .sc-day-events .ticket-price {
   color: #c9a227;
   font-size: 17px;
 }
+#social-card-story .sc-day-events .ticket-price {
+  font-size: 22px;
+}
 
 /* Footer */
-#social-card .sc-footer {
+.sc-card .sc-footer {
   text-align: center;
   font-size: 16px;
   letter-spacing: 4px;
@@ -134,6 +179,9 @@
   margin-top: 18px;
   border-top: 1px solid rgba(255,255,255,0.15);
   padding-top: 14px;
+}
+#social-card-story .sc-footer {
+  font-size: 20px;
 }
 </style>
 
@@ -219,97 +267,133 @@
   </div>
 </div>
 
-<!-- ── SOCIAL CARD ───────────────────────────────────────────────────────── -->
+<!-- ── SOCIAL CARDS ──────────────────────────────────────────────────────── -->
+
+{% macro social_card_rows() %}
+  <!-- Header -->
+  <div class="sc-header">
+    <div class="sc-this-week">
+      This<br>Week
+      <span>In the</span>
+    </div>
+    <div class="sc-logo-block">
+      <img src="/static/backroom-logo-white.png" alt="The Cobblestone Backroom">
+    </div>
+    <div class="sc-date-range">
+      <span>{{ monday.strftime('%b') }}</span>
+      {{ monday.strftime('%-d') }}–{{ sunday.strftime('%-d') }}
+    </div>
+  </div>
+
+  <div class="sc-divider"></div>
+
+  <!-- Day rows -->
+  <div class="sc-rows">
+    {% for slot in days %}
+    {% set is_empty = slot.bookings|length == 0 %}
+    <div class="sc-day-row {% if is_empty %}is-empty{% endif %}">
+      <div class="sc-day-label">
+        {{ slot.date.strftime('%A %-d') }}{{ slot.date.strftime('%b') | upper }}
+      </div>
+      <div class="sc-day-events">
+        {% if is_empty %}
+        &nbsp;
+        {% else %}
+          {% for b in slot.bookings %}
+            {% set is_private = b.event_type in ('Private Hire', 'Rehearsal', 'Filming', 'Other') %}
+            {% if is_private %}
+              <span class="private">Private Event</span>
+            {% else %}
+              {% if b.start_time %}{{ b.start_time }} {% endif %}{{ b.act_name | upper }}
+              {% if b.ticket_price %} · <span class="ticket-price">{{ b.ticket_price }}</span>{% endif %}
+              {% if b.ticketing == 'Sold out' or (b.notes and 'sold out' in b.notes | lower) %}
+                · <span class="sold-out">SOLD OUT</span>
+              {% endif %}
+            {% endif %}
+            {% if not loop.last %}<br>{% endif %}
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Footer -->
+  <div class="sc-footer">
+    77 North King Street · Smithfield · Dublin 7
+  </div>
+{% endmacro %}
+
+<!-- Post (1080×1350) -->
 <div class="card mb-4">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <span class="fw-semibold"><i class="bi bi-instagram me-2"></i>Social Card — download &amp; post</span>
-    <button class="btn btn-sm btn-success" id="download-btn">
-      <i class="bi bi-download me-1"></i>Download Image
+    <span class="fw-semibold"><i class="bi bi-instagram me-2"></i>Instagram Post <small class="text-muted ms-2">1080 × 1350</small></span>
+    <div class="d-flex gap-2">
+      <form method="post" action="{{ url_for('bookings.weekly_summary_refresh', week=monday.strftime('%Y-%m-%d')) }}" class="d-inline">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+      </form>
+      <button class="btn btn-sm btn-success" id="download-post-btn">
+        <i class="bi bi-download me-1"></i>Download Post
+      </button>
+    </div>
+  </div>
+  <div class="card-body" style="overflow-x:auto; background:#2a2a2a; padding:32px;">
+    <div id="social-card" class="sc-card">
+      {{ social_card_rows() }}
+    </div>
+  </div>
+</div>
+
+<!-- Story (1080×1920) -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold"><i class="bi bi-instagram me-2"></i>Instagram Story <small class="text-muted ms-2">1080 × 1920</small></span>
+    <button class="btn btn-sm btn-success" id="download-story-btn">
+      <i class="bi bi-download me-1"></i>Download Story
     </button>
   </div>
   <div class="card-body" style="overflow-x:auto; background:#2a2a2a; padding:32px;">
-    <div id="social-card">
-
-      <!-- Header -->
-      <div class="sc-header">
-        <div class="sc-this-week">
-          This<br>Week
-          <span>In the</span>
-        </div>
-        <div class="sc-logo-block">
-          <img src="/static/backroom-logo-white.png" alt="The Cobblestone Backroom">
-        </div>
-        <div class="sc-date-range">
-          <span>{{ monday.strftime('%b') }}</span>
-          {{ monday.strftime('%-d') }}–{{ sunday.strftime('%-d') }}
-        </div>
-      </div>
-
-      <div class="sc-divider"></div>
-
-      <!-- Day rows -->
-      <div class="sc-rows">
-        {% for slot in days %}
-        {% set is_empty = slot.bookings|length == 0 %}
-        <div class="sc-day-row {% if is_empty %}is-empty{% endif %}">
-          <div class="sc-day-label">
-            {{ slot.date.strftime('%A %-d') }}{{ slot.date.strftime('%b') | upper }}
-          </div>
-          <div class="sc-day-events">
-            {% if is_empty %}
-            &nbsp;
-            {% else %}
-              {% for b in slot.bookings %}
-                {% set is_private = b.event_type in ('Private Hire', 'Rehearsal', 'Filming', 'Other') %}
-                {% if is_private %}
-                  <span class="private">Private Event</span>
-                {% else %}
-                  {% if b.start_time %}{{ b.start_time }} {% endif %}{{ b.act_name | upper }}
-                  {% if b.ticket_price %} · <span class="ticket-price">{{ b.ticket_price }}</span>{% endif %}
-                  {% if b.ticketing == 'Sold out' or (b.notes and 'sold out' in b.notes | lower) %}
-                    · <span class="sold-out">SOLD OUT</span>
-                  {% endif %}
-                {% endif %}
-                {% if not loop.last %}<br>{% endif %}
-              {% endfor %}
-            {% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-
-      <!-- Footer -->
-      <div class="sc-footer">
-        77 North King Street · Smithfield · Dublin 7
-      </div>
-
-    </div><!-- /social-card -->
+    <div id="social-card-story" class="sc-card">
+      {{ social_card_rows() }}
+    </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
-document.getElementById('download-btn').addEventListener('click', function() {
-  const btn = this;
+function downloadCard(cardId, btnId, filename) {
+  const btn = document.getElementById(btnId);
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
-  html2canvas(document.getElementById('social-card'), {
+  html2canvas(document.getElementById(cardId), {
     scale: 2,
     useCORS: true,
     backgroundColor: '#1a4427',
     logging: false,
   }).then(canvas => {
     const link = document.createElement('a');
-    link.download = 'cobblestone-week-{{ monday.strftime("%d-%b-%Y") }}.png';
+    link.download = filename;
     link.href = canvas.toDataURL('image/png');
     link.click();
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-download me-1"></i>Download Image';
+    btn.innerHTML = btn.id === 'download-post-btn'
+      ? '<i class="bi bi-download me-1"></i>Download Post'
+      : '<i class="bi bi-download me-1"></i>Download Story';
   }).catch(err => {
     alert('Could not generate image: ' + err);
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-download me-1"></i>Download Image';
+    btn.innerHTML = btn.id === 'download-post-btn'
+      ? '<i class="bi bi-download me-1"></i>Download Post'
+      : '<i class="bi bi-download me-1"></i>Download Story';
   });
+}
+document.getElementById('download-post-btn').addEventListener('click', function() {
+  downloadCard('social-card', 'download-post-btn', 'cobblestone-post-{{ monday.strftime("%d-%b-%Y") }}.png');
+});
+document.getElementById('download-story-btn').addEventListener('click', function() {
+  downloadCard('social-card-story', 'download-story-btn', 'cobblestone-story-{{ monday.strftime("%d-%b-%Y") }}.png');
 });
 </script>
 {% endblock %}
