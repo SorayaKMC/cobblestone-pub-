@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block title %}Weekly Gig Summary – {{ monday.strftime('%d %b') }} – {{ sunday.strftime('%d %b %Y') }}{% endblock %}
+{% block page_title %}Weekly Gig Summary{% endblock %}
+
+{% block content %}
+<style>
+/* ── Social card ─────────────────────────────────────── */
+#social-card {
+  width: 1080px;
+  height: 1350px;  /* 4:5 portrait — ideal for Instagram */
+  background: #1a4427;
+  padding: 48px 44px 36px;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Courier New', Courier, monospace;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+/* Header row */
+#social-card .sc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+#social-card .sc-this-week {
+  font-size: 72px;
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+}
+#social-card .sc-this-week span {
+  display: block;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 4px;
+  margin-top: 6px;
+}
+#social-card .sc-logo-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+#social-card .sc-logo-block img {
+  width: 200px;
+  height: auto;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+#social-card .sc-date-range {
+  text-align: right;
+  font-size: 62px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #c9a227;
+}
+#social-card .sc-date-range span {
+  display: block;
+  font-size: 36px;
+  color: #c9a227;
+}
+
+/* Divider */
+#social-card .sc-divider {
+  height: 2px;
+  background: rgba(255,255,255,0.3);
+  margin-bottom: 20px;
+}
+
+/* Day rows */
+#social-card .sc-rows {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#social-card .sc-day-row {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-left: 4px solid #c9a227;
+  padding: 14px 18px;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+#social-card .sc-day-row.is-empty {
+  border-left-color: rgba(255,255,255,0.2);
+  opacity: 0.5;
+}
+#social-card .sc-day-label {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 4px;
+}
+#social-card .sc-day-events {
+  font-size: 20px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.9);
+  line-height: 1.4;
+}
+#social-card .sc-day-events .private {
+  color: rgba(255,255,255,0.45);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+}
+#social-card .sc-day-events .sold-out {
+  color: #e74c3c;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+#social-card .sc-day-events .ticket-price {
+  color: #c9a227;
+  font-size: 17px;
+}
+
+/* Footer */
+#social-card .sc-footer {
+  text-align: center;
+  font-size: 16px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  margin-top: 18px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 14px;
+}
+</style>
+
+<!-- Week nav -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <a href="{{ url_for('bookings.weekly_summary', week=prev_monday) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-chevron-left me-1"></i>Prev week
+  </a>
+  <h5 class="mb-0">
+    {{ monday.strftime('%A %d %b') }} – {{ sunday.strftime('%A %d %b %Y') }}
+  </h5>
+  <a href="{{ url_for('bookings.weekly_summary', week=next_monday) }}" class="btn btn-outline-secondary btn-sm">
+    Next week<i class="bi bi-chevron-right ms-1"></i>
+  </a>
+</div>
+
+<!-- ── INTERNAL TABLE ─────────────────────────────────────────────────────── -->
+<div class="card mb-5">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold"><i class="bi bi-table me-2"></i>Internal Summary</span>
+    <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i>Print
+    </button>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-cobblestone mb-0">
+      <thead>
+        <tr>
+          <th style="width:110px">Day</th>
+          <th style="width:110px">Date</th>
+          <th>Event</th>
+          <th>Venue</th>
+          <th style="width:75px">Door</th>
+          <th style="width:75px">Start</th>
+          <th style="width:120px">Ticketing</th>
+          <th style="width:95px">Price</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for slot in days %}
+        {% if slot.bookings %}
+          {% for b in slot.bookings %}
+          <tr>
+            {% if loop.first %}
+            <td rowspan="{{ slot.bookings|length }}" class="fw-semibold align-middle">
+              {{ slot.date.strftime('%A') }}
+            </td>
+            <td rowspan="{{ slot.bookings|length }}" class="align-middle text-muted small">
+              {{ slot.date.strftime('%d %b') }}
+            </td>
+            {% endif %}
+            <td>
+              <strong>{{ b.act_name }}</strong>
+              {% if b.support_act %}<br><small class="text-muted">+ {{ b.support_act }}</small>{% endif %}
+            </td>
+            <td class="small">{{ b.venue }}</td>
+            <td class="small">{{ b.door_time or '—' }}</td>
+            <td class="small">{{ b.start_time or '—' }}</td>
+            <td class="small">{{ b.ticketing or '—' }}</td>
+            <td class="small">{{ b.ticket_price or '—' }}</td>
+            <td><span class="badge bg-secondary">{{ b.event_type }}</span></td>
+            <td>
+              <span class="badge {% if b.status == 'confirmed' %}bg-success{% elif b.status == 'tentative' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                {{ b.status }}
+              </span>
+            </td>
+            <td class="small text-muted">{{ b.notes or '' }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr class="text-muted">
+            <td class="fw-semibold">{{ slot.date.strftime('%A') }}</td>
+            <td class="small">{{ slot.date.strftime('%d %b') }}</td>
+            <td colspan="9" class="fst-italic">No bookings</td>
+          </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── SOCIAL CARD ───────────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold"><i class="bi bi-instagram me-2"></i>Social Card — download &amp; post</span>
+    <button class="btn btn-sm btn-success" id="download-btn">
+      <i class="bi bi-download me-1"></i>Download Image
+    </button>
+  </div>
+  <div class="card-body" style="overflow-x:auto; background:#2a2a2a; padding:32px;">
+    <div id="social-card">
+
+      <!-- Header -->
+      <div class="sc-header">
+        <div class="sc-this-week">
+          This<br>Week
+          <span>In the</span>
+        </div>
+        <div class="sc-logo-block">
+          <img src="/static/cobblestone-logo.jpg" alt="Cobblestone">
+        </div>
+        <div class="sc-date-range">
+          <span>{{ monday.strftime('%b') }}</span>
+          {{ monday.strftime('%-d') }}–{{ sunday.strftime('%-d') }}
+        </div>
+      </div>
+
+      <div class="sc-divider"></div>
+
+      <!-- Day rows -->
+      <div class="sc-rows">
+        {% for slot in days %}
+        {% set is_empty = slot.bookings|length == 0 %}
+        <div class="sc-day-row {% if is_empty %}is-empty{% endif %}">
+          <div class="sc-day-label">
+            {{ slot.date.strftime('%A %-d') }}{{ slot.date.strftime('%b') | upper }}
+          </div>
+          <div class="sc-day-events">
+            {% if is_empty %}
+            &nbsp;
+            {% else %}
+              {% for b in slot.bookings %}
+                {% set is_private = b.event_type in ('Private Hire', 'Rehearsal', 'Filming', 'Other') %}
+                {% if is_private %}
+                  <span class="private">Private Event</span>
+                {% else %}
+                  {% if b.start_time %}{{ b.start_time }} {% endif %}{{ b.act_name | upper }}
+                  {% if b.ticket_price %} · <span class="ticket-price">{{ b.ticket_price }}</span>{% endif %}
+                  {% if b.ticketing == 'Sold out' or (b.notes and 'sold out' in b.notes | lower) %}
+                    · <span class="sold-out">SOLD OUT</span>
+                  {% endif %}
+                {% endif %}
+                {% if not loop.last %}<br>{% endif %}
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Footer -->
+      <div class="sc-footer">
+        77 North King Street · Smithfield · Dublin 7
+      </div>
+
+    </div><!-- /social-card -->
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+document.getElementById('download-btn').addEventListener('click', function() {
+  const btn = this;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
+  html2canvas(document.getElementById('social-card'), {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#1a4427',
+    logging: false,
+  }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = 'cobblestone-week-{{ monday.strftime("%d-%b-%Y") }}.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-download me-1"></i>Download Image';
+  }).catch(err => {
+    alert('Could not generate image: ' + err);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-download me-1"></i>Download Image';
+  });
+});
+</script>
+{% endblock %}

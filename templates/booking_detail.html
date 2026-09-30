@@ -165,6 +165,9 @@
                             <label class="form-label small">Event Date <span class="text-danger">*</span></label>
                             <input type="date" name="event_date" class="form-control form-control-sm" required
                                    value="{{ booking.event_date if booking else '' }}">
+                            {% if booking and booking.event_date %}
+                            <div class="form-text fw-semibold">{{ booking.event_date | day_of_week }}</div>
+                            {% endif %}
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small">Door</label>

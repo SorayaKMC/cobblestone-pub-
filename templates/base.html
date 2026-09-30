@@ -49,8 +49,13 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-white {% if '/bookings' in request.path %}active{% endif %}" href="/bookings">
+                    <a class="nav-link text-white {% if '/bookings' in request.path and 'weekly' not in request.path %}active{% endif %}" href="/bookings">
                         <i class="bi bi-music-note-list me-2"></i>Bookings
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white {% if 'weekly-summary' in request.path %}active{% endif %}" href="/bookings/weekly-summary">
+                        <i class="bi bi-calendar-week me-2"></i>Weekly Gigs
                     </a>
                 </li>
                 <li class="nav-item mt-3 border-top border-secondary pt-3">

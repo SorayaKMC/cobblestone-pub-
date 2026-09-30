@@ -278,6 +278,69 @@ def _pto_weekly_recalc_loop():
         time.sleep(3600)  # check every hour
 
 
+def _weekly_gig_summary_loop():
+    """Background thread: cache next week's gig summary every Sunday at 17:00 Dublin time."""
+    import time
+    from datetime import datetime, timedelta, date
+    try:
+        from zoneinfo import ZoneInfo
+        DUBLIN = ZoneInfo("Europe/Dublin")
+    except Exception:
+        DUBLIN = None
+
+    def _now_dublin():
+        return datetime.now(DUBLIN) if DUBLIN else datetime.now()
+
+    def _most_recent_sunday_1700(now):
+        days_back = (now.weekday() - 6) % 7
+        sun = (now - timedelta(days=days_back)).replace(
+            hour=17, minute=0, second=0, microsecond=0
+        )
+        if sun > now:
+            sun -= timedelta(days=7)
+        return sun
+
+    print("[gig-summary] Weekly summary thread active (Sunday 17:00 Dublin)")
+    while True:
+        try:
+            now = _now_dublin()
+            trigger = _most_recent_sunday_1700(now)
+            last, _ = db.get_cache("weekly_gig_summary_last_run")
+            should_run = True
+            if last and "ts" in last:
+                try:
+                    last_ts = datetime.fromisoformat(last["ts"])
+                    if last_ts.tzinfo is None and DUBLIN:
+                        last_ts = last_ts.replace(tzinfo=DUBLIN)
+                    if last_ts >= trigger:
+                        should_run = False
+                except Exception:
+                    pass
+
+            if should_run:
+                # Next week: Monday after today (which is Sunday)
+                today = now.date()
+                next_monday = today + timedelta(days=1)
+                try:
+                    import db as _db
+                    bookings = _db.list_bookings(
+                        start_date=next_monday.isoformat(),
+                        end_date=(next_monday + timedelta(days=6)).isoformat(),
+                    )
+                    active = [b for b in bookings if b["status"] in ("confirmed", "tentative")]
+                    _db.set_cache("weekly_gig_summary_last_run", {
+                        "ts": now.isoformat(),
+                        "week": next_monday.isoformat(),
+                        "count": len(active),
+                    })
+                    print(f"[gig-summary] Week of {next_monday}: {len(active)} gig(s) cached")
+                except Exception as e:
+                    print(f"[gig-summary] Failed: {e}")
+        except Exception as e:
+            print(f"[gig-summary] Loop error: {e}")
+        time.sleep(3600)
+
+
 def _drive_watch_loop():
     """Background thread: scan the invoices Drive folder every 30 minutes."""
     import time
@@ -431,6 +494,9 @@ def create_app():
 
     # Background weekly PTO recalc - runs every Sunday 23:00 Dublin time
     threading.Thread(target=_pto_weekly_recalc_loop, daemon=True).start()
+
+    # Background weekly gig summary - caches next week's bookings every Sunday 17:00 Dublin time
+    threading.Thread(target=_weekly_gig_summary_loop, daemon=True).start()
 
     # Apply HTTP Basic Auth globally (if enabled via env vars)
     if config.AUTH_ENABLED:

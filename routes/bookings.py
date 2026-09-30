@@ -2226,3 +2226,59 @@ def send_portal_intro_to_contact():
         flash(f"Email failed: {e}", "danger")
 
     return redirect(url_for("bookings.portal_intros"))
+
+
+# ─── Weekly summary ──────────────────────────────────────────────────────────
+
+def _week_bookings(monday_iso):
+    """Return confirmed/tentative bookings for the Mon–Sun week starting monday_iso."""
+    from datetime import date, timedelta
+    monday = date.fromisoformat(monday_iso)
+    sunday = monday + timedelta(days=6)
+    bookings = db.list_bookings(
+        status=None,
+        start_date=monday.isoformat(),
+        end_date=sunday.isoformat(),
+    )
+    # Only show live bookings (not cancelled/inquiry)
+    active = [b for b in bookings if b["status"] in ("confirmed", "tentative", "completed")]
+    # Build one slot per day
+    days = []
+    for i in range(7):
+        d = monday + timedelta(days=i)
+        day_bookings = [b for b in active if b["event_date"] == d.isoformat()]
+        days.append({"date": d, "bookings": day_bookings})
+    return days
+
+
+@bp.route("/bookings/weekly-summary")
+def weekly_summary():
+    """Internal weekly summary page — table view + social card."""
+    from datetime import date, timedelta
+    today = date.today()
+    # Default to the coming week (Mon–Sun). If today is Sunday, show next week.
+    days_to_monday = (7 - today.weekday()) % 7 or 7  # always at least 1 day ahead
+    monday = today + timedelta(days=days_to_monday)
+
+    week_param = request.args.get("week")  # e.g. "2026-10-06"
+    if week_param:
+        try:
+            monday = date.fromisoformat(week_param)
+            # Snap to Monday
+            monday -= timedelta(days=monday.weekday())
+        except ValueError:
+            pass
+
+    sunday = monday + timedelta(days=6)
+    days = _week_bookings(monday.isoformat())
+    prev_monday = (monday - timedelta(days=7)).isoformat()
+    next_monday = (monday + timedelta(days=7)).isoformat()
+
+    return render_template(
+        "bookings_weekly_summary.html",
+        days=days,
+        monday=monday,
+        sunday=sunday,
+        prev_monday=prev_monday,
+        next_monday=next_monday,
+    )
