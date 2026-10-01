@@ -33,7 +33,7 @@
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold">Teacher / Support Act</label>
                         <input type="text" name="support_act" class="form-control"
-                               value="{{ series.get('support_act') or '' }}"
+                               value="{{ support_act or '' }}"
                                placeholder="e.g. Louise O'Connor">
                         <div class="form-text">Shown as "with [name]" on the social card.</div>
                     </div>
@@ -41,7 +41,7 @@
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold">Ticket / Drop-in Price</label>
                         <input type="text" name="ticket_price" class="form-control"
-                               value="{{ series.get('ticket_price') or '' }}"
+                               value="{{ ticket_price or '' }}"
                                placeholder="e.g. €12 drop-in">
                     </div>
 

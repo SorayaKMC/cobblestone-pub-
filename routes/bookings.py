@@ -2069,11 +2069,21 @@ def edit_series(series_id):
         return redirect(url_for("bookings.series_list"))
 
     if request.method == "GET":
+        # support_act and ticket_price live on individual bookings, not the series row.
+        # Pull from the first upcoming booking so the form pre-populates correctly.
+        upcoming = db.get_series_bookings(series_id)
+        today_iso = _today_iso()
+        first_future = next(
+            (b for b in upcoming if b["event_date"] >= today_iso and b["status"] not in ("cancelled", "completed")),
+            None,
+        )
         return render_template(
             "booking_series_edit.html",
             series=series,
             venues=VENUES,
             event_types=EVENT_TYPES,
+            support_act=(first_future["support_act"] if first_future else None),
+            ticket_price=(first_future["ticket_price"] if first_future else None),
         )
 
     def _opt(key, default=None):
