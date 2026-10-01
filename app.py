@@ -476,6 +476,7 @@ def create_app():
     app.jinja_env.filters["eu_month"] = eu_month
     app.jinja_env.filters["pretty_date"] = pretty_date
     app.jinja_env.filters["day_name"] = day_name
+    app.jinja_env.filters["day_of_week"] = day_name
     app.jinja_env.filters["time_ago"] = time_ago
 
     # Initialize database
