@@ -146,6 +146,22 @@
 #social-card-story .sc-day-events {
   font-size: 26px;
 }
+.sc-card .sc-day-events .time-info {
+  color: #1a4427;
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 2px;
+  opacity: 0.7;
+  display: block;
+  margin-bottom: 2px;
+}
+.sc-card .sc-day-events .with-act {
+  font-size: 0.8em;
+  text-transform: none;
+  letter-spacing: 1px;
+  opacity: 0.75;
+  font-style: italic;
+}
 .sc-card .sc-day-events .private {
   color: rgba(26,68,39,0.45);
   font-style: italic;
@@ -304,13 +320,22 @@
             {% if is_private %}
               <span class="private">Private Event</span>
             {% else %}
-              {% if b.start_time %}{{ b.start_time }} {% endif %}{{ b.act_name | upper }}
+              {# Time prefix: "DOORS 7 · GIG 8PM" / "DOORS 7PM" / "8PM" #}
+              {% if b.door_time and b.start_time %}
+                <span class="time-info">DOORS {{ b.door_time }} · GIG {{ b.start_time }}</span>
+              {% elif b.door_time %}
+                <span class="time-info">DOORS {{ b.door_time }}</span>
+              {% elif b.start_time %}
+                <span class="time-info">{{ b.start_time }}</span>
+              {% endif %}
+              {{ b.act_name | upper }}
+              {% if b.support_act %} <span class="with-act">with {{ b.support_act }}</span>{% endif %}
               {% if b.ticket_price %} · <span class="ticket-price">{{ b.ticket_price }}</span>{% endif %}
               {% if b.ticketing == 'Sold out' or (b.notes and 'sold out' in b.notes | lower) %}
                 · <span class="sold-out">SOLD OUT</span>
               {% endif %}
             {% endif %}
-            {% if not loop.last %}<br>{% endif %}
+            {% if not loop.last %}<br><br>{% endif %}
           {% endfor %}
         {% endif %}
       </div>
