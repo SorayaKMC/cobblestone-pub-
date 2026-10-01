@@ -320,13 +320,19 @@
             {% if is_private %}
               <span class="private">Private Event</span>
             {% else %}
-              {# Time prefix: "DOORS 7 · GIG 8PM" / "DOORS 7PM" / "8PM" #}
-              {% if b.door_time and b.start_time %}
-                <span class="time-info">DOORS {{ b.door_time }} · GIG {{ b.start_time }}</span>
-              {% elif b.door_time %}
-                <span class="time-info">DOORS {{ b.door_time }}</span>
-              {% elif b.start_time %}
-                <span class="time-info">{{ b.start_time }}</span>
+              {# Time prefix: gigs get "DOORS X · GIG Y", everything else just shows the time #}
+              {% if b.event_type == 'Gig' %}
+                {% if b.door_time and b.start_time %}
+                  <span class="time-info">DOORS {{ b.door_time }} · GIG {{ b.start_time }}</span>
+                {% elif b.door_time %}
+                  <span class="time-info">DOORS {{ b.door_time }}</span>
+                {% elif b.start_time %}
+                  <span class="time-info">{{ b.start_time }}</span>
+                {% endif %}
+              {% else %}
+                {% if b.start_time %}
+                  <span class="time-info">{{ b.start_time }}</span>
+                {% endif %}
               {% endif %}
               {{ b.act_name | upper }}
               {% if b.support_act %} <span class="with-act">with {{ b.support_act }}</span>{% endif %}
