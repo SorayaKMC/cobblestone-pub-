@@ -493,6 +493,10 @@ def init_db():
             "ALTER TABLE bookings ADD COLUMN website_listing_required "
             "INTEGER NOT NULL DEFAULT 1"
         )
+    if "sold_out" not in bk_cols:
+        cursor.execute(
+            "ALTER TABLE bookings ADD COLUMN sold_out INTEGER NOT NULL DEFAULT 0"
+        )
 
     # Contact tokens — one row per unique contact email, used by the multi-gig
     # portal so a contact with several bookings has a single URL that lists them all

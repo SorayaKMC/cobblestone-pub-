@@ -240,6 +240,22 @@
                         </div>
 
                         <div class="col-md-12">
+                            <label class="form-label small d-block">Sold Out</label>
+                            <form method="POST" action="/bookings/{{ booking.id }}/sold-out" class="d-inline">
+                                {% if booking and booking.sold_out %}
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="bi bi-x-circle me-1"></i>SOLD OUT — click to mark available
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-ticket-perforated me-1"></i>Mark as Sold Out
+                                </button>
+                                {% endif %}
+                            </form>
+                            <div class="form-text">Shows "SOLD OUT" on the weekly social card poster.</div>
+                        </div>
+
+                        <div class="col-md-12">
                             <label class="form-label small">Description (for website)</label>
                             <textarea name="description" rows="4" class="form-control form-control-sm">{{ booking.description if booking else '' }}</textarea>
                         </div>

@@ -796,6 +796,19 @@ def change_status(booking_id):
     return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
 
 
+@bp.route("/bookings/<int:booking_id>/sold-out", methods=["POST"])
+def toggle_sold_out(booking_id):
+    """Toggle the sold_out flag on a booking."""
+    booking = db.get_booking(booking_id)
+    if not booking:
+        abort(404)
+    new_val = 0 if booking["sold_out"] else 1
+    db.update_booking_field(booking_id, "sold_out", new_val, actor="internal")
+    label = "Sold out" if new_val else "Available"
+    flash(f"Ticket status updated: {label}.", "success")
+    return redirect(url_for("bookings.booking_detail", booking_id=booking_id))
+
+
 @bp.route("/bookings/<int:booking_id>/fee/<which>", methods=["POST"])
 def mark_fee_paid(booking_id, which):
     """Mark venue or door fee as paid (manual flag, pre-Square-payment-links)."""

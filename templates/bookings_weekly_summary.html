@@ -337,7 +337,7 @@
               {{ b.act_name | upper }}
               {% if b.support_act %} <span class="with-act">with {{ b.support_act }}</span>{% endif %}
               {% if b.ticket_price %} · <span class="ticket-price">{{ b.ticket_price }}</span>{% endif %}
-              {% if b.ticketing == 'Sold out' or (b.notes and 'sold out' in b.notes | lower) %}
+              {% if b.sold_out %}
                 · <span class="sold-out">SOLD OUT</span>
               {% endif %}
             {% endif %}
