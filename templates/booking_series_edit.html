@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Edit Series — {{ series.act_name }} — Cobblestone Pub{% endblock %}
+{% block page_title %}Edit Recurring Series{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/bookings/series/{{ series.id }}" class="text-muted text-decoration-none small">
+        <i class="bi bi-arrow-left me-1"></i>Back to Series
+    </a>
+    <h5 class="mb-0 mt-1">{{ series.act_name }}</h5>
+    <p class="text-muted small mb-0">
+        Changes here update the series record <strong>and</strong> refresh all upcoming confirmed bookings.
+    </p>
+</div>
+
+<form method="POST" action="/bookings/series/{{ series.id }}/edit">
+<div class="row g-4">
+
+    <!-- Left column -->
+    <div class="col-lg-7">
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">Series Details</h6>
+                <div class="row g-3">
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Act / Class Name <span class="text-danger">*</span></label>
+                        <input type="text" name="act_name" class="form-control"
+                               value="{{ series.act_name }}" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Teacher / Support Act</label>
+                        <input type="text" name="support_act" class="form-control"
+                               value="{{ series.get('support_act') or '' }}"
+                               placeholder="e.g. Louise O'Connor">
+                        <div class="form-text">Shown as "with [name]" on the social card.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Ticket / Drop-in Price</label>
+                        <input type="text" name="ticket_price" class="form-control"
+                               value="{{ series.get('ticket_price') or '' }}"
+                               placeholder="e.g. €12 drop-in">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Description</label>
+                        <textarea name="description" rows="3" class="form-control"
+                                  placeholder="Shown on bookings and social card (optional)">{{ series.description or '' }}</textarea>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Internal Notes</label>
+                        <textarea name="notes" rows="2" class="form-control"
+                                  placeholder="Staff-only notes">{{ series.notes or '' }}</textarea>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">Times</h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small">Doors open</label>
+                        <input type="time" name="door_time" class="form-control"
+                               value="{{ series.door_time or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Start time</label>
+                        <input type="time" name="start_time" class="form-control"
+                               value="{{ series.start_time or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">End time</label>
+                        <input type="time" name="end_time" class="form-control"
+                               value="{{ series.end_time or '' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right column -->
+    <div class="col-lg-5">
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h6 class="card-title fw-semibold mb-3">Contact Details</h6>
+                <div class="row g-3">
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Contact Name</label>
+                        <input type="text" name="contact_name" class="form-control"
+                               value="{{ series.contact_name or '' }}">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Email</label>
+                        <input type="email" name="contact_email" class="form-control"
+                               value="{{ series.contact_email or '' }}">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Phone</label>
+                        <input type="tel" name="contact_phone" class="form-control"
+                               value="{{ series.contact_phone or '' }}">
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-info mb-3">
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Saving will update all <strong>upcoming confirmed</strong> bookings in this series.
+                    Past and cancelled dates are left unchanged.
+                </p>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i>Save &amp; Refresh Upcoming Bookings
+            </button>
+            <a href="/bookings/series/{{ series.id }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+
+    </div>
+</div>
+</form>
+{% endblock %}

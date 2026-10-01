@@ -2012,6 +2012,8 @@ def new_series():
             "door_time":     _opt("door_time"),
             "start_time":    _opt("start_time"),
             "end_time":      _opt("end_time"),
+            "support_act":   _opt("support_act"),
+            "ticket_price":  _opt("ticket_price"),
             "description":   _opt("description"),
             "notes":         _opt("notes"),
         }
@@ -2056,6 +2058,50 @@ def series_detail(series_id):
         status_badges=STATUS_BADGES,
         today=today,
     )
+
+
+@bp.route("/bookings/series/<int:series_id>/edit", methods=["GET", "POST"])
+def edit_series(series_id):
+    """Edit a recurring series and refresh all future bookings."""
+    series = db.get_booking_series(series_id)
+    if not series:
+        flash("Series not found.", "danger")
+        return redirect(url_for("bookings.series_list"))
+
+    if request.method == "GET":
+        return render_template(
+            "booking_series_edit.html",
+            series=series,
+            venues=VENUES,
+            event_types=EVENT_TYPES,
+        )
+
+    def _opt(key, default=None):
+        v = (request.form.get(key) or "").strip()
+        return v if v else default
+
+    act_name = _opt("act_name")
+    if not act_name:
+        flash("Act / class name is required.", "danger")
+        return redirect(url_for("bookings.edit_series", series_id=series_id))
+
+    updates = {
+        "act_name":      act_name,
+        "contact_name":  _opt("contact_name"),
+        "contact_email": _opt("contact_email"),
+        "contact_phone": _opt("contact_phone"),
+        "door_time":     _opt("door_time"),
+        "start_time":    _opt("start_time"),
+        "end_time":      _opt("end_time"),
+        "support_act":   _opt("support_act"),
+        "ticket_price":  _opt("ticket_price"),
+        "description":   _opt("description"),
+        "notes":         _opt("notes"),
+    }
+
+    db.update_booking_series(series_id, updates, update_future_bookings=True)
+    flash("Series updated — all upcoming bookings refreshed.", "success")
+    return redirect(url_for("bookings.series_detail", series_id=series_id))
 
 
 @bp.route("/bookings/series/<int:series_id>/cancel-remaining", methods=["POST"])

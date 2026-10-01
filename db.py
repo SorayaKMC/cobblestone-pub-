@@ -2632,6 +2632,44 @@ def get_series_bookings(series_id):
     return rows
 
 
+def update_booking_series(series_id, updates, update_future_bookings=True):
+    """Update a series record and optionally patch all future confirmed bookings.
+
+    `updates` may contain any mix of series-level and booking-level fields.
+    Fields not in the series table (support_act, ticket_price) are applied only
+    to individual booking rows.
+    """
+    conn = get_db()
+    today = date.today().isoformat()
+
+    series_fields = {"act_name", "contact_name", "contact_email", "contact_phone",
+                     "door_time", "start_time", "end_time", "description", "notes"}
+    su = {k: v for k, v in updates.items() if k in series_fields}
+    if su:
+        set_clause = ", ".join(f"{k}=?" for k in su)
+        conn.execute(
+            f"UPDATE booking_series SET {set_clause} WHERE id=?",
+            list(su.values()) + [series_id],
+        )
+
+    if update_future_bookings:
+        booking_fields = {"act_name", "contact_name", "contact_email", "contact_phone",
+                          "door_time", "start_time", "end_time", "description", "notes",
+                          "support_act", "ticket_price"}
+        bu = {k: v for k, v in updates.items() if k in booking_fields}
+        if bu:
+            set_clause = ", ".join(f"{k}=?" for k in bu)
+            conn.execute(
+                f"""UPDATE bookings SET {set_clause}
+                    WHERE series_id=? AND event_date >= ?
+                    AND status NOT IN ('cancelled','completed')""",
+                list(bu.values()) + [series_id, today],
+            )
+
+    conn.commit()
+    conn.close()
+
+
 def cancel_series_remaining(series_id, actor="internal"):
     """Cancel all upcoming (non-cancelled/completed) bookings in a series.
 
