@@ -533,6 +533,20 @@ def create_app():
                     401,
                     {"WWW-Authenticate": 'Basic realm="Cobblestone Sound Engineer"'},
                 )
+            # Social media view — Méabh's login, scoped to /social
+            if request.path.startswith("/social"):
+                auth = request.authorization
+                if auth and check_auth(auth.username, auth.password):
+                    return None
+                if (config.SOCIAL_AUTH_ENABLED and auth
+                        and auth.username == config.SOCIAL_AUTH_USERNAME
+                        and auth.password == config.SOCIAL_AUTH_PASSWORD):
+                    return None
+                return Response(
+                    "Please log in to access the social media view.",
+                    401,
+                    {"WWW-Authenticate": 'Basic realm="Cobblestone Social Media"'},
+                )
             auth = request.authorization
             if not auth or not check_auth(auth.username, auth.password):
                 return Response(
@@ -542,7 +556,7 @@ def create_app():
                 )
 
     # Register blueprints
-    from routes import settings, payroll, dashboard, pto, bookkeeping, bookings, sound, reconcile
+    from routes import settings, payroll, dashboard, pto, bookkeeping, bookings, sound, reconcile, social
     app.register_blueprint(settings.bp)
     app.register_blueprint(payroll.bp)
     app.register_blueprint(dashboard.bp)
@@ -550,6 +564,7 @@ def create_app():
     app.register_blueprint(bookkeeping.bp)
     app.register_blueprint(bookings.bp)
     app.register_blueprint(sound.bp)
+    app.register_blueprint(social.bp)
     app.register_blueprint(reconcile.bp)
 
     @app.route("/")
