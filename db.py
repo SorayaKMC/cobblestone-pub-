@@ -498,6 +498,24 @@ def init_db():
             "ALTER TABLE bookings ADD COLUMN sold_out INTEGER NOT NULL DEFAULT 0"
         )
 
+    # Rename "Session with the Pipers" → full NPU name and set times
+    cursor.execute(
+        """UPDATE bookings
+           SET act_name  = 'Session with the Pipers presented by Na Píobairí Uilleann',
+               start_time = '21:30',
+               end_time   = '23:30'
+           WHERE act_name LIKE '%Session%Pipers%'
+             AND act_name != 'Session with the Pipers presented by Na Píobairí Uilleann'"""
+    )
+    cursor.execute(
+        """UPDATE booking_series
+           SET act_name  = 'Session with the Pipers presented by Na Píobairí Uilleann',
+               start_time = '21:30',
+               end_time   = '23:30'
+           WHERE act_name LIKE '%Session%Pipers%'
+             AND act_name != 'Session with the Pipers presented by Na Píobairí Uilleann'"""
+    )
+
     # Contact tokens — one row per unique contact email, used by the multi-gig
     # portal so a contact with several bookings has a single URL that lists them all
     cursor.execute(
