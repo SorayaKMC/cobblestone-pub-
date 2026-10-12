@@ -241,17 +241,15 @@
 
                         <div class="col-md-12">
                             <label class="form-label small d-block">Sold Out</label>
-                            <form method="POST" action="/bookings/{{ booking.id }}/sold-out" class="d-inline">
-                                {% if booking and booking.sold_out %}
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="bi bi-x-circle me-1"></i>SOLD OUT — click to mark available
-                                </button>
-                                {% else %}
-                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                    <i class="bi bi-ticket-perforated me-1"></i>Mark as Sold Out
-                                </button>
-                                {% endif %}
-                            </form>
+                            {% if booking and booking.sold_out %}
+                            <button type="submit" form="sold-out-form" class="btn btn-danger btn-sm">
+                                <i class="bi bi-x-circle me-1"></i>SOLD OUT — click to mark available
+                            </button>
+                            {% else %}
+                            <button type="submit" form="sold-out-form" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-ticket-perforated me-1"></i>Mark as Sold Out
+                            </button>
+                            {% endif %}
                             <div class="form-text">Shows "SOLD OUT" on the weekly social card poster.</div>
                         </div>
 
@@ -315,6 +313,9 @@
                         <a href="{{ back_url or '/bookings' }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
                     </div>
                 </form>
+                {% if booking and not is_new %}
+                <form id="sold-out-form" method="POST" action="/bookings/{{ booking.id }}/sold-out" style="display:none;"></form>
+                {% endif %}
             </div>
         </div>
     </div>
