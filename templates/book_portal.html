@@ -460,6 +460,53 @@
     </div>
     {% endif %}
 
+    <!-- ── Public bio nudge (confirmed, bio missing) ───────────────────── -->
+    {% if booking.status == 'confirmed' and not booking.public_bio %}
+    <div class="card shadow-sm mb-4 border-warning">
+        <div class="card-body">
+            <h6 class="card-title fw-semibold mb-1">
+                <i class="bi bi-pencil-square me-1 text-warning"></i>Add your public bio
+            </h6>
+            <p class="text-muted small mb-3">
+                We need a short bio to list your show on the website and promote it on social media.
+                2–4 sentences written for an audience works best.
+            </p>
+            <form method="POST" action="/book/{{ booking.public_token }}/edit-bio">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">
+                        Public bio for the website <span class="text-danger">*</span>
+                    </label>
+                    <textarea name="public_bio" rows="4"
+                              class="form-control form-control-sm" required
+                              placeholder="Write 2–4 sentences about your act as it should appear on cobblestonepub.ie…"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">
+                        Social &amp; web links
+                        <span class="text-muted fw-normal">(optional if already provided)</span>
+                    </label>
+                    <input type="text" name="media_links"
+                           class="form-control form-control-sm"
+                           placeholder="Instagram, Spotify, YouTube, website…"
+                           value="{{ booking.media_links or '' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">
+                        Notes for the sound engineer
+                        <span class="text-muted fw-normal">(optional)</span>
+                    </label>
+                    <textarea name="sound_notes" rows="2"
+                              class="form-control form-control-sm"
+                              placeholder="Number of musicians, instruments, any special requirements…">{{ booking.sound_notes or '' }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-warning btn-sm px-4">
+                    <i class="bi bi-check-lg me-1"></i>Save bio
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ── Sound engineer card (confirmed bookings only) ──────────────── -->
     {% if booking.status == 'confirmed' %}
     <div class="card shadow-sm mb-4" style="background:#1c1c2e;border:none;">

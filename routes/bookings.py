@@ -1550,6 +1550,36 @@ def book_edit_description(token):
     return redirect(url_for("bookings.book_portal", token=token))
 
 
+@bp.route("/book/<token>/edit-bio", methods=["POST"])
+def book_edit_bio(token):
+    """Confirmed band adds/updates public bio, social links, sound notes."""
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+    if booking["status"] != "confirmed":
+        flash("This action is only available for confirmed bookings.", "warning")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    public_bio = (request.form.get("public_bio") or "").strip()
+    if not public_bio:
+        flash("A public bio is required.", "danger")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    db.update_booking_field(booking["id"], "public_bio", public_bio, actor="band")
+    db.add_booking_audit(booking["id"], "band", "edited", "Public bio added via portal")
+
+    media_links = (request.form.get("media_links") or "").strip() or None
+    if media_links:
+        db.update_booking_field(booking["id"], "media_links", media_links, actor="band")
+
+    sound_notes = (request.form.get("sound_notes") or "").strip() or None
+    if sound_notes:
+        db.update_booking_field(booking["id"], "sound_notes", sound_notes, actor="band")
+
+    flash("Bio saved — thanks! ✓", "success")
+    return redirect(url_for("bookings.book_portal", token=token))
+
+
 @bp.route("/book/<token>/phase2", methods=["POST"])
 def book_phase2_submit(token):
     """Band submits Phase 2 details after approval."""
