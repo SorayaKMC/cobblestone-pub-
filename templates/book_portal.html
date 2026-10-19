@@ -100,11 +100,13 @@
             </div>
         </div>
     {% elif booking.status == 'confirmed' %}
+        {% set _has_poster = attachments | selectattr('kind', 'equalto', 'poster') | list %}
         {% set _missing = [] %}
         {% if not booking.public_bio %}{% set _ = _missing.append('public bio') %}{% endif %}
         {% if not booking.door_time %}{% set _ = _missing.append('door time') %}{% endif %}
         {% if not booking.start_time %}{% set _ = _missing.append('start time') %}{% endif %}
         {% if not booking.ticketing %}{% set _ = _missing.append('ticket info') %}{% endif %}
+        {% if not _has_poster %}{% set _ = _missing.append('poster / artwork') %}{% endif %}
         {% if _missing %}
         <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
             <i class="bi bi-exclamation-triangle fs-4 me-3 flex-shrink-0 mt-1"></i>
@@ -552,6 +554,69 @@
     </div>
     {% endif %}
 
+    <!-- ── File uploads (active bookings only) ──────────────────────────── -->
+    {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
+    {% set _has_poster_up = attachments | selectattr('kind', 'equalto', 'poster') | list %}
+    <div class="card shadow-sm mb-4 {% if booking.status == 'confirmed' and not _has_poster_up %}border-warning{% endif %}">
+        <div class="card-body">
+            <h6 class="card-title fw-semibold mb-1">
+                <i class="bi bi-images me-1 {% if booking.status == 'confirmed' and not _has_poster_up %}text-warning{% endif %}"></i>
+                Poster &amp; Files
+                {% if booking.status == 'confirmed' and not _has_poster_up %}
+                <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Required</span>
+                {% endif %}
+            </h6>
+            <p class="text-muted small mb-3">
+                {% if booking.status == 'confirmed' and not _has_poster_up %}
+                    <span class="text-warning fw-semibold">Upload a poster or event artwork</span> — we need this to promote the show on social media and the website. JPG, PNG or PDF · max 10 MB.
+                {% else %}
+                    Upload your poster, artwork, or press kit. JPG, PNG, GIF, WebP, or PDF · max 10 MB per file.
+                {% endif %}
+            </p>
+
+            <form method="POST" action="/book/{{ booking.public_token }}/upload"
+                  enctype="multipart/form-data">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small mb-1">File type</label>
+                        <select name="kind" class="form-select form-select-sm">
+                            <option value="poster">Poster / artwork</option>
+                            <option value="bio">Artist bio / press kit</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small mb-1">Choose file</label>
+                        <input type="file" name="file" class="form-control form-control-sm"
+                               accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                            <i class="bi bi-upload"></i> Upload
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            {% if attachments %}
+            <hr class="my-3">
+            <p class="text-muted small mb-2">Uploaded files:</p>
+            <ul class="list-unstyled mb-0 small">
+                {% for a in attachments %}
+                <li class="mb-2 d-flex align-items-center gap-2">
+                    <i class="bi bi-paperclip text-muted flex-shrink-0"></i>
+                    <a href="/book/{{ booking.public_token }}/attachment/{{ a.id }}"
+                       class="text-decoration-none">{{ a.filename }}</a>
+                    <span class="badge bg-light text-muted" style="font-size:.7rem;">{{ a.kind }}</span>
+                    <span class="text-muted" style="font-size:.75rem;">{{ a.uploaded_at[:10] }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ── Sound engineer card (confirmed bookings only) ──────────────── -->
     {% if booking.status == 'confirmed' %}
     <div class="card shadow-sm mb-4" style="background:#1c1c2e;border:none;">
@@ -781,61 +846,6 @@
     </div>
     {% endif %}
 
-    <!-- ── File uploads (active bookings only) ──────────────────────────── -->
-    {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <h6 class="card-title fw-semibold mb-1">Upload Files</h6>
-            <p class="text-muted small mb-3">
-                JPG, PNG, GIF, WebP, or PDF · max 10 MB per file
-            </p>
-
-            <form method="POST" action="/book/{{ booking.public_token }}/upload"
-                  enctype="multipart/form-data">
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label small mb-1">File type</label>
-                        <select name="kind" class="form-select form-select-sm">
-                            <option value="poster">Poster / artwork</option>
-                            <option value="bio">Artist bio / press kit</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small mb-1">Choose file</label>
-                        <input type="file" name="file" class="form-control form-control-sm"
-                               accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" required>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
-                            <i class="bi bi-upload"></i> Upload
-                        </button>
-                    </div>
-                </div>
-            </form>
-
-            {% if attachments %}
-            <hr class="my-3">
-            <p class="text-muted small mb-2">Uploaded files:</p>
-            <ul class="list-unstyled mb-0 small">
-                {% for a in attachments %}
-                <li class="mb-2 d-flex align-items-center gap-2">
-                    <i class="bi bi-paperclip text-muted flex-shrink-0"></i>
-                    <a href="/book/{{ booking.public_token }}/attachment/{{ a.id }}"
-                       class="text-decoration-none">{{ a.filename }}</a>
-                    <span class="badge bg-light text-muted" style="font-size:.7rem;">
-                        {{ a.kind }}
-                    </span>
-                    <span class="text-muted" style="font-size:.75rem;">
-                        {{ a.uploaded_at[:10] }}
-                    </span>
-                </li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
 
     <!-- ── Cancel booking (active only) ────────────────────────────────── -->
     {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
