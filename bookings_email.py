@@ -2024,3 +2024,249 @@ def send_door_person_alert(bookings, base_url=None):
 
     return _send(to_addr, subject, html, text)
 
+
+# ── Phase 2 emails ───────────────────────────────────────────────────────────
+
+def send_phase2_invite(booking, base_url=None):
+    """Email band after manager approval: complete your details or lose your spot.
+
+    Sent to booking["contact_email"]. Contains the portal link and the deadline.
+    """
+    if not _smtp_configured():
+        return False
+    if not booking.get("contact_email"):
+        return False
+
+    base = base_url or config.PUBLIC_BASE_URL
+    portal_url = f"{base}/book/{booking['public_token']}"
+
+    try:
+        from datetime import date
+        d = date.fromisoformat(booking["event_date"])
+        date_str = d.strftime("%A, %-d %B %Y")
+    except Exception:
+        date_str = booking["event_date"]
+
+    deadline_str = booking.get("phase2_deadline") or ""
+    try:
+        from datetime import date
+        dl = date.fromisoformat(deadline_str)
+        deadline_str = dl.strftime("%-d %B %Y")
+    except Exception:
+        pass
+
+    subject = f"Your Cobblestone booking is approved — please complete your details ({booking['act_name']})"
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:24px;color:#1a1a1a;">
+<img src="https://www.cobblestonepub.ie/s/cobblestone-logo.jpg"
+     alt="The Cobblestone" width="60"
+     style="border-radius:4px;margin-bottom:16px;">
+<h2 style="font-size:1.3rem;font-weight:700;margin:0 0 4px;">Great news — you're approved!</h2>
+<p style="color:#555;font-size:.9rem;margin:0 0 20px;">
+  Cobblestone Pub &middot; Backroom Bookings
+</p>
+
+<p>Hi {booking.get('contact_name') or 'there'},</p>
+
+<p>We'd love to have <strong>{booking['act_name']}</strong> play the Cobblestone Backroom
+on <strong>{date_str}</strong>. Your inquiry has been approved.</p>
+
+<p>To lock in your spot, you need to complete your listing details — public bio,
+social links, show images, and a few other bits — using the link below.
+<strong>These must be filled in by {deadline_str or "at least 4 weeks before the gig"}</strong>
+so we have time to list and promote the show.</p>
+
+<div style="text-align:center;margin:28px 0;">
+  <a href="{portal_url}"
+     style="display:inline-block;background:#1d4ed8;color:#fff;
+            font-size:1rem;font-weight:700;padding:14px 32px;
+            border-radius:8px;text-decoration:none;">
+    Complete my details →
+  </a>
+</div>
+
+<p style="color:#dc2626;font-size:.88rem;">
+  <strong>⚠ Important:</strong> if details are not submitted by {deadline_str or "the deadline"},
+  your booking may be cancelled to free up the date for another act.
+</p>
+
+<p>If you have any questions, just reply to this email or call us on
+<a href="tel:+353857362447">+353 85 736 2447</a>.</p>
+
+<p>Looking forward to it,<br>
+<strong>The Cobblestone Pub team</strong></p>
+
+<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+<p style="font-size:.78rem;color:#9ca3af;margin:0;">
+  77 King St N, Smithfield, Dublin 7 &middot;
+  <a href="mailto:bookings@cobblestonepub.ie" style="color:#9ca3af;">bookings@cobblestonepub.ie</a> &middot;
+  <a href="https://cobblestonepub.ie" style="color:#9ca3af;">cobblestonepub.ie</a>
+</p>
+</body>
+</html>"""
+
+    text = f"""Your Cobblestone booking is approved — {booking['act_name']}
+
+Hi {booking.get('contact_name') or 'there'},
+
+Great news — your booking for {booking['act_name']} on {date_str} has been approved.
+
+To lock in your spot, please complete your listing details (public bio, social links, images etc.)
+using the link below before {deadline_str or 'the deadline'}:
+
+  {portal_url}
+
+Important: if details are not submitted by {deadline_str or 'the deadline'}, your booking may
+be cancelled to free the date for another act.
+
+Questions? Reply to this email or call +353 85 736 2447.
+
+Thanks,
+The Cobblestone Pub team
+--
+77 King St N, Smithfield, Dublin 7
+bookings@cobblestonepub.ie
+https://cobblestonepub.ie"""
+
+    return _send(booking["contact_email"], subject, html, text)
+
+
+def send_phase2_reminder(booking, base_url=None):
+    """Reminder email sent 1 week before the Phase 2 deadline."""
+    if not _smtp_configured():
+        return False
+    if not booking.get("contact_email"):
+        return False
+
+    base = base_url or config.PUBLIC_BASE_URL
+    portal_url = f"{base}/book/{booking['public_token']}"
+
+    try:
+        from datetime import date
+        d = date.fromisoformat(booking["event_date"])
+        date_str = d.strftime("%A, %-d %B %Y")
+    except Exception:
+        date_str = booking["event_date"]
+
+    deadline_str = booking.get("phase2_deadline") or ""
+    try:
+        from datetime import date
+        dl = date.fromisoformat(deadline_str)
+        deadline_str = dl.strftime("%-d %B %Y")
+    except Exception:
+        pass
+
+    subject = f"Reminder: complete your Cobblestone booking details by {deadline_str} ({booking['act_name']})"
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:24px;color:#1a1a1a;">
+<img src="https://www.cobblestonepub.ie/s/cobblestone-logo.jpg"
+     alt="The Cobblestone" width="60"
+     style="border-radius:4px;margin-bottom:16px;">
+<h2 style="font-size:1.3rem;font-weight:700;margin:0 0 4px;">⏰ Action needed — deadline approaching</h2>
+<p style="color:#555;font-size:.9rem;margin:0 0 20px;">
+  Cobblestone Pub &middot; Backroom Bookings
+</p>
+
+<p>Hi {booking.get('contact_name') or 'there'},</p>
+
+<p>This is a reminder that your listing details for <strong>{booking['act_name']}</strong>
+({date_str}) are still outstanding. The deadline is <strong>{deadline_str}</strong>.</p>
+
+<p>If we don't receive your details by then, we may need to release the date to another act.</p>
+
+<div style="text-align:center;margin:28px 0;">
+  <a href="{portal_url}"
+     style="display:inline-block;background:#dc2626;color:#fff;
+            font-size:1rem;font-weight:700;padding:14px 32px;
+            border-radius:8px;text-decoration:none;">
+    Complete my details now →
+  </a>
+</div>
+
+<p>If you've already sent us your details by another channel, just ignore this — we'll
+get you sorted.</p>
+
+<p>Questions? Reply here or call <a href="tel:+353857362447">+353 85 736 2447</a>.</p>
+
+<p>Thanks,<br>
+<strong>The Cobblestone Pub team</strong></p>
+
+<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+<p style="font-size:.78rem;color:#9ca3af;margin:0;">
+  77 King St N, Smithfield, Dublin 7 &middot;
+  <a href="mailto:bookings@cobblestonepub.ie" style="color:#9ca3af;">bookings@cobblestonepub.ie</a>
+</p>
+</body>
+</html>"""
+
+    text = f"""Reminder — complete your Cobblestone booking details
+
+Hi {booking.get('contact_name') or 'there'},
+
+Your listing details for {booking['act_name']} ({date_str}) are still outstanding.
+Deadline: {deadline_str}.
+
+Please complete them here: {portal_url}
+
+If we don't receive your details by the deadline, we may need to release the date.
+
+Thanks,
+The Cobblestone Pub team
+--
+bookings@cobblestonepub.ie"""
+
+    return _send(booking["contact_email"], subject, html, text)
+
+
+def send_phase2_complete_notify(booking, base_url=None):
+    """Notify the Cobblestone staff inbox when a band submits Phase 2 details."""
+    if not _smtp_configured():
+        return False
+
+    staff_email = config.BOOKING_FROM or config.SMTP_USERNAME
+    if not staff_email:
+        return False
+
+    base = base_url or config.PUBLIC_BASE_URL
+    mgr_url = f"{base}/bookings/{booking['id']}"
+
+    try:
+        from datetime import date
+        d = date.fromisoformat(booking["event_date"])
+        date_str = d.strftime("%A, %-d %B %Y")
+    except Exception:
+        date_str = booking["event_date"]
+
+    subject = f"[Cobblestone] Phase 2 details received — {booking['act_name']} ({date_str})"
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:24px;color:#1a1a1a;">
+<h3 style="margin:0 0 12px;">Phase 2 details received</h3>
+<p><strong>{booking['act_name']}</strong> has submitted their listing details for {date_str}.</p>
+<p>Their booking is now confirmed. Review the details and update the website listing:</p>
+<p><a href="{mgr_url}">{mgr_url}</a></p>
+<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
+<p style="font-size:.8rem;color:#888;">Cobblestone booking system &middot; automated notification</p>
+</body>
+</html>"""
+
+    text = f"""Phase 2 details received — {booking['act_name']}
+
+{booking['act_name']} has submitted their listing details for {date_str}.
+
+Booking is now confirmed. Review and update the website listing:
+{mgr_url}
+
+--
+Cobblestone booking system · automated notification"""
+
+    return _send(staff_email, subject, html, text)
+

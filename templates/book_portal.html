@@ -78,6 +78,19 @@
                 within 2–3 working days.
             </div>
         </div>
+    {% elif booking.status == 'approved' %}
+        <div class="alert alert-primary d-flex align-items-start mb-4" role="alert">
+            <i class="bi bi-clipboard-check fs-4 me-3 flex-shrink-0 mt-1"></i>
+            <div>
+                <strong>Your booking has been approved! 🎉</strong><br>
+                To lock in your spot, please complete your listing details below.
+                {% if booking.phase2_deadline %}
+                <strong>Deadline: {{ booking.phase2_deadline | pretty_date }}</strong>.
+                {% endif %}
+                If details are not submitted by the deadline, your booking may be cancelled
+                to free up the date.
+            </div>
+        </div>
     {% elif booking.status == 'tentative' %}
         <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
             <i class="bi bi-clock fs-4 me-3 flex-shrink-0"></i>
@@ -186,8 +199,115 @@
         </div>
     </div>
 
+    <!-- ── Phase 2: complete listing details (approved bookings only) ──── -->
+    {% if booking.status == 'approved' %}
+    <div class="card shadow-sm mb-4 border-primary">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-semibold">
+                <i class="bi bi-pencil-fill me-2"></i>Complete your listing details
+            </h5>
+            {% if booking.phase2_deadline %}
+            <div class="mt-1" style="font-size:.85rem;opacity:.9;">
+                Required by <strong>{{ booking.phase2_deadline | pretty_date }}</strong>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-4">
+                These details are used to list and promote your show. Fields marked
+                <span class="text-danger">*</span> are required.
+            </p>
+            <form method="POST" action="/book/{{ booking.public_token }}/phase2">
+                <div class="row g-3">
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">
+                            Public bio for the website <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="public_bio" rows="5"
+                                  class="form-control form-control-sm" required
+                                  placeholder="Write 2–4 sentences about your act as it should appear on the Cobblestone website. Write for an audience, not for us.">{{ booking.public_bio or '' }}</textarea>
+                        <div class="form-text" style="font-size:.78rem;">
+                            This will appear on cobblestonepub.ie. Keep it short and punchy — 2–4 sentences.
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">
+                            Social &amp; web links <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="media_links"
+                               class="form-control form-control-sm" required
+                               placeholder="Instagram, Spotify, YouTube, website — paste all links here"
+                               value="{{ booking.media_links or '' }}">
+                        <div class="form-text" style="font-size:.78rem;">
+                            Include Instagram at minimum. Paste all links separated by a space or comma.
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">
+                            Show announcement preference
+                        </label>
+                        <input type="text" name="announcement_date"
+                               class="form-control form-control-sm"
+                               placeholder="e.g. ASAP, or a specific date like 1 March 2026"
+                               value="{{ booking.announcement_date or '' }}">
+                        <div class="form-text" style="font-size:.78rem;">
+                            When would you like us to announce/post about this show?
+                            Leave blank and we'll post as soon as we're ready.
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Doors</label>
+                        <input type="text" name="door_time"
+                               class="form-control form-control-sm"
+                               placeholder="e.g. 19:30 or 8pm"
+                               value="{{ booking.door_time or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Show start</label>
+                        <input type="text" name="start_time"
+                               class="form-control form-control-sm"
+                               placeholder="e.g. 20:00 or 9pm"
+                               value="{{ booking.start_time or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Show end</label>
+                        <input type="text" name="end_time"
+                               class="form-control form-control-sm"
+                               placeholder="e.g. 22:30 or 11pm"
+                               value="{{ booking.end_time or '' }}">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">
+                            Notes for the sound engineer
+                            <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <textarea name="sound_notes" rows="2"
+                                  class="form-control form-control-sm"
+                                  placeholder="Number of musicians, instruments, any special requirements for Shane…">{{ booking.sound_notes or '' }}</textarea>
+                    </div>
+
+                </div>
+
+                <div class="mt-4 d-flex align-items-center gap-3">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check-lg me-1"></i>Submit details
+                    </button>
+                    <span class="text-muted" style="font-size:.8rem;">
+                        You can upload show images using the file upload below.
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ── Edit door/gig times (active bookings only) ──────────────────── -->
-    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -239,7 +359,7 @@
     {% endif %}
 
     <!-- ── Edit ticket info (active bookings only) ──────────────────────── -->
-    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -302,7 +422,7 @@
     {% endif %}
 
     <!-- ── Edit description (active bookings only) ──────────────────────── -->
-    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -375,7 +495,7 @@
     {% endif %}
 
     <!-- ── Checklist (active bookings only) ─────────────────────────────── -->
-    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h6 class="card-title fw-semibold mb-3">Checklist</h6>
@@ -391,23 +511,47 @@
             </div>
 
             <div class="checklist-item">
-                {% if booking.status == 'confirmed' %}
+                {% if booking.status in ('approved', 'confirmed', 'completed') %}
                 <i class="bi bi-check-circle-fill text-success mt-1 flex-shrink-0 fs-5"></i>
                 <div>
-                    <div class="fw-semibold small">Booking confirmed by Cobblestone Pub</div>
-                    {% if booking.confirmation_sent_at %}
+                    <div class="fw-semibold small">Inquiry approved by Cobblestone Pub</div>
+                </div>
+                {% else %}
+                <i class="bi bi-circle text-muted mt-1 flex-shrink-0 fs-5"></i>
+                <div class="small text-muted">
+                    Waiting for the Cobblestone staff to review
+                    <span class="badge bg-light text-dark ms-1" style="font-size:.7rem;">
+                        2–3 working days
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="checklist-item">
+                {% if booking.status == 'confirmed' or booking.phase2_submitted_at %}
+                <i class="bi bi-check-circle-fill text-success mt-1 flex-shrink-0 fs-5"></i>
+                <div>
+                    <div class="fw-semibold small">Listing details submitted</div>
+                    {% if booking.phase2_submitted_at %}
                     <div class="text-muted" style="font-size:.82rem;">
-                        Confirmed {{ booking.confirmation_sent_at[:10] }}
+                        Submitted {{ booking.phase2_submitted_at[:10] }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% elif booking.status == 'approved' %}
+                <i class="bi bi-exclamation-circle text-danger mt-1 flex-shrink-0 fs-5"></i>
+                <div class="small">
+                    <div class="fw-semibold text-danger">Listing details required</div>
+                    {% if booking.phase2_deadline %}
+                    <div class="text-muted" style="font-size:.78rem;">
+                        Due by {{ booking.phase2_deadline | pretty_date }} — complete the form above
                     </div>
                     {% endif %}
                 </div>
                 {% else %}
                 <i class="bi bi-circle text-muted mt-1 flex-shrink-0 fs-5"></i>
                 <div class="small text-muted">
-                    Waiting for the Cobblestone staff to confirm
-                    <span class="badge bg-light text-dark ms-1" style="font-size:.7rem;">
-                        2–3 working days
-                    </span>
+                    Listing details (bio, social links, images) — required after approval
                 </div>
                 {% endif %}
             </div>
@@ -546,7 +690,7 @@
     {% endif %}
 
     <!-- ── File uploads (active bookings only) ──────────────────────────── -->
-    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h6 class="card-title fw-semibold mb-1">Upload Files</h6>
@@ -602,7 +746,7 @@
     {% endif %}
 
     <!-- ── Cancel booking (active only) ────────────────────────────────── -->
-    {% if booking.status in ('inquiry', 'tentative', 'confirmed') %}
+    {% if booking.status in ('inquiry', 'tentative', 'approved', 'confirmed') %}
     <div class="text-center mt-1 mb-4">
         <button type="button" class="btn btn-sm btn-outline-danger"
                 data-bs-toggle="modal" data-bs-target="#cancelModal">

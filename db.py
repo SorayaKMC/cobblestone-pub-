@@ -498,6 +498,22 @@ def init_db():
             "ALTER TABLE bookings ADD COLUMN sold_out INTEGER NOT NULL DEFAULT 0"
         )
 
+    # Phase 2 (post-approval) columns
+    if "genre" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN genre TEXT")
+    if "public_bio" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN public_bio TEXT")
+    if "sound_notes" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN sound_notes TEXT")
+    if "phase2_deadline" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN phase2_deadline TEXT")
+    if "phase2_submitted_at" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN phase2_submitted_at TIMESTAMP")
+    if "phase2_email_sent_at" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN phase2_email_sent_at TIMESTAMP")
+    if "phase2_reminder_sent_at" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN phase2_reminder_sent_at TIMESTAMP")
+
     # Rename "Session with the Pipers" → full NPU name and set times
     cursor.execute(
         """UPDATE bookings
@@ -1858,6 +1874,7 @@ _BOOKING_FIELDS = (
     "website_listing_required",
     "promo_folder_url",
     "announcement_date", "support_act", "promo_ok", "notes", "source",
+    "genre", "public_bio", "sound_notes",
 )
 
 
@@ -2126,6 +2143,84 @@ def cancel_booking(booking_id, cancelled_by="pub", actor="internal", detail=None
     return True
 
 
+# ── Phase 2 helpers ──────────────────────────────────────────────────────────
+
+def set_phase2_approved(booking_id, deadline):
+    """Store the Phase 2 deadline after manager approves an inquiry."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE bookings SET phase2_deadline=?, phase2_email_sent_at=?, updated_at=? WHERE id=?",
+        (deadline, now, now, booking_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def set_phase2_submitted(booking_id):
+    """Record when the band submitted their Phase 2 details."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE bookings SET phase2_submitted_at=?, updated_at=? WHERE id=?",
+        (now, now, booking_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def set_phase2_reminder_sent(booking_id):
+    """Record when the 1-week Phase 2 reminder was sent."""
+    conn = get_db()
+    now = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE bookings SET phase2_reminder_sent_at=?, updated_at=? WHERE id=?",
+        (now, now, booking_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_phase2_due_reminders():
+    """Bookings needing a 1-week-before-deadline reminder email."""
+    from datetime import date, timedelta
+    today = date.today().isoformat()
+    in_7 = (date.today() + timedelta(days=7)).isoformat()
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT * FROM bookings
+           WHERE status = 'approved'
+             AND phase2_submitted_at IS NULL
+             AND phase2_reminder_sent_at IS NULL
+             AND phase2_deadline IS NOT NULL
+             AND phase2_deadline <= ?
+             AND phase2_deadline >= ?
+             AND archived_at IS NULL""",
+        (in_7, today),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_phase2_overdue():
+    """Approved bookings where the gig is ≤14 days away and Phase 2 not submitted."""
+    from datetime import date, timedelta
+    today = date.today().isoformat()
+    in_14 = (date.today() + timedelta(days=14)).isoformat()
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT * FROM bookings
+           WHERE status = 'approved'
+             AND phase2_submitted_at IS NULL
+             AND event_date >= ?
+             AND event_date <= ?
+             AND archived_at IS NULL""",
+        (today, in_14),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def update_booking_field(booking_id, field, value, actor="system"):
     """Update a single column on a booking + write audit row.
 
@@ -2141,6 +2236,8 @@ def update_booking_field(booking_id, field, value, actor="system"):
         "door_fee_required",
         "door_time", "start_time",
         "ticketing", "ticket_price", "ticket_link",
+        "genre", "public_bio", "sound_notes",
+        "media_links", "announcement_date",
     }
     if field not in safe:
         raise ValueError(f"Field '{field}' not allowed for direct update")

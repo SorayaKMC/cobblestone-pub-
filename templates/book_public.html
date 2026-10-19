@@ -404,22 +404,34 @@
                                 </div>
                             </div>
 
-                            <div class="col-12">
+                            <div class="col-md-6">
                                 <label class="form-label small mb-1">
-                                    Brief description / what to expect
+                                    Genre / style <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="description" rows="3"
-                                          class="form-control form-control-sm"
-                                          placeholder="Tell us about the event — genre, format, expected turnout…">{{ form_data.get('description', '') }}</textarea>
+                                <input type="text" name="genre" class="form-control form-control-sm"
+                                       required placeholder="e.g. Trad, Jazz, Rock, Folk…"
+                                       value="{{ form_data.get('genre', '') }}">
                             </div>
-
-                            <div class="col-12">
+                            <div class="col-md-6">
                                 <label class="form-label small mb-1">
                                     Social / media links <span class="text-muted">(optional)</span>
                                 </label>
                                 <input type="text" name="media_links" class="form-control form-control-sm"
-                                       placeholder="Spotify, Instagram, Bandcamp, YouTube…"
+                                       placeholder="Spotify, Instagram, YouTube…"
                                        value="{{ form_data.get('media_links', '') }}">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small mb-1">
+                                    Tell us about your act <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="description" rows="3"
+                                          class="form-control form-control-sm"
+                                          required
+                                          placeholder="Who you are, what you do, expected turnout — this is just for us, not the website.">{{ form_data.get('description', '') }}</textarea>
+                                <div class="form-text text-muted" style="font-size:.78rem;">
+                                    This helps us decide if it's a good fit. It won't appear on the website — you'll write a proper public bio if we approve you.
+                                </div>
                             </div>
                         </div>
 

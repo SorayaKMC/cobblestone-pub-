@@ -58,6 +58,37 @@
 </div>
 {% endif %}
 
+{% if phase2_overdue %}
+<div class="alert alert-danger border-danger-subtle shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0 mt-1"></i>
+        <div>
+            <strong>
+                {{ phase2_overdue|length }} booking{{ 's' if phase2_overdue|length != 1 else '' }}
+                — details overdue, gig within 14 days
+            </strong>
+            <div class="small text-muted mb-2">
+                These approved bookings have no listing details submitted and the gig is in under 2 weeks.
+                Cancel now if the band hasn't responded.
+            </div>
+            <ul class="list-unstyled mb-0 small">
+                {% for b in phase2_overdue %}
+                <li class="py-1 {% if not loop.first %}border-top{% endif %}">
+                    <a href="/bookings/{{ b.id }}" class="fw-semibold text-decoration-none text-danger">
+                        {{ b.act_name }}
+                    </a>
+                    <span class="text-muted">· {{ b.event_date | pretty_date }}</span>
+                    {% if b.contact_email %}
+                    <span class="text-muted">· {{ b.contact_email }}</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h5 class="mb-0">Backroom Bookings</h5>
     <div class="d-flex gap-2 flex-wrap">

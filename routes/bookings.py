@@ -25,13 +25,14 @@ RESIDENCY_EVENT_TYPE = "Residency Gigs"
 RESIDENCY_COLOR = "#e91e63"   # pink — in-house residencies (Balaclavas, Caoimhe, Larry, Pipers)
 # Subset shown on the public "something else" form (everything except Gig + Class)
 OTHER_FORM_EVENT_TYPES = ["Filming", "Rehearsal", "Private Hire", "Other"]
-STATUSES = ["inquiry", "hold", "tentative", "confirmed", "completed", "cancelled"]
+STATUSES = ["inquiry", "hold", "tentative", "approved", "confirmed", "completed", "cancelled"]
 VENUES = ["Backroom"]  # V0: Upstairs disabled — re-add to re-enable
 
 STATUS_LABELS = {
     "inquiry":   "Inquiry",
     "hold":      "Hold",
     "tentative": "Tentative",
+    "approved":  "Approved — Details Needed",
     "confirmed": "Confirmed",
     "completed": "Completed",
     "cancelled": "Cancelled",
@@ -42,6 +43,7 @@ STATUS_BADGES = {
     "inquiry":   "warning",
     "hold":      "primary",
     "tentative": "info",
+    "approved":  "primary",
     "confirmed": "success",
     "completed": "secondary",
     "cancelled": "dark",
@@ -363,6 +365,10 @@ def bookings_list():
     notifications = db.get_unread_notifications(limit=50)
     notification_count = db.count_unread_notifications()
 
+    # Phase 2 overdue: approved bookings where gig is ≤14 days away
+    # and band has still not submitted details.
+    phase2_overdue = db.get_phase2_overdue()
+
     return render_template(
         "bookings_list.html",
         bookings=bookings,
@@ -387,6 +393,7 @@ def bookings_list():
         hide_residencies=hide_residencies,
         residency_event_type=RESIDENCY_EVENT_TYPE,
         legacy_cutoff_date=_legacy_no_door_fee_cutoff(),
+        phase2_overdue=phase2_overdue,
     )
 
 
@@ -761,6 +768,23 @@ def change_status(booking_id):
     old_status = booking["status"]
     db.update_booking_status(booking_id, new_status, actor=actor, detail=note)
 
+    # Phase 2: approval triggers deadline + invite email to band
+    if new_status == "approved" and old_status == "inquiry":
+        from datetime import date as _date, timedelta as _td
+        try:
+            event_dt = _date.fromisoformat(booking["event_date"])
+            deadline = (event_dt - _td(days=28)).isoformat()
+        except Exception:
+            deadline = None
+        if deadline:
+            db.set_phase2_approved(booking_id, deadline)
+        try:
+            import bookings_email
+            updated = db.get_booking(booking_id)
+            bookings_email.send_phase2_invite(updated, request.host_url.rstrip("/"))
+        except Exception as e:
+            print(f"[bookings] Phase 2 invite email failed: {e}")
+
     # Calendar sync on status change:
     #  - cancelled            → delete event (always)
     #  - confirmed → anything → delete event (don't leave a confirmed-looking
@@ -1094,6 +1118,7 @@ def _parse_public_form(form):
         "contact_phone":       contact_phone,
         "expected_attendance": None,
         "description":         _opt("description"),
+        "genre":               _opt("genre"),
         "media_links":         _opt("media_links"),
         "ticketing":           None,
         "ticket_price":        None,
@@ -1520,6 +1545,56 @@ def book_edit_description(token):
             print(f"[bookings] Calendar refresh after band edit failed: {e}")
 
     flash("Description updated — thanks! ✓", "success")
+    return redirect(url_for("bookings.book_portal", token=token))
+
+
+@bp.route("/book/<token>/phase2", methods=["POST"])
+def book_phase2_submit(token):
+    """Band submits Phase 2 details after approval."""
+    booking = db.get_booking(token)
+    if not booking:
+        abort(404)
+    if booking["status"] != "approved":
+        flash("This booking is not currently awaiting details.", "warning")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    public_bio = (request.form.get("public_bio") or "").strip()
+    if not public_bio:
+        flash("A public bio is required.", "danger")
+        return redirect(url_for("bookings.book_portal", token=token))
+
+    media_links       = (request.form.get("media_links") or "").strip() or None
+    announcement_date = (request.form.get("announcement_date") or "").strip() or None
+    sound_notes       = (request.form.get("sound_notes") or "").strip() or None
+    door_time         = (request.form.get("door_time") or "").strip() or None
+    start_time        = (request.form.get("start_time") or "").strip() or None
+    end_time          = (request.form.get("end_time") or "").strip() or None
+
+    bid = booking["id"]
+    db.update_booking_field(bid, "public_bio", public_bio, actor="band")
+    if media_links is not None:
+        db.update_booking_field(bid, "media_links", media_links, actor="band")
+    if announcement_date:
+        db.update_booking_field(bid, "announcement_date", announcement_date, actor="band")
+    if sound_notes:
+        db.update_booking_field(bid, "sound_notes", sound_notes, actor="band")
+    if door_time:
+        db.update_booking_field(bid, "door_time", door_time, actor="band")
+    if start_time:
+        db.update_booking_field(bid, "start_time", start_time, actor="band")
+
+    db.set_phase2_submitted(bid)
+    db.update_booking_status(bid, "confirmed", actor="band", detail="Phase 2 details submitted by band")
+    db.add_booking_audit(bid, "band", "phase2_submitted", "Band completed Phase 2 details")
+
+    try:
+        import bookings_email
+        updated = db.get_booking(token)
+        bookings_email.send_phase2_complete_notify(updated, request.host_url.rstrip("/"))
+    except Exception as e:
+        print(f"[bookings] Phase 2 notify failed: {e}")
+
+    flash("Details received — your booking is now confirmed! 🎉", "success")
     return redirect(url_for("bookings.book_portal", token=token))
 
 

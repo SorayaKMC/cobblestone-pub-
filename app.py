@@ -767,6 +767,25 @@ def create_app():
                 except Exception as e:
                     print(f"[reminders] Door person alert error: {e}")
 
+        # ── Phase 2 reminders (1 week before deadline) ───────────────────
+        p2_remind_sent = 0
+        p2_remind_errors = 0
+        try:
+            p2_due = db.get_phase2_due_reminders()
+            for b in p2_due:
+                try:
+                    ok = bookings_email.send_phase2_reminder(b, base_url)
+                    if ok:
+                        db.set_phase2_reminder_sent(b["id"])
+                        db.add_booking_audit(b["id"], "system", "phase2_reminder_sent",
+                                             f"Phase 2 deadline reminder → {b.get('contact_email')}")
+                        p2_remind_sent += 1
+                except Exception as e:
+                    db.add_booking_audit(b["id"], "system", "phase2_reminder_error", str(e))
+                    p2_remind_errors += 1
+        except Exception as e:
+            print(f"[reminders] Phase 2 reminder check failed: {e}")
+
         return jsonify({
             "target_date":          target_date,
             "bookings_found":       len(bookings),
@@ -776,6 +795,8 @@ def create_app():
             "auto_completed":       completed_count,
             "door_unconfirmed":     len(door_pending),
             "door_alert_sent":      door_alert_sent,
+            "phase2_reminders_sent":   p2_remind_sent,
+            "phase2_reminder_errors":  p2_remind_errors,
         })
 
     # ── Square webhook ───────────────────────────────────────────────────────

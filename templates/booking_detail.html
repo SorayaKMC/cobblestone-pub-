@@ -328,7 +328,16 @@
             <div class="card-body">
                 <h6 class="card-title mb-3">Quick Actions</h6>
                 <div class="d-grid gap-2">
-                    {% if booking.status != 'confirmed' %}
+                    {% if booking.status == 'inquiry' %}
+                    <form method="POST" action="/bookings/{{ booking.id }}/status"
+                          onsubmit="return confirm('Approve this inquiry and send {{ booking.act_name }} the Phase 2 details email?\n\nThey will receive a link to fill in their public bio, social links, images, and show times. Their spot is held until the deadline (4 weeks before the gig).');">
+                        <input type="hidden" name="status" value="approved">
+                        <button class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-envelope-check me-1"></i>Approve &amp; Send Phase 2 Email
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if booking.status not in ('confirmed', 'approved') %}
                     {% set _conflict_msg = '' %}
                     {% if same_day_bookings %}
                         {% set _conflict_msg = '⚠️ There ' ~ ('is' if same_day_bookings|length == 1 else 'are') ~ ' ' ~ same_day_bookings|length ~ ' other booking(s) on ' ~ (booking.event_date | pretty_date) ~ ':\n\n' %}
