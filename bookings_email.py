@@ -2028,110 +2028,317 @@ def send_door_person_alert(bookings, base_url=None):
 # ── Phase 2 emails ───────────────────────────────────────────────────────────
 
 def send_phase2_invite(booking, base_url=None):
-    """Email band after manager approval: complete your details or lose your spot.
+    """Approval email to band: all venue/logistics info + Phase 2 listing details request.
 
-    Sent to booking["contact_email"]. Contains the portal link and the deadline.
+    Sent to booking["contact_email"] with Shane CC'd.
+    Contains the portal link and the deadline to submit listing details.
     """
     if not _smtp_configured():
         return False
     if not booking.get("contact_email"):
         return False
 
-    base = base_url or config.PUBLIC_BASE_URL
+    base       = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
     portal_url = f"{base}/book/{booking['public_token']}"
+    act        = booking["act_name"]
+    name       = booking.get("contact_name") or "there"
+    venue      = booking.get("venue") or "Backroom"
 
     try:
-        from datetime import date
-        d = date.fromisoformat(booking["event_date"])
+        from datetime import date as _date
+        d = _date.fromisoformat(booking["event_date"])
         date_str = d.strftime("%A, %-d %B %Y")
     except Exception:
         date_str = booking["event_date"]
 
     deadline_str = booking.get("phase2_deadline") or ""
     try:
-        from datetime import date
-        dl = date.fromisoformat(deadline_str)
+        from datetime import date as _date
+        dl = _date.fromisoformat(deadline_str)
         deadline_str = dl.strftime("%-d %B %Y")
     except Exception:
         pass
 
-    subject = f"Your Cobblestone booking is approved — please complete your details ({booking['act_name']})"
+    deadline_label = deadline_str or "4 weeks before the gig"
 
-    html = f"""<!DOCTYPE html>
-<html>
+    subject = f"You're approved! {act} at Cobblestone Pub — {date_str}"
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="en">
 <head><meta charset="UTF-8"></head>
-<body style="font-family:Georgia,serif;max-width:600px;margin:0 auto;padding:24px;color:#1a1a1a;">
-<img src="https://www.cobblestonepub.ie/s/cobblestone-logo.jpg"
-     alt="The Cobblestone" width="60"
-     style="border-radius:4px;margin-bottom:16px;">
-<h2 style="font-size:1.3rem;font-weight:700;margin:0 0 4px;">Great news — you're approved!</h2>
-<p style="color:#555;font-size:.9rem;margin:0 0 20px;">
-  Cobblestone Pub &middot; Backroom Bookings
-</p>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#fff;border-radius:8px;overflow:hidden;
+                    box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr>
+          <td style="background:#1c1c2e;padding:28px 32px;">
+            <h2 style="margin:0;color:#fff;font-size:22px;">🎉 You're approved!</h2>
+            <p style="margin:4px 0 0;color:#9ca3af;font-size:13px;">
+              Cobblestone Pub — Backroom Bookings
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 16px;font-size:16px;">Hi {name},</p>
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#333;">
+              Great news — we'd love to have <strong>{act}</strong> play the Cobblestone
+              <strong>{venue}</strong> on <strong>{date_str}</strong>. Your date is approved
+              and this is essentially your confirmation.
+            </p>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#333;">
+              Read everything below — it covers fees, your sound engineer, venue access, and
+              curfew times. Then complete your listing details via the portal link at the bottom
+              so we can get the show listed and promoted.
+            </p>
 
-<p>Hi {booking.get('contact_name') or 'there'},</p>
+            <!-- Booking summary -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#f8f8f8;border:1px solid #e5e7eb;
+                          border-radius:8px;margin:0 0 24px;">
+              <tr>
+                <td style="padding:20px;">
+                  <table width="100%" cellpadding="4" cellspacing="0"
+                         style="font-size:14px;color:#333;">
+                    <tr>
+                      <td style="color:#6b7280;width:100px;">Act</td>
+                      <td><strong>{act}</strong></td>
+                    </tr>
+                    <tr>
+                      <td style="color:#6b7280;">Date</td>
+                      <td><strong>{date_str}</strong></td>
+                    </tr>
+                    <tr>
+                      <td style="color:#6b7280;">Venue</td>
+                      <td><strong>{venue}, Cobblestone Pub</strong></td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
 
-<p>We'd love to have <strong>{booking['act_name']}</strong> play the Cobblestone Backroom
-on <strong>{date_str}</strong>. Your inquiry has been approved.</p>
+            <!-- Fees & useful info -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#f8f8f8;border:1px solid #e5e7eb;
+                          border-radius:8px;margin:0 0 24px;">
+              <tr>
+                <td style="padding:20px;">
+                  <p style="margin:0 0 12px;font-size:13px;font-weight:bold;
+                             color:#1c1c2e;text-transform:uppercase;letter-spacing:.5px;">
+                    Fees &amp; Venue Info
+                  </p>
+                  <table width="100%" cellpadding="4" cellspacing="0"
+                         style="font-size:13px;color:#444;">
+                    <tr>
+                      <td style="width:16px;vertical-align:top;">⭐</td>
+                      <td><strong>Venue fee (€150)</strong> is payable directly to our sound
+                      engineer Shane on the night. This covers use of the room, Shane's
+                      services, and a staffed bar.</td>
+                    </tr>
+                    <tr>
+                      <td style="vertical-align:top;">⭐</td>
+                      <td><strong>Door person (€50)</strong> — optional. Please let us know
+                      at least 2 weeks in advance if you'll need one. Payable on the night
+                      (cash or card; we provide a cash float).</td>
+                    </tr>
+                    <tr>
+                      <td style="vertical-align:top;">🕐</td>
+                      <td><strong>Curfew times:</strong> Mon–Thu 11:30 pm &nbsp;·&nbsp;
+                      Fri–Sat 12:30 am &nbsp;·&nbsp; Sun 11:00 pm</td>
+                    </tr>
+                    <tr>
+                      <td style="vertical-align:top;">🎟️</td>
+                      <td><strong>Ticketing</strong> is your responsibility. We recommend
+                      <a href="https://www.eventbrite.ie/" style="color:#2563eb;">Eventbrite</a>
+                      or
+                      <a href="https://www.tickettailor.com/" style="color:#2563eb;">Ticket Tailor</a>.
+                      No card machine at the door — bring your own if needed.</td>
+                    </tr>
+                    <tr>
+                      <td style="vertical-align:top;">📍</td>
+                      <td><strong>Access</strong> via Red Cow Lane — enter through the
+                      Cobblestone Pub. Free parking after 7 pm &amp; Sundays.</td>
+                    </tr>
+                  </table>
+                  <table cellpadding="0" cellspacing="0" style="margin-top:16px;">
+                    <tr>
+                      <td style="padding-right:10px;">
+                        <a href="https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet.pdf"
+                           style="display:inline-block;background:#1c1c2e;color:#fff;
+                                  padding:10px 18px;border-radius:6px;text-decoration:none;
+                                  font-size:13px;font-weight:bold;">
+                          📄 Info Sheet
+                        </a>
+                      </td>
+                      <td>
+                        <a href="https://www.cobblestonepub.ie/s/Cobblestone-Backroom-Tech-Spec.pdf"
+                           style="display:inline-block;background:#f3f4f6;color:#1c1c2e;
+                                  border:1px solid #d1d5db;padding:10px 18px;border-radius:6px;
+                                  text-decoration:none;font-size:13px;font-weight:bold;">
+                          🎛️ Tech Spec
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
 
-<p>To lock in your spot, you need to complete your listing details — public bio,
-social links, show images, and a few other bits — using the link below.
-<strong>These must be filled in by {deadline_str or "at least 4 weeks before the gig"}</strong>
-so we have time to list and promote the show.</p>
+            <!-- Shane callout -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#1c1c2e;border-radius:8px;margin:0 0 24px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <p style="margin:0 0 4px;font-size:11px;font-weight:bold;
+                             color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;">
+                    Your sound engineer
+                  </p>
+                  <p style="margin:0 0 12px;font-size:18px;font-weight:bold;color:#fff;">
+                    🎤 Shane Hannigan
+                  </p>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-right:24px;">
+                        <a href="tel:+353851758254"
+                           style="color:#93c5fd;text-decoration:none;font-size:14px;">
+                          📞 +353 (85) 175 8254
+                        </a>
+                      </td>
+                      <td>
+                        <a href="mailto:onsoundie@gmail.com"
+                           style="color:#93c5fd;text-decoration:none;font-size:14px;">
+                          ✉️ onsoundie@gmail.com
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  <p style="margin:12px 0 0;font-size:13px;color:#fbbf24;line-height:1.5;">
+                    📧 <strong style="color:#fff;">Shane is CC'd on this email</strong> —
+                    you can reply here to reach him directly.
+                  </p>
+                  <p style="margin:8px 0 0;font-size:13px;color:#d1d5db;line-height:1.5;">
+                    Please contact Shane to arrange your <strong style="color:#fff;">sound
+                    check, load-in, and load-out</strong>. He'll be there on the night and
+                    is your main point of contact for anything technical.
+                  </p>
+                  <p style="margin:8px 0 0;font-size:12px;color:#f87171;">
+                    ⚠️ No drum backline available — please arrange hire in advance if needed.
+                  </p>
+                </td>
+              </tr>
+            </table>
 
-<div style="text-align:center;margin:28px 0;">
-  <a href="{portal_url}"
-     style="display:inline-block;background:#1d4ed8;color:#fff;
-            font-size:1rem;font-weight:700;padding:14px 32px;
-            border-radius:8px;text-decoration:none;">
-    Complete my details →
-  </a>
-</div>
+            <!-- Phase 2 action box -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#fefce8;border:2px solid #fbbf24;
+                          border-radius:8px;margin:0 0 24px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <p style="margin:0 0 8px;font-size:15px;font-weight:bold;color:#92400e;">
+                    📋 One more thing — complete your listing details
+                  </p>
+                  <p style="margin:0 0 12px;font-size:14px;color:#78350f;line-height:1.6;">
+                    To keep your spot, please submit your public bio, social links, show images,
+                    and a few other details via your booking portal by
+                    <strong>{deadline_label}</strong>. We need these to get the show listed
+                    on the website and start promotion.
+                  </p>
+                  <p style="margin:0 0 16px;font-size:13px;color:#b45309;">
+                    ⚠️ If we don't receive your listing details by the deadline, we may need
+                    to cancel your booking and release the date to another act.
+                  </p>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="background:#d97706;border-radius:6px;">
+                        <a href="{portal_url}"
+                           style="display:block;padding:14px 28px;color:#fff;
+                                  text-decoration:none;font-weight:bold;font-size:15px;">
+                          Complete my listing details →
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
 
-<p style="color:#dc2626;font-size:.88rem;">
-  <strong>⚠ Important:</strong> if details are not submitted by {deadline_str or "the deadline"},
-  your booking may be cancelled to free up the date for another act.
-</p>
-
-<p>If you have any questions, just reply to this email or call us on
-<a href="tel:+353857362447">+353 85 736 2447</a>.</p>
-
-<p>Looking forward to it,<br>
-<strong>The Cobblestone Pub team</strong></p>
-
-<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
-<p style="font-size:.78rem;color:#9ca3af;margin:0;">
-  77 King St N, Smithfield, Dublin 7 &middot;
-  <a href="mailto:bookings@cobblestonepub.ie" style="color:#9ca3af;">bookings@cobblestonepub.ie</a> &middot;
-  <a href="https://cobblestonepub.ie" style="color:#9ca3af;">cobblestonepub.ie</a>
-</p>
+            <p style="margin:0 0 8px;font-size:14px;color:#555;">
+              Any questions? Just reply to this email or call us on
+              <a href="tel:+353857362447" style="color:#555;">+353 85 736 2447</a>.
+            </p>
+            <p style="margin:24px 0 0;font-size:15px;color:#333;">
+              Looking forward to it!<br>
+              <strong>The Cobblestone Pub team</strong>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8f8f8;padding:16px 32px;
+                     border-top:1px solid #eee;font-size:12px;color:#999;">
+            77 King St N, Smithfield, Dublin 7 &nbsp;·&nbsp;
+            <a href="https://cobblestonepub.ie" style="color:#999;">cobblestonepub.ie</a>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>"""
 
-    text = f"""Your Cobblestone booking is approved — {booking['act_name']}
+    text = f"""You're approved! {act} at Cobblestone Pub — {date_str}
 
-Hi {booking.get('contact_name') or 'there'},
+Hi {name},
 
-Great news — your booking for {booking['act_name']} on {date_str} has been approved.
+Great news — your date is approved and this is essentially your confirmation.
+Read the info below, then complete your listing details via the link at the bottom.
 
-To lock in your spot, please complete your listing details (public bio, social links, images etc.)
-using the link below before {deadline_str or 'the deadline'}:
+Act:   {act}
+Date:  {date_str}
+Venue: {venue}, Cobblestone Pub
+
+── FEES & VENUE INFO ─────────────────────────────────────────────
+⭐ Venue fee (€150) payable to Shane on the night — covers the room,
+   sound engineer, and staffed bar.
+⭐ Door person (€50) — optional, let us know at least 2 weeks in advance.
+🕐 Curfew: Mon–Thu 11:30 pm · Fri–Sat 12:30 am · Sun 11:00 pm
+🎟️ Ticketing is your responsibility (Eventbrite / Ticket Tailor).
+   No card machine at the door — bring your own if needed.
+📍 Access via Red Cow Lane. Free parking after 7 pm & Sundays.
+
+📄 Info Sheet: https://www.cobblestonepub.ie/s/The-Cobblestone-Backroom-Info-Sheet.pdf
+🎛️ Tech Spec:  https://www.cobblestonepub.ie/s/Cobblestone-Backroom-Tech-Spec.pdf
+
+── YOUR SOUND ENGINEER ───────────────────────────────────────────
+🎤 Shane Hannigan (CC'd on this email — reply here to reach him)
+   📞 +353 (85) 175 8254
+   ✉️ onsoundie@gmail.com
+
+   Contact Shane to arrange your sound check, load-in, and load-out.
+   ⚠️ No drum backline — arrange hire in advance if needed.
+
+── ACTION REQUIRED ───────────────────────────────────────────────
+📋 Please complete your listing details by {deadline_label}:
 
   {portal_url}
 
-Important: if details are not submitted by {deadline_str or 'the deadline'}, your booking may
-be cancelled to free the date for another act.
+We need your public bio, social links, and show images to list the gig
+on the website and start promotion. If details aren't submitted by the
+deadline, we may need to cancel and release the date to another act.
+──────────────────────────────────────────────────────────────────
 
 Questions? Reply to this email or call +353 85 736 2447.
 
-Thanks,
+Looking forward to it!
 The Cobblestone Pub team
+
 --
 77 King St N, Smithfield, Dublin 7
-bookings@cobblestonepub.ie
 https://cobblestonepub.ie"""
 
-    return _send(booking["contact_email"], subject, html, text)
+    return _send(booking["contact_email"], subject, html, text, cc=[SHANE_EMAIL])
 
 
 def send_phase2_reminder(booking, base_url=None):
