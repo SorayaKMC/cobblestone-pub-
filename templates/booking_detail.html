@@ -337,7 +337,7 @@
                         </button>
                     </form>
                     {% endif %}
-                    {% if booking.status not in ('confirmed', 'approved') %}
+                    {% if booking.status not in ('inquiry', 'confirmed', 'approved') %}
                     {% set _conflict_msg = '' %}
                     {% if same_day_bookings %}
                         {% set _conflict_msg = '⚠️ There ' ~ ('is' if same_day_bookings|length == 1 else 'are') ~ ' ' ~ same_day_bookings|length ~ ' other booking(s) on ' ~ (booking.event_date | pretty_date) ~ ':\n\n' %}
