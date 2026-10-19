@@ -24,6 +24,7 @@ html, body{overflow-x:hidden;max-width:100vw}
 .cb-dash .stack{display:flex;flex-direction:column;gap:12px;max-width:100%}
 .cb-dash .box{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;min-width:0;max-width:100%;overflow:hidden}
 .cb-dash .box-scroll{overflow-x:auto}
+.cb-dash .chart-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .cb-dash .ct{font-size:10px;letter-spacing:.1em;color:#888;text-transform:uppercase;margin-bottom:8px}
 .cb-dash canvas{display:block;width:100%}
 .cb-dash table{width:100%;border-collapse:collapse;font-size:12px}
@@ -94,7 +95,7 @@ html, body{overflow-x:hidden;max-width:100vw}
   <div class="stack">
     <div class="box">
       <div class="ct">Net sales by week — 2025 vs 2026 + trend</div>
-      <canvas id="c-sales" height="160"></canvas>
+      <div class="chart-scroll"><canvas id="c-sales" height="160"></canvas></div>
       <div class="lgnd">
         <span><span class="ldot" style="background:#c8bfb0"></span>2025</span>
         <span><span class="ldot" style="background:#3b82f6"></span>2026</span>
@@ -103,11 +104,11 @@ html, body{overflow-x:hidden;max-width:100vw}
     </div>
     <div class="box">
       <div class="ct">Year-on-year % change vs 2025</div>
-      <canvas id="c-yoy" height="160"></canvas>
+      <div class="chart-scroll"><canvas id="c-yoy" height="160"></canvas></div>
     </div>
     <div class="box">
       <div class="ct">Labour cost (M+S) % of net</div>
-      <canvas id="c-lab" height="160"></canvas>
+      <div class="chart-scroll"><canvas id="c-lab" height="160"></canvas></div>
       <div class="note">M+S payroll ÷ net sales · reference line = 16%</div>
     </div>
     <div class="box">
@@ -137,7 +138,7 @@ html, body{overflow-x:hidden;max-width:100vw}
   <div class="sec-lbl">Cobblestone T-Shirt sales</div>
   <div class="box">
     <div class="ct">Units sold per week</div>
-    <canvas id="c-merch1" height="120"></canvas>
+    <div class="chart-scroll"><canvas id="c-merch1" height="120"></canvas></div>
   </div>
   <div class="note" style="margin-top:8px">Cobblestone T-Shirt Tee · €{{ tshirt_price }}/unit · {{ tshirt_total_units }} units · €{{ '{:,}'.format(tshirt_total_revenue) }} gross revenue</div>
 </div>
@@ -278,7 +279,7 @@ html, body{overflow-x:hidden;max-width:100vw}
   <div class="sec-lbl">Back room (backbar) &amp; Outside sales</div>
   <div class="box">
     <div class="ct">Back room net sales by week</div>
-    <canvas id="c-bb1" height="140"></canvas>
+    <div class="chart-scroll"><canvas id="c-bb1" height="140"></canvas></div>
   </div>
   <div class="box box-scroll" style="margin-top:12px"><table id="t-bb"></table></div>
 </div>
@@ -354,10 +355,11 @@ var tic = tym - tsl*txm;
 var TREND = WKS.map(function(_,i){return Math.round(tic+tsl*i);});
 
 // ─── CANVAS UTILITIES ────────────────────────────────────────────────────────
-function setupCanvas(id, h){
+function setupCanvas(id, h, minW){
   var c=document.getElementById(id); if(!c)return null;
   var dpr=window.devicePixelRatio||1;
-  var w=c.parentElement.offsetWidth||600;
+  var parentW=c.parentElement.offsetWidth||600;
+  var w=(minW&&minW>parentW)?minW:parentW;
   c.width=w*dpr; c.height=h*dpr; c.style.width=w+"px"; c.style.height=h+"px";
   var ctx=c.getContext("2d"); ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
   return {ctx:ctx, W:w, H:h};
@@ -388,8 +390,8 @@ function drawXLabels(ctx, labels, pad, W, H){
   for(var i=0;i<n;i++){ctx.fillText(labels[i], pad.l+(i+0.5)*(CW/n), H-6);}
 }
 
-function barChart(id, h, labels, datasets, yMax, yFmt, trendData, refLine, refLabel){
-  var cv=setupCanvas(id,h); if(!cv)return;
+function barChart(id, h, labels, datasets, yMax, yFmt, trendData, refLine, refLabel, minW){
+  var cv=setupCanvas(id,h,minW); if(!cv)return;
   var ctx=cv.ctx, W=cv.W, H=cv.H;
   var rp=refLine!=null?52:8;
   var pad={t:10,r:rp,b:26,l:50};
@@ -612,21 +614,21 @@ function drawAll(){
   barChart("c-sales", 200, wkLabels,
     [{data:WKS.map(function(w){return w.n25||0;}), color:"#c8bfb0"},
      {data:WKS.map(function(w){return w.n26;}), color:"#3b82f6"}],
-    salesYMax, function(v){return "\u20ac"+(v/1000).toFixed(0)+"k";}, TREND);
+    salesYMax, function(v){return "\u20ac"+(v/1000).toFixed(0)+"k";}, TREND, null, null, wkLabels.length*22);
 
   var yoyVals = WKS.map(function(w){return w.n25>0 ? +((w.n26-w.n25)/w.n25*100).toFixed(1) : 0;});
   var yoyMax=Math.max.apply(null,yoyVals.map(function(v){return Math.abs(v);}));
   var yoyYMax=Math.ceil(Math.max(yoyMax,10)/5)*5+5;
   barChart("c-yoy", 200, wkLabels,
     [{data:yoyVals, color:yoyVals.map(function(v){return v<0?"#ef4444":v<5?"#94a3b8":"#16a34a";})}],
-    yoyYMax, function(v){return v+"%";});
+    yoyYMax, function(v){return v+"%";}, null, null, null, wkLabels.length*22);
 
   var labLookup={}; PAYROLL_DATA.forEach(function(p){labLookup[p.wk]=p;});
   var labWks=WKS.filter(function(w){return labLookup[w.wk];});
   var labVals=labWks.map(function(w){return +(labLookup[w.wk].ms/w.n26*100).toFixed(1);});
   barChart("c-lab", 180, labWks.map(function(w){return w.wk;}),
     [{data:labVals, color:labVals.map(function(v){return laborC(v);})}],
-    30, function(v){return v+"%";}, null, 16, "16%");
+    30, function(v){return v+"%";}, null, 16, "16%", labWks.length*22);
 
   drawHrs();
 
@@ -636,7 +638,7 @@ function drawAll(){
   var merchWkLabels = MERCH.map(function(_,i){return "W"+String(i+1).padStart(2,"0");});
   barChart("c-merch1", 120, merchWkLabels,
     [{data:MERCH, color:MERCH.map(function(v){return v>=40?"#15803d":v>=25?"#3b82f6":v>=15?"#93c5fd":"#c8bfb0";})}],
-    merchYMax, function(v){return v+"u";});
+    merchYMax, function(v){return v+"u";}, null, null, null, merchWkLabels.length*22);
 
   drawBackbar(salesYMax);
 }
@@ -715,7 +717,7 @@ function drawBackbar(salesYMax){
   var bb1YMax=Math.ceil(bb1Max/500)*500+500;
   barChart("c-bb1",140,bbD.map(function(w){return w.wk;}),
     [{data:bbD.map(function(w){return BB[w.wk]||0;}), color:"#8b5cf6"}],
-    bb1YMax, function(v){return "\u20ac"+(v/1000).toFixed(1)+"k";});
+    bb1YMax, function(v){return "\u20ac"+(v/1000).toFixed(1)+"k";}, null, null, null, bbD.length*22);
 
   // Backbar table
   var bbH = '<tr><th class="l">Week</th><th class="l">Dates</th><th>Total net</th><th>Back room</th><th>Outside</th><th>Main bar</th><th>BR+Out %</th></tr>';
