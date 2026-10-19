@@ -773,7 +773,9 @@ def change_status(booking_id):
         from datetime import date as _date, timedelta as _td
         try:
             event_dt = _date.fromisoformat(booking["event_date"])
-            deadline = (event_dt - _td(days=28)).isoformat()
+            today_dt = _date.today()
+            # At least 7 days from today, never more than 28 days before the gig
+            deadline = max(today_dt + _td(days=7), event_dt - _td(days=28)).isoformat()
         except Exception:
             deadline = None
         if deadline:
