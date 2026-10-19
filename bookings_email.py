@@ -2035,14 +2035,14 @@ def send_phase2_invite(booking, base_url=None):
     """
     if not _smtp_configured():
         return False
-    if not booking.get("contact_email"):
+    if not booking["contact_email"]:
         return False
 
     base       = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
     portal_url = f"{base}/book/{booking['public_token']}"
     act        = booking["act_name"]
-    name       = booking.get("contact_name") or "there"
-    venue      = booking.get("venue") or "Backroom"
+    name       = booking["contact_name"] or "there"
+    venue      = booking["venue"] or "Backroom"
 
     try:
         from datetime import date as _date
@@ -2051,7 +2051,7 @@ def send_phase2_invite(booking, base_url=None):
     except Exception:
         date_str = booking["event_date"]
 
-    deadline_str = booking.get("phase2_deadline") or ""
+    deadline_str = booking["phase2_deadline"] or ""
     try:
         from datetime import date as _date
         dl = _date.fromisoformat(deadline_str)
@@ -2345,7 +2345,7 @@ def send_phase2_reminder(booking, base_url=None):
     """Reminder email sent 1 week before the Phase 2 deadline."""
     if not _smtp_configured():
         return False
-    if not booking.get("contact_email"):
+    if not booking["contact_email"]:
         return False
 
     base = base_url or config.PUBLIC_BASE_URL
@@ -2358,7 +2358,7 @@ def send_phase2_reminder(booking, base_url=None):
     except Exception:
         date_str = booking["event_date"]
 
-    deadline_str = booking.get("phase2_deadline") or ""
+    deadline_str = booking["phase2_deadline"] or ""
     try:
         from datetime import date
         dl = date.fromisoformat(deadline_str)
@@ -2380,7 +2380,7 @@ def send_phase2_reminder(booking, base_url=None):
   Cobblestone Pub &middot; Backroom Bookings
 </p>
 
-<p>Hi {booking.get('contact_name') or 'there'},</p>
+<p>Hi {booking['contact_name'] or 'there'},</p>
 
 <p>This is a reminder that your listing details for <strong>{booking['act_name']}</strong>
 ({date_str}) are still outstanding. The deadline is <strong>{deadline_str}</strong>.</p>
@@ -2414,7 +2414,7 @@ get you sorted.</p>
 
     text = f"""Reminder — complete your Cobblestone booking details
 
-Hi {booking.get('contact_name') or 'there'},
+Hi {booking['contact_name'] or 'there'},
 
 Your listing details for {booking['act_name']} ({date_str}) are still outstanding.
 Deadline: {deadline_str}.
