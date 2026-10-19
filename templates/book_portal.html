@@ -100,6 +100,15 @@
             </div>
         </div>
     {% elif booking.status == 'confirmed' %}
+        {% if not booking.public_bio %}
+        <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle fs-4 me-3 flex-shrink-0 mt-1"></i>
+            <div>
+                <strong>Your date is confirmed</strong> — but we still need a few details from you to guarantee your spot and get the show listed on the website.
+                <br><span class="small mt-1 d-block">Please fill in your <strong>public bio, social links, and show times</strong> below. Until these are submitted, we can't promote the gig and may need to release the date.</span>
+            </div>
+        </div>
+        {% else %}
         <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
             <i class="bi bi-check-circle fs-4 me-3 flex-shrink-0"></i>
             <div>
@@ -111,6 +120,7 @@
                 {% endif %}
             </div>
         </div>
+        {% endif %}
     {% elif booking.status == 'completed' %}
         <div class="alert alert-secondary d-flex align-items-center mb-4" role="alert">
             <i class="bi bi-flag fs-4 me-3 flex-shrink-0"></i>
