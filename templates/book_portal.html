@@ -312,19 +312,22 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="card-title fw-semibold mb-0">
-                    <i class="bi bi-clock-history me-1"></i>Edit door / gig times
+                    <i class="bi bi-clock-history me-1"></i>Door / gig times
                 </h6>
-                <button class="btn btn-sm btn-outline-secondary"
+                <button class="btn btn-sm {% if booking.door_time or booking.start_time %}btn-outline-secondary{% else %}btn-outline-primary{% endif %}"
                         type="button"
                         data-bs-toggle="collapse"
                         data-bs-target="#editTimesCollapse"
                         aria-expanded="false">
-                    Edit
+                    {% if booking.door_time or booking.start_time %}Edit{% else %}Enter{% endif %}
                 </button>
             </div>
             <p class="text-muted small mb-0">
-                If your set times have shifted, update them here. We'll be notified
-                so we can mirror the change on the website and our calendar.
+                {% if booking.door_time or booking.start_time %}
+                    Doors {{ booking.door_time or '—' }} · Music {{ booking.start_time or '—' }}. Update here if times change — we'll mirror it to the website.
+                {% else %}
+                    Let us know your door and start times so we can list them on the website.
+                {% endif %}
             </p>
             <div id="editTimesCollapse" class="collapse mt-3">
                 <form method="POST" action="/book/{{ booking.public_token }}/edit-times">
@@ -364,20 +367,22 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="card-title fw-semibold mb-0">
-                    <i class="bi bi-ticket-perforated me-1"></i>Edit ticket info
+                    <i class="bi bi-ticket-perforated me-1"></i>Ticket info
                 </h6>
-                <button class="btn btn-sm btn-outline-secondary"
+                <button class="btn btn-sm {% if booking.ticketing %}btn-outline-secondary{% else %}btn-outline-primary{% endif %}"
                         type="button"
                         data-bs-toggle="collapse"
                         data-bs-target="#editTicketCollapse"
                         aria-expanded="false">
-                    Edit
+                    {% if booking.ticketing %}Edit{% else %}Enter{% endif %}
                 </button>
             </div>
             <p class="text-muted small mb-0">
-                Add or update your ticketing type, price, and link
-                (e.g. Eventbrite URL). We'll be notified so we can mirror
-                the change to the website.
+                {% if booking.ticketing %}
+                    {{ booking.ticketing }}{% if booking.ticket_price %} · {{ booking.ticket_price }}{% endif %}{% if booking.ticket_link %} · <a href="{{ booking.ticket_link }}" target="_blank" class="text-muted">link</a>{% endif %}. Update if anything changes — we'll mirror it to the website.
+                {% else %}
+                    Enter your ticketing type, price, and link (e.g. Eventbrite URL) so we can list it on the website.
+                {% endif %}
             </p>
             <div id="editTicketCollapse" class="collapse mt-3">
                 <form method="POST" action="/book/{{ booking.public_token }}/edit-ticket">
@@ -427,19 +432,22 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="card-title fw-semibold mb-0">
-                    <i class="bi bi-pencil-square me-1"></i>Edit your description
+                    <i class="bi bi-pencil-square me-1"></i>Internal description
                 </h6>
-                <button class="btn btn-sm btn-outline-secondary"
+                <button class="btn btn-sm {% if booking.description %}btn-outline-secondary{% else %}btn-outline-primary{% endif %}"
                         type="button"
                         data-bs-toggle="collapse"
                         data-bs-target="#editFormCollapse"
                         aria-expanded="false">
-                    Edit
+                    {% if booking.description %}Edit{% else %}Enter{% endif %}
                 </button>
             </div>
             <p class="text-muted small mb-0">
-                Update the event description — bio, lineup, anything you want included.
-                For changes to date, reply to your confirmation email and we'll handle it.
+                {% if booking.description %}
+                    {{ booking.description | truncate(120) }}
+                {% else %}
+                    Add any internal notes or description for the Cobblestone team — this is not shown publicly on the website.
+                {% endif %}
             </p>
             <div id="editFormCollapse" class="collapse mt-3">
                 <form method="POST" action="/book/{{ booking.public_token }}/edit">
@@ -460,49 +468,71 @@
     </div>
     {% endif %}
 
-    <!-- ── Public bio nudge (confirmed, bio missing) ───────────────────── -->
-    {% if booking.status == 'confirmed' and not booking.public_bio %}
-    <div class="card shadow-sm mb-4 border-warning">
+    <!-- ── Public bio (confirmed bookings) ─────────────────────────────── -->
+    {% if booking.status == 'confirmed' %}
+    <div class="card shadow-sm mb-4 {% if not booking.public_bio %}border-warning{% endif %}">
         <div class="card-body">
-            <h6 class="card-title fw-semibold mb-1">
-                <i class="bi bi-pencil-square me-1 text-warning"></i>Add your public bio
-            </h6>
-            <p class="text-muted small mb-3">
-                We need a short bio to list your show on the website and promote it on social media.
-                2–4 sentences written for an audience works best.
-            </p>
-            <form method="POST" action="/book/{{ booking.public_token }}/edit-bio">
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold">
-                        Public bio for the website <span class="text-danger">*</span>
-                    </label>
-                    <textarea name="public_bio" rows="4"
-                              class="form-control form-control-sm" required
-                              placeholder="Write 2–4 sentences about your act as it should appear on cobblestonepub.ie…"></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold">
-                        Social &amp; web links
-                        <span class="text-muted fw-normal">(optional if already provided)</span>
-                    </label>
-                    <input type="text" name="media_links"
-                           class="form-control form-control-sm"
-                           placeholder="Instagram, Spotify, YouTube, website…"
-                           value="{{ booking.media_links or '' }}">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold">
-                        Notes for the sound engineer
-                        <span class="text-muted fw-normal">(optional)</span>
-                    </label>
-                    <textarea name="sound_notes" rows="2"
-                              class="form-control form-control-sm"
-                              placeholder="Number of musicians, instruments, any special requirements…">{{ booking.sound_notes or '' }}</textarea>
-                </div>
-                <button type="submit" class="btn btn-warning btn-sm px-4">
-                    <i class="bi bi-check-lg me-1"></i>Save bio
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="card-title fw-semibold mb-0">
+                    <i class="bi bi-person-lines-fill me-1 {% if not booking.public_bio %}text-warning{% endif %}"></i>Public bio
+                </h6>
+                <button class="btn btn-sm {% if booking.public_bio %}btn-outline-secondary{% else %}btn-outline-warning{% endif %}"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#editBioCollapse"
+                        aria-expanded="{% if not booking.public_bio %}true{% else %}false{% endif %}">
+                    {% if booking.public_bio %}Edit{% else %}Enter{% endif %}
                 </button>
-            </form>
+            </div>
+            <p class="text-muted small mb-3">
+                {% if booking.public_bio %}
+                    {{ booking.public_bio | truncate(160) }}
+                {% else %}
+                    <span class="text-warning fw-semibold">Required —</span>
+                    we need a short bio (2–4 sentences) to list your show on the website and promote it on social media.
+                {% endif %}
+            </p>
+            <div id="editBioCollapse" class="collapse {% if not booking.public_bio %}show{% endif %}">
+                <form method="POST" action="/book/{{ booking.public_token }}/edit-bio">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">
+                            Public bio for the website <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="public_bio" rows="4"
+                                  class="form-control form-control-sm" required
+                                  placeholder="Write 2–4 sentences about your act as it should appear on cobblestonepub.ie…">{{ booking.public_bio or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">
+                            Social &amp; web links
+                            <span class="text-muted fw-normal">(optional if already provided)</span>
+                        </label>
+                        <input type="text" name="media_links"
+                               class="form-control form-control-sm"
+                               placeholder="Instagram, Spotify, YouTube, website…"
+                               value="{{ booking.media_links or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">
+                            Notes for the sound engineer
+                            <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <textarea name="sound_notes" rows="2"
+                                  class="form-control form-control-sm"
+                                  placeholder="Number of musicians, instruments, any special requirements…">{{ booking.sound_notes or '' }}</textarea>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        {% if booking.public_bio %}
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#editBioCollapse">Cancel</button>
+                        {% endif %}
+                        <button type="submit" class="btn {% if booking.public_bio %}btn-primary{% else %}btn-warning{% endif %} btn-sm px-4">
+                            <i class="bi bi-check-lg me-1"></i>Save bio
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
     {% endif %}
