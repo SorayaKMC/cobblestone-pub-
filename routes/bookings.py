@@ -1757,7 +1757,7 @@ def acknowledge_time_change(booking_id):
 
 # Allowed values for the band-side ticketing dropdown. Matches the admin
 # dropdown options in booking_detail.html.
-TICKETING_OPTIONS = ("", "Free", "Eventbrite", "Door", "Ticketed")
+TICKETING_OPTIONS = ("", "Link", "Door", "Free", "Eventbrite", "Ticketed")  # legacy values kept for existing data
 
 
 @bp.route("/book/<token>/edit-ticket", methods=["POST"])
