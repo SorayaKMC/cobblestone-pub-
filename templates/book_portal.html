@@ -79,6 +79,18 @@
             </div>
         </div>
     {% elif booking.status == 'approved' %}
+        {% if urgent_phase2 %}
+        <div class="alert alert-danger d-flex align-items-start mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-4 me-3 flex-shrink-0 mt-1"></i>
+            <div>
+                <strong>Your show is in {{ days_until_event }} day{{ 's' if days_until_event != 1 else '' }} — all details required now.</strong><br>
+                Because your event is under 4 weeks away, we need your bio, set times, and
+                ticketing info immediately to list and promote the show in time.
+                <strong>Please complete all fields below.</strong>
+                If details are not received promptly, we may have to release the date.
+            </div>
+        </div>
+        {% else %}
         <div class="alert alert-primary d-flex align-items-start mb-4" role="alert">
             <i class="bi bi-clipboard-check fs-4 me-3 flex-shrink-0 mt-1"></i>
             <div>
@@ -91,6 +103,7 @@
                 to free up the date.
             </div>
         </div>
+        {% endif %}
     {% elif booking.status == 'tentative' %}
         <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
             <i class="bi bi-clock fs-4 me-3 flex-shrink-0"></i>
@@ -218,12 +231,16 @@
 
     <!-- ── Phase 2: complete listing details (approved bookings only) ──── -->
     {% if booking.status == 'approved' %}
-    <div class="card shadow-sm mb-4 border-primary">
-        <div class="card-header bg-primary text-white py-3">
+    <div class="card shadow-sm mb-4 {% if urgent_phase2 %}border-danger{% else %}border-primary{% endif %}">
+        <div class="card-header {% if urgent_phase2 %}bg-danger{% else %}bg-primary{% endif %} text-white py-3">
             <h5 class="mb-0 fw-semibold">
                 <i class="bi bi-pencil-fill me-2"></i>Complete your listing details
             </h5>
-            {% if booking.phase2_deadline %}
+            {% if urgent_phase2 %}
+            <div class="mt-1" style="font-size:.85rem;opacity:.9;">
+                ⚠️ All fields below are <strong>required</strong> — event is under 4 weeks away.
+            </div>
+            {% elif booking.phase2_deadline %}
             <div class="mt-1" style="font-size:.85rem;opacity:.9;">
                 Required by <strong>{{ booking.phase2_deadline | pretty_date }}</strong>
             </div>
@@ -233,6 +250,9 @@
             <p class="text-muted small mb-4">
                 These details are used to list and promote your show. Fields marked
                 <span class="text-danger">*</span> are required.
+                {% if urgent_phase2 %}
+                <strong class="text-danger">All fields are required for this booking.</strong>
+                {% endif %}
             </p>
             <form method="POST" action="/book/{{ booking.public_token }}/phase2">
                 <div class="row g-3">
@@ -262,6 +282,66 @@
                         </div>
                     </div>
 
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">
+                            Doors {% if urgent_phase2 %}<span class="text-danger">*</span>{% endif %}
+                        </label>
+                        <input type="text" name="door_time"
+                               class="form-control form-control-sm"
+                               {% if urgent_phase2 %}required{% endif %}
+                               placeholder="e.g. 19:30 or 8pm"
+                               value="{{ booking.door_time or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">
+                            Show start {% if urgent_phase2 %}<span class="text-danger">*</span>{% endif %}
+                        </label>
+                        <input type="text" name="start_time"
+                               class="form-control form-control-sm"
+                               {% if urgent_phase2 %}required{% endif %}
+                               placeholder="e.g. 20:00 or 9pm"
+                               value="{{ booking.start_time or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Show end</label>
+                        <input type="text" name="end_time"
+                               class="form-control form-control-sm"
+                               placeholder="e.g. 22:30 or 11pm"
+                               value="{{ booking.end_time or '' }}">
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-semibold">
+                            Ticketing {% if urgent_phase2 %}<span class="text-danger">*</span>{% endif %}
+                        </label>
+                        <select name="ticketing" class="form-select form-select-sm"
+                                {% if urgent_phase2 %}required{% endif %}>
+                            <option value="" {% if not booking.ticketing %}selected{% endif %}>— select —</option>
+                            <option value="Free"       {% if booking.ticketing == 'Free' %}selected{% endif %}>Free</option>
+                            <option value="Eventbrite" {% if booking.ticketing == 'Eventbrite' %}selected{% endif %}>Eventbrite</option>
+                            <option value="Door"       {% if booking.ticketing == 'Door' %}selected{% endif %}>Door charge</option>
+                            <option value="Ticketed"   {% if booking.ticketing == 'Ticketed' %}selected{% endif %}>Other ticketed</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label small fw-semibold">
+                            Ticket price <span class="text-muted fw-normal">(if applicable)</span>
+                        </label>
+                        <input type="text" name="ticket_price"
+                               class="form-control form-control-sm"
+                               placeholder="e.g. €15"
+                               value="{{ booking.ticket_price or '' }}">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-semibold">
+                            Ticket link <span class="text-muted fw-normal">(if applicable)</span>
+                        </label>
+                        <input type="url" name="ticket_link"
+                               class="form-control form-control-sm"
+                               placeholder="https://eventbrite.com/..."
+                               value="{{ booking.ticket_link or '' }}">
+                    </div>
+
                     <div class="col-12">
                         <label class="form-label small fw-semibold">
                             Show announcement preference
@@ -274,28 +354,6 @@
                             When would you like us to announce/post about this show?
                             Leave blank and we'll post as soon as we're ready.
                         </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label small fw-semibold">Doors</label>
-                        <input type="text" name="door_time"
-                               class="form-control form-control-sm"
-                               placeholder="e.g. 19:30 or 8pm"
-                               value="{{ booking.door_time or '' }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-semibold">Show start</label>
-                        <input type="text" name="start_time"
-                               class="form-control form-control-sm"
-                               placeholder="e.g. 20:00 or 9pm"
-                               value="{{ booking.start_time or '' }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-semibold">Show end</label>
-                        <input type="text" name="end_time"
-                               class="form-control form-control-sm"
-                               placeholder="e.g. 22:30 or 11pm"
-                               value="{{ booking.end_time or '' }}">
                     </div>
 
                     <div class="col-12">
@@ -311,7 +369,7 @@
                 </div>
 
                 <div class="mt-4 d-flex align-items-center gap-3">
-                    <button type="submit" class="btn btn-primary px-4">
+                    <button type="submit" class="btn {% if urgent_phase2 %}btn-danger{% else %}btn-primary{% endif %} px-4">
                         <i class="bi bi-check-lg me-1"></i>Submit details
                     </button>
                     <span class="text-muted" style="font-size:.8rem;">

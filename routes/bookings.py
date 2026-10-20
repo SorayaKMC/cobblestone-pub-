@@ -1439,6 +1439,14 @@ def book_portal(token):
             ctoken = db.get_or_create_contact_token(booking["contact_email"])
             contact_portal_url = url_for("bookings.contact_portal", token=ctoken)
 
+    # Compute urgency flag for approved bookings < 28 days away
+    try:
+        event_dt = date.fromisoformat(booking["event_date"])
+        days_until_event = (event_dt - date.today()).days
+    except (ValueError, TypeError):
+        days_until_event = 999
+    urgent_phase2 = booking["status"] == "approved" and days_until_event < 28
+
     return render_template(
         "book_portal.html",
         booking=booking,
@@ -1447,6 +1455,8 @@ def book_portal(token):
         status_badges=STATUS_BADGES,
         other_count=other_count,
         contact_portal_url=contact_portal_url,
+        days_until_event=days_until_event,
+        urgent_phase2=urgent_phase2,
     )
 
 
@@ -1565,6 +1575,7 @@ def book_edit_bio(token):
         flash("A public bio is required.", "danger")
         return redirect(url_for("bookings.book_portal", token=token))
 
+    old_bio = booking["public_bio"]
     db.update_booking_field(booking["id"], "public_bio", public_bio, actor="band")
     db.add_booking_audit(booking["id"], "band", "edited", "Public bio added via portal")
 
@@ -1575,6 +1586,15 @@ def book_edit_bio(token):
     sound_notes = (request.form.get("sound_notes") or "").strip() or None
     if sound_notes:
         db.update_booking_field(booking["id"], "sound_notes", sound_notes, actor="band")
+
+    # Email pub inbox so staff know the bio was updated.
+    try:
+        import bookings_email
+        bookings_email.send_bio_changed_alert(
+            booking, old_bio, public_bio, request.host_url.rstrip("/")
+        )
+    except Exception as e:
+        print(f"[bookings] Bio-changed alert email failed: {e}")
 
     flash("Bio saved — thanks! ✓", "success")
     return redirect(url_for("bookings.book_portal", token=token))
@@ -1590,6 +1610,14 @@ def book_phase2_submit(token):
         flash("This booking is not currently awaiting details.", "warning")
         return redirect(url_for("bookings.book_portal", token=token))
 
+    # Determine urgency — events < 28 days away require all details immediately.
+    try:
+        event_dt = date.fromisoformat(booking["event_date"])
+        days_until = (event_dt - date.today()).days
+    except (ValueError, TypeError):
+        days_until = 999
+    urgent = days_until < 28
+
     public_bio = (request.form.get("public_bio") or "").strip()
     if not public_bio:
         flash("A public bio is required.", "danger")
@@ -1601,6 +1629,20 @@ def book_phase2_submit(token):
     door_time         = (request.form.get("door_time") or "").strip() or None
     start_time        = (request.form.get("start_time") or "").strip() or None
     end_time          = (request.form.get("end_time") or "").strip() or None
+    ticketing         = (request.form.get("ticketing") or "").strip() or None
+    ticket_price      = (request.form.get("ticket_price") or "").strip() or None
+    ticket_link       = (request.form.get("ticket_link") or "").strip() or None
+
+    if urgent:
+        if not door_time:
+            flash("Door time is required — your event is under 4 weeks away.", "danger")
+            return redirect(url_for("bookings.book_portal", token=token))
+        if not start_time:
+            flash("Show start time is required — your event is under 4 weeks away.", "danger")
+            return redirect(url_for("bookings.book_portal", token=token))
+        if not ticketing:
+            flash("Ticket info is required — your event is under 4 weeks away.", "danger")
+            return redirect(url_for("bookings.book_portal", token=token))
 
     bid = booking["id"]
     db.update_booking_field(bid, "public_bio", public_bio, actor="band")
@@ -1614,6 +1656,12 @@ def book_phase2_submit(token):
         db.update_booking_field(bid, "door_time", door_time, actor="band")
     if start_time:
         db.update_booking_field(bid, "start_time", start_time, actor="band")
+    if ticketing:
+        db.update_booking_field(bid, "ticketing", ticketing, actor="band")
+    if ticket_price:
+        db.update_booking_field(bid, "ticket_price", ticket_price, actor="band")
+    if ticket_link:
+        db.update_booking_field(bid, "ticket_link", ticket_link, actor="band")
 
     db.set_phase2_submitted(bid)
     db.update_booking_status(bid, "confirmed", actor="band", detail="Phase 2 details submitted by band")
@@ -1760,6 +1808,16 @@ def book_edit_ticket(token):
         f"link: {old_link or '—'!r} → {new_link or '—'!r})",
     )
     db.mark_ticket_info_changed(booking["id"])
+
+    # Email pub inbox so staff know ticketing info changed.
+    try:
+        import bookings_email
+        bookings_email.send_ticket_changed_alert(
+            booking, old_ticketing, new_ticketing, old_price, new_price,
+            old_link, new_link, request.host_url.rstrip("/")
+        )
+    except Exception as e:
+        print(f"[bookings] Ticket-changed alert email failed: {e}")
 
     flash("Ticket info updated — thanks! ✓", "success")
     return redirect(url_for("bookings.book_portal", token=token))

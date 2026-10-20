@@ -1006,6 +1006,178 @@ Review & acknowledge: {detail_url}
     return _send(staff_email, subject, html, plain)
 
 
+def send_bio_changed_alert(booking, old_bio, new_bio, base_url=None):
+    """Alert the pub inbox when a confirmed band updates their public bio via the portal."""
+    staff_email = config.BOOKING_FROM or config.SMTP_USERNAME
+    if not staff_email:
+        return False
+
+    base       = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
+    detail_url = f"{base}/bookings/{booking['id']}"
+    act        = booking["act_name"]
+    event_date = booking["event_date"]
+
+    old_snippet = (old_bio or "")[:200] + ("…" if old_bio and len(old_bio) > 200 else "")
+    new_snippet = (new_bio or "")[:200] + ("…" if new_bio and len(new_bio) > 200 else "")
+
+    subject = f"📝 Bio updated by band: {act} ({event_date})"
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#fff;border-radius:8px;overflow:hidden;
+                    box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr>
+          <td style="background:#4f46e5;padding:28px 32px;">
+            <h2 style="margin:0;color:#fff;font-size:22px;">📝 Band updated their bio</h2>
+            <p style="margin:6px 0 0;color:#c7d2fe;font-size:13px;">
+              Check the website listing is still accurate.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <table width="100%" cellpadding="4" cellspacing="0"
+                   style="font-size:14px;color:#333;margin-bottom:20px;">
+              <tr><td style="color:#6b7280;width:80px;">Act</td><td><strong>{act}</strong></td></tr>
+              <tr><td style="color:#6b7280;">Date</td><td><strong>{event_date}</strong></td></tr>
+              <tr><td style="color:#6b7280;">Venue</td><td>{booking['venue']}</td></tr>
+            </table>
+            {"" if not old_snippet else f"<p style='font-size:13px;color:#6b7280;margin:0 0 4px;'>Previous bio:</p><p style='font-size:13px;color:#9ca3af;text-decoration:line-through;margin:0 0 16px;'>{old_snippet}</p>"}
+            <p style='font-size:13px;color:#6b7280;margin:0 0 4px;'>New bio:</p>
+            <p style='font-size:14px;color:#111;margin:0 0 24px;'>{new_snippet}</p>
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background:#1c1c2e;border-radius:6px;">
+                  <a href="{detail_url}"
+                     style="display:block;padding:12px 24px;color:#fff;
+                            text-decoration:none;font-weight:bold;font-size:14px;">
+                    Review booking →
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    plain = f"""BIO UPDATED BY BAND
+
+Act:    {act}
+Date:   {event_date}
+Venue:  {booking['venue']}
+
+Previous bio:
+{old_bio or '(none)'}
+
+New bio:
+{new_bio}
+
+Review booking: {detail_url}
+"""
+
+    return _send(staff_email, subject, html, plain)
+
+
+def send_ticket_changed_alert(booking, old_ticketing, new_ticketing,
+                               old_price, new_price, old_link, new_link, base_url=None):
+    """Alert the pub inbox when a band updates ticketing info via the portal."""
+    staff_email = config.BOOKING_FROM or config.SMTP_USERNAME
+    if not staff_email:
+        return False
+
+    base       = (base_url or config.PUBLIC_BASE_URL).rstrip("/")
+    detail_url = f"{base}/bookings/{booking['id']}"
+    act        = booking["act_name"]
+    event_date = booking["event_date"]
+
+    def _row(label, old, new):
+        if (old or "") == (new or ""):
+            return ""
+        return (
+            f"<tr><td style='color:#6b7280;width:100px;'>{label}</td>"
+            f"<td><span style='color:#9ca3af;text-decoration:line-through;'>"
+            f"{old or '—'}</span> &nbsp;→&nbsp; <strong>{new or '—'}</strong></td></tr>"
+        )
+
+    subject = f"🎟️ Ticket info changed by band: {act} ({event_date})"
+
+    html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#fff;border-radius:8px;overflow:hidden;
+                    box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr>
+          <td style="background:#0891b2;padding:28px 32px;">
+            <h2 style="margin:0;color:#fff;font-size:22px;">🎟️ Ticket info changed by band</h2>
+            <p style="margin:6px 0 0;color:#cffafe;font-size:13px;">
+              Update Squarespace to match.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;">
+            <table width="100%" cellpadding="4" cellspacing="0"
+                   style="font-size:14px;color:#333;margin-bottom:20px;">
+              <tr><td style="color:#6b7280;width:100px;">Act</td><td><strong>{act}</strong></td></tr>
+              <tr><td style="color:#6b7280;">Date</td><td><strong>{event_date}</strong></td></tr>
+              <tr><td style="color:#6b7280;">Venue</td><td>{booking['venue']}</td></tr>
+              {_row("Ticketing", old_ticketing, new_ticketing)}
+              {_row("Price", old_price, new_price)}
+              {_row("Link", old_link, new_link)}
+            </table>
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background:#1c1c2e;border-radius:6px;">
+                  <a href="{detail_url}"
+                     style="display:block;padding:12px 24px;color:#fff;
+                            text-decoration:none;font-weight:bold;font-size:14px;">
+                    Review &amp; acknowledge →
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    plain = f"""TICKET INFO CHANGED BY BAND
+
+Act:    {act}
+Date:   {event_date}
+Venue:  {booking['venue']}
+
+Ticketing: {old_ticketing or '—'}  →  {new_ticketing or '—'}
+Price:     {old_price or '—'}  →  {new_price or '—'}
+Link:      {old_link or '—'}  →  {new_link or '—'}
+
+Update Squarespace to match.
+Review & acknowledge: {detail_url}
+"""
+
+    return _send(staff_email, subject, html, plain)
+
+
 def send_band_cancellation_confirmation(booking, base_url=None):
     """Send a cancellation confirmation to the band after they cancel via the portal."""
     if not booking["contact_email"]:
