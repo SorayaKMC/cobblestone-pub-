@@ -1647,6 +1647,14 @@ def book_phase2_submit(token):
     else:
         ticketing = None
 
+    # Ticket option sub-field validation
+    if has_link and not ticket_link:
+        flash("Please provide a ticket URL when 'Ticket link' is selected.", "danger")
+        return redirect(url_for("bookings.book_portal", token=token))
+    if has_door and not door_price:
+        flash("Please enter a door price when 'Pay at the door' is selected.", "danger")
+        return redirect(url_for("bookings.book_portal", token=token))
+
     if urgent:
         if not door_time:
             flash("Door time is required — your event is under 4 weeks away.", "danger")
@@ -1791,11 +1799,19 @@ def book_edit_ticket(token):
         flash("This booking is no longer accepting changes.", "warning")
         return redirect(url_for("bookings.book_portal", token=token))
 
-    has_link      = bool(request.form.get("has_link"))
-    has_door      = bool(request.form.get("has_door"))
-    new_price     = (request.form.get("ticket_price") or "").strip() or None
-    new_link      = (request.form.get("ticket_link")  or "").strip() or None
-    new_door_price = (request.form.get("door_price")  or "").strip() or None
+    has_link       = bool(request.form.get("has_link"))
+    has_door       = bool(request.form.get("has_door"))
+    new_price      = (request.form.get("ticket_price") or "").strip() or None
+    new_link       = (request.form.get("ticket_link")  or "").strip() or None
+    new_door_price = (request.form.get("door_price")   or "").strip() or None
+
+    if has_link and not new_link:
+        flash("Please provide a ticket URL when 'Ticket link' is selected.", "danger")
+        return redirect(url_for("bookings.book_portal", token=token))
+    if has_door and not new_door_price:
+        flash("Please enter a door price when 'Pay at the door' is selected.", "danger")
+        return redirect(url_for("bookings.book_portal", token=token))
+
     if has_link and has_door:
         new_ticketing = "Link,Door"
     elif has_link:

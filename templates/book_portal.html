@@ -1006,5 +1006,32 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Ticket checkbox → required enforcement
+(function () {
+  function wire(linkId, doorId, urlInputName, doorPriceInputName, form) {
+    var linkCb  = form.querySelector('#' + linkId);
+    var doorCb  = form.querySelector('#' + doorId);
+    var urlInp  = form.querySelector('[name="' + urlInputName + '"]');
+    var dprInp  = form.querySelector('[name="' + doorPriceInputName + '"]');
+    if (!linkCb || !doorCb) return;
+    function update() {
+      if (urlInp)  urlInp.required  = linkCb.checked;
+      if (dprInp)  dprInp.required  = doorCb.checked;
+    }
+    linkCb.addEventListener('change', update);
+    doorCb.addEventListener('change', update);
+    update();
+  }
+  document.querySelectorAll('form').forEach(function (f) {
+    // Phase 2 form
+    if (f.querySelector('#p2HasLink'))  wire('p2HasLink', 'p2HasDoor', 'ticket_link', 'door_price', f);
+    // Edit-ticket card
+    if (f.querySelector('#etHasLink'))  wire('etHasLink', 'etHasDoor', 'ticket_link', 'door_price', f);
+    // Admin booking detail
+    if (f.querySelector('#adHasLink'))  wire('adHasLink', 'adHasDoor', 'ticket_link', 'door_price', f);
+  });
+})();
+</script>
 </body>
 </html>
