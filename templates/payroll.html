@@ -424,12 +424,20 @@
                         {% if emp.holiday_hours and emp.holiday_hours > 0 %}
                             <span class="text-success fw-semibold">{{ "%.1f"|format(emp.holiday_hours|float) }}h</span>
                             {% if emp.holiday_days and emp.holiday_days > 0 %}
-                            <br><small class="text-muted">({{ "%.1f"|format(emp.holiday_days|float) }}d)</small>
+                            <br><small class="text-muted">({{ "%.1f"|format(emp.holiday_days|float) }}d PTO)</small>
                             {% endif %}
                             {% if emp.holiday_pay and emp.holiday_pay > 0 %}
                             <br><small class="text-success">&euro;{{ "%.2f"|format(emp.holiday_pay|float) }}</small>
                             {% endif %}
-                        {% else %}
+                        {% endif %}
+                        {% if emp.sick_hours and emp.sick_hours > 0 %}
+                            <br><span class="text-warning fw-semibold">{{ "%.1f"|format(emp.sick_hours|float) }}h</span>
+                            <br><small class="text-muted">({{ "%.1f"|format(emp.sick_days|float) }}d sick)</small>
+                            {% if emp.sick_pay and emp.sick_pay > 0 %}
+                            <br><small class="text-warning">&euro;{{ "%.2f"|format(emp.sick_pay|float) }}</small>
+                            {% endif %}
+                        {% endif %}
+                        {% if not (emp.holiday_hours and emp.holiday_hours > 0) and not (emp.sick_hours and emp.sick_hours > 0) %}
                             —
                         {% endif %}
                     </td>

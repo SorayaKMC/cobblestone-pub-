@@ -97,6 +97,18 @@ def init_db():
             data_json TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS sick_leave (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_member_id TEXT NOT NULL,
+            date DATE NOT NULL,
+            days_taken REAL NOT NULL DEFAULT 1,
+            hours_equivalent REAL NOT NULL DEFAULT 0,
+            doctor_note INTEGER NOT NULL DEFAULT 0,  -- 1 = note provided → paid
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(team_member_id, date)
+        );
+
         CREATE TABLE IF NOT EXISTS weekly_tips (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             team_member_id TEXT NOT NULL,
@@ -914,6 +926,103 @@ def add_pto_adjustment(team_member_id, adjustment_days, reason, effective_date):
     )
     conn.commit()
     conn.close()
+
+
+# --- Sick Leave ---
+
+SICK_LEAVE_DAYS_PER_YEAR = 5
+
+
+def add_sick_leave(team_member_id, date, days_taken, hours_equivalent, doctor_note, notes=""):
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO sick_leave (team_member_id, date, days_taken, hours_equivalent, doctor_note, notes)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(team_member_id, date) DO UPDATE SET
+               days_taken=excluded.days_taken,
+               hours_equivalent=excluded.hours_equivalent,
+               doctor_note=excluded.doctor_note,
+               notes=excluded.notes""",
+        (team_member_id, date, days_taken, hours_equivalent, 1 if doctor_note else 0, notes or ""),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_sick_leave(sick_id, days_taken, hours_equivalent, doctor_note, notes=""):
+    conn = get_db()
+    conn.execute(
+        """UPDATE sick_leave SET days_taken=?, hours_equivalent=?, doctor_note=?, notes=? WHERE id=?""",
+        (days_taken, hours_equivalent, 1 if doctor_note else 0, notes or "", sick_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_sick_leave(sick_id):
+    conn = get_db()
+    conn.execute("DELETE FROM sick_leave WHERE id=?", (sick_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_sick_leave_log(team_member_id=None):
+    conn = get_db()
+    if team_member_id:
+        rows = conn.execute(
+            "SELECT * FROM sick_leave WHERE team_member_id=? ORDER BY date DESC",
+            (team_member_id,),
+        ).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM sick_leave ORDER BY date DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_sick_leave_for_week(start_date, end_date):
+    """Return paid sick leave that falls within a payroll week.
+    Returns {team_member_id: {hours, days}} for rows where doctor_note=1."""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT team_member_id, SUM(days_taken) AS days, SUM(hours_equivalent) AS hours
+           FROM sick_leave
+           WHERE date >= ? AND date <= ? AND doctor_note = 1
+           GROUP BY team_member_id""",
+        (start_date, end_date),
+    ).fetchall()
+    conn.close()
+    return {r["team_member_id"]: {"days": r["days"], "hours": r["hours"]} for r in rows}
+
+
+def get_sick_leave_summary(year=None):
+    """Per-employee sick leave summary for the given year (defaults to current year).
+    Returns list of dicts: team_member_id, year, days_used, days_paid, days_unpaid, days_remaining."""
+    import datetime as _dt
+    y = year or _dt.date.today().year
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT team_member_id,
+                  SUM(days_taken) AS days_used,
+                  SUM(CASE WHEN doctor_note=1 THEN days_taken ELSE 0 END) AS days_paid,
+                  SUM(CASE WHEN doctor_note=0 THEN days_taken ELSE 0 END) AS days_unpaid
+           FROM sick_leave
+           WHERE strftime('%Y', date) = ?
+           GROUP BY team_member_id""",
+        (str(y),),
+    ).fetchall()
+    conn.close()
+    result = []
+    for r in rows:
+        used = r["days_used"] or 0
+        result.append({
+            "team_member_id": r["team_member_id"],
+            "year": y,
+            "days_used": used,
+            "days_paid": r["days_paid"] or 0,
+            "days_unpaid": r["days_unpaid"] or 0,
+            "days_remaining": max(0, SICK_LEAVE_DAYS_PER_YEAR - used),
+        })
+    return result
 
 
 # --- Weekly Tips (manually entered, NOT from Square) ---

@@ -134,6 +134,22 @@ def pto_page():
     taken_log = db.get_pto_taken_log()
     manual_hours_log = db.list_manual_hours()
 
+    sick_leave_log = db.get_sick_leave_log()
+    sick_leave_summary = db.get_sick_leave_summary()
+    sick_by_id = {s["team_member_id"]: s for s in sick_leave_summary}
+    # Ensure every active employee appears in sick summary (even those with no entries)
+    for emp in active_employees:
+        if emp["id"] not in sick_by_id:
+            import datetime as _dt
+            sick_by_id[emp["id"]] = {
+                "team_member_id": emp["id"],
+                "year": _dt.date.today().year,
+                "days_used": 0,
+                "days_paid": 0,
+                "days_unpaid": 0,
+                "days_remaining": db.SICK_LEAVE_DAYS_PER_YEAR,
+            }
+
     return render_template("pto.html",
         summary=summary,
         employees=active_employees,
@@ -142,6 +158,9 @@ def pto_page():
         manual_hours_log=manual_hours_log,
         config_warnings=config_warnings,
         today=date.today().isoformat(),
+        sick_leave_log=sick_leave_log,
+        sick_by_id=sick_by_id,
+        sick_days_per_year=db.SICK_LEAVE_DAYS_PER_YEAR,
     )
 
 
@@ -470,4 +489,54 @@ def recalculate():
     except Exception as e:
         flash(f"Recalculation failed: {str(e)}", "danger")
 
+    return redirect(url_for("pto.pto_page"))
+
+
+# ─── Sick Leave ─────────────────────────────────────────────────────────────
+
+@bp.route("/sick-leave/log", methods=["POST"])
+def log_sick_leave():
+    tm_id      = request.form.get("team_member_id")
+    sl_date    = request.form.get("date")
+    days       = float(request.form.get("days_taken", 1) or 1)
+    doctor_note = bool(request.form.get("doctor_note"))
+    notes      = (request.form.get("notes") or "").strip()
+
+    if not tm_id or not sl_date:
+        flash("Please select an employee and date.", "warning")
+        return redirect(url_for("pto.pto_page"))
+
+    avg_shift = float(pto_engine.calculate_13_week_avg_shift(tm_id, sl_date))
+    hours_equiv = days * avg_shift
+
+    db.add_sick_leave(tm_id, sl_date, days, hours_equiv, doctor_note, notes)
+
+    cat = db.get_employee_category(tm_id)
+    name = f"{cat['given_name']} {cat['family_name']}" if cat else tm_id
+    paid_label = "paid (doctor's note on file)" if doctor_note else "unpaid (no doctor's note)"
+    flash(f"Logged {days} sick day(s) for {name} on {sl_date} — {paid_label}.", "success")
+    return redirect(url_for("pto.pto_page"))
+
+
+@bp.route("/sick-leave/<int:sick_id>/edit", methods=["POST"])
+def edit_sick_leave(sick_id):
+    try:
+        days       = float(request.form.get("days_taken") or 1)
+        hours      = float(request.form.get("hours_equivalent") or 0)
+        doctor_note = bool(request.form.get("doctor_note"))
+        notes      = (request.form.get("notes") or "").strip()
+        db.update_sick_leave(sick_id, days, hours, doctor_note, notes)
+        flash("Sick leave entry updated.", "success")
+    except Exception as e:
+        flash(f"Could not update sick leave entry: {e}", "danger")
+    return redirect(url_for("pto.pto_page"))
+
+
+@bp.route("/sick-leave/<int:sick_id>/delete", methods=["POST"])
+def delete_sick_leave(sick_id):
+    try:
+        db.delete_sick_leave(sick_id)
+        flash("Sick leave entry deleted.", "info")
+    except Exception as e:
+        flash(f"Could not delete sick leave entry: {e}", "danger")
     return redirect(url_for("pto.pto_page"))

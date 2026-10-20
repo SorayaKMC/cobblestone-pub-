@@ -183,7 +183,8 @@ def _load_week_payroll(year, week, iso_week, start_date, end_date):
         manual_tips, weekly_cleaning, weekly_bonus,
     )
 
-    pto_taken = db.get_pto_taken_for_week(start_date, end_date)
+    pto_taken  = db.get_pto_taken_for_week(start_date, end_date)
+    sick_taken = db.get_sick_leave_for_week(start_date, end_date)
 
     # Add PTO-only employees (took leave but didn't work this week)
     existing_ids = {p["team_member_id"] for p in payroll}
@@ -262,6 +263,22 @@ def _load_week_payroll(year, week, iso_week, start_date, end_date):
         except (ValueError, TypeError, ArithmeticError):
             current_total = Decimal("0.00")
         p["total"] = (current_total + hp).quantize(Decimal("0.01"))
+
+        # Paid sick leave — same logic as holiday pay; only paid when doctor_note=1.
+        sick = sick_taken.get(p["team_member_id"], {})
+        p["sick_hours"] = sick.get("hours", 0.0)
+        p["sick_days"]  = sick.get("days", 0.0)
+        if p.get("pay_type") == "salaried":
+            sp = Decimal("0.00")
+        else:
+            try:
+                wage_dec = Decimal(str(p["wage_rate"]))
+                sp = (wage_dec * Decimal(str(p["sick_hours"]))).quantize(Decimal("0.01"))
+            except (ValueError, TypeError, ArithmeticError):
+                sp = Decimal("0.00")
+        p["sick_pay"] = sp
+        p["total_for_labor"] = (Decimal(str(p["total_for_labor"])) + sp).quantize(Decimal("0.01"))
+        p["total"]            = (Decimal(str(p["total"]))            + sp).quantize(Decimal("0.01"))
 
     return payroll, pto_taken
 
