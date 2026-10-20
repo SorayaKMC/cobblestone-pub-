@@ -212,19 +212,40 @@
                                 <option value="tbc" {% if booking and booking.door_person == 'tbc' %}selected{% endif %}>TBC</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label small">Ticketing</label>
-                            <select name="ticketing" class="form-select form-select-sm">
-                                <option value="">— select —</option>
-                                <option value="Link" {% if booking and booking.ticketing == 'Link' %}selected{% endif %}>Ticket link</option>
-                                <option value="Door" {% if booking and booking.ticketing in ('Door', 'Ticketed', 'Eventbrite') %}selected{% endif %}>Pay at the door</option>
-                                <option value="Free" {% if booking and booking.ticketing == 'Free' %}selected{% endif %}>Free</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small">Ticket Price</label>
-                            <input type="text" name="ticket_price" class="form-control form-control-sm"
-                                   value="{{ booking.ticket_price if booking else '' }}">
+                            {% set _t = (booking.ticketing or '') if booking else '' %}
+                            <div class="d-flex flex-wrap gap-3 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="has_link"
+                                           id="adHasLink" value="1"
+                                           {% if 'Link' in _t %}checked{% endif %}>
+                                    <label class="form-check-label small" for="adHasLink">Ticket link</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="has_door"
+                                           id="adHasDoor" value="1"
+                                           {% if 'Door' in _t or _t in ('Eventbrite','Ticketed') %}checked{% endif %}>
+                                    <label class="form-check-label small" for="adHasDoor">Pay at the door</label>
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="url" name="ticket_link" class="form-control form-control-sm"
+                                           placeholder="Ticket URL"
+                                           value="{{ booking.ticket_link if booking else '' }}">
+                                </div>
+                                <div class="col-3">
+                                    <input type="text" name="ticket_price" class="form-control form-control-sm"
+                                           placeholder="Online price"
+                                           value="{{ booking.ticket_price if booking else '' }}">
+                                </div>
+                                <div class="col-3">
+                                    <input type="text" name="door_price" class="form-control form-control-sm"
+                                           placeholder="Door price"
+                                           value="{{ booking.door_price if booking else '' }}">
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small">Expected attendance</label>

@@ -513,6 +513,8 @@ def init_db():
         cursor.execute("ALTER TABLE bookings ADD COLUMN phase2_email_sent_at TIMESTAMP")
     if "phase2_reminder_sent_at" not in bk_cols:
         cursor.execute("ALTER TABLE bookings ADD COLUMN phase2_reminder_sent_at TIMESTAMP")
+    if "door_price" not in bk_cols:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN door_price TEXT")
 
     # Rename "Session with the Pipers" → full NPU name and set times
     cursor.execute(
@@ -1868,7 +1870,7 @@ _BOOKING_FIELDS = (
     "status", "event_type", "act_name",
     "contact_name", "contact_email", "contact_phone",
     "expected_attendance", "description", "media_links",
-    "ticketing", "ticket_price", "ticket_link",
+    "ticketing", "ticket_price", "ticket_link", "door_price",
     "door_person", "door_fee_required", "venue_fee_required",
     "blocks_public_calendar", "squarespace_listing_status",
     "website_listing_required",
@@ -2235,7 +2237,7 @@ def update_booking_field(booking_id, field, value, actor="system"):
         "promo_folder_url",
         "door_fee_required",
         "door_time", "start_time",
-        "ticketing", "ticket_price", "ticket_link",
+        "ticketing", "ticket_price", "ticket_link", "door_price",
         "genre", "public_bio", "sound_notes",
         "media_links", "announcement_date",
     }

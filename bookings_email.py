@@ -1090,7 +1090,8 @@ Review booking: {detail_url}
 
 
 def send_ticket_changed_alert(booking, old_ticketing, new_ticketing,
-                               old_price, new_price, old_link, new_link, base_url=None):
+                               old_price, new_price, old_link, new_link, base_url=None,
+                               old_door_price=None, new_door_price=None):
     """Alert the pub inbox when a band updates ticketing info via the portal."""
     staff_email = config.BOOKING_FROM or config.SMTP_USERNAME
     if not staff_email:
@@ -1138,7 +1139,8 @@ def send_ticket_changed_alert(booking, old_ticketing, new_ticketing,
               <tr><td style="color:#6b7280;">Date</td><td><strong>{event_date}</strong></td></tr>
               <tr><td style="color:#6b7280;">Venue</td><td>{booking['venue']}</td></tr>
               {_row("Ticketing", old_ticketing, new_ticketing)}
-              {_row("Price", old_price, new_price)}
+              {_row("Online price", old_price, new_price)}
+              {_row("Door price", old_door_price, new_door_price)}
               {_row("Link", old_link, new_link)}
             </table>
             <table cellpadding="0" cellspacing="0">
@@ -1167,9 +1169,10 @@ Act:    {act}
 Date:   {event_date}
 Venue:  {booking['venue']}
 
-Ticketing: {old_ticketing or '—'}  →  {new_ticketing or '—'}
-Price:     {old_price or '—'}  →  {new_price or '—'}
-Link:      {old_link or '—'}  →  {new_link or '—'}
+Ticketing:   {old_ticketing or '—'}  →  {new_ticketing or '—'}
+Online price: {old_price or '—'}  →  {new_price or '—'}
+Door price:   {old_door_price or '—'}  →  {new_door_price or '—'}
+Link:         {old_link or '—'}  →  {new_link or '—'}
 
 Update Squarespace to match.
 Review & acknowledge: {detail_url}

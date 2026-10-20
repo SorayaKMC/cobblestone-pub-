@@ -92,9 +92,13 @@ def _parse_form(form):
         "expected_attendance": _opt_int("expected_attendance"),
         "description":         _opt("description"),
         "media_links":         _opt("media_links"),
-        "ticketing":           _opt("ticketing"),
+        "ticketing":           ("Link,Door" if form.get("has_link") and form.get("has_door")
+                               else "Link" if form.get("has_link")
+                               else "Door" if form.get("has_door")
+                               else _opt("ticketing")),
         "ticket_price":        _opt("ticket_price"),
         "ticket_link":         _opt("ticket_link"),
+        "door_price":          _opt("door_price"),
         "door_person":         _opt("door_person"),
         "door_fee_required":   1 if form.get("door_fee_required") else 0,
         "venue_fee_required":  1 if form.get("venue_fee_required") else 0,
@@ -1629,9 +1633,19 @@ def book_phase2_submit(token):
     door_time         = (request.form.get("door_time") or "").strip() or None
     start_time        = (request.form.get("start_time") or "").strip() or None
     end_time          = (request.form.get("end_time") or "").strip() or None
-    ticketing         = (request.form.get("ticketing") or "").strip() or None
+    has_link          = bool(request.form.get("has_link"))
+    has_door          = bool(request.form.get("has_door"))
     ticket_price      = (request.form.get("ticket_price") or "").strip() or None
     ticket_link       = (request.form.get("ticket_link") or "").strip() or None
+    door_price        = (request.form.get("door_price") or "").strip() or None
+    if has_link and has_door:
+        ticketing = "Link,Door"
+    elif has_link:
+        ticketing = "Link"
+    elif has_door:
+        ticketing = "Door"
+    else:
+        ticketing = None
 
     if urgent:
         if not door_time:
@@ -1662,6 +1676,8 @@ def book_phase2_submit(token):
         db.update_booking_field(bid, "ticket_price", ticket_price, actor="band")
     if ticket_link:
         db.update_booking_field(bid, "ticket_link", ticket_link, actor="band")
+    if door_price:
+        db.update_booking_field(bid, "door_price", door_price, actor="band")
 
     db.set_phase2_submitted(bid)
     db.update_booking_status(bid, "confirmed", actor="band", detail="Phase 2 details submitted by band")
@@ -1757,7 +1773,7 @@ def acknowledge_time_change(booking_id):
 
 # Allowed values for the band-side ticketing dropdown. Matches the admin
 # dropdown options in booking_detail.html.
-TICKETING_OPTIONS = ("", "Link", "Door", "Free", "Eventbrite", "Ticketed")  # legacy values kept for existing data
+TICKETING_OPTIONS = ("", "Link", "Door", "Link,Door", "Free", "Eventbrite", "Ticketed")  # legacy values kept for existing data
 
 
 @bp.route("/book/<token>/edit-ticket", methods=["POST"])
@@ -1775,36 +1791,47 @@ def book_edit_ticket(token):
         flash("This booking is no longer accepting changes.", "warning")
         return redirect(url_for("bookings.book_portal", token=token))
 
-    new_ticketing = (request.form.get("ticketing") or "").strip()
-    if new_ticketing not in TICKETING_OPTIONS:
-        flash("Invalid ticketing option.", "danger")
-        return redirect(url_for("bookings.book_portal", token=token))
-    new_ticketing = new_ticketing or None
-    new_price = (request.form.get("ticket_price") or "").strip() or None
-    new_link  = (request.form.get("ticket_link")  or "").strip() or None
+    has_link      = bool(request.form.get("has_link"))
+    has_door      = bool(request.form.get("has_door"))
+    new_price     = (request.form.get("ticket_price") or "").strip() or None
+    new_link      = (request.form.get("ticket_link")  or "").strip() or None
+    new_door_price = (request.form.get("door_price")  or "").strip() or None
+    if has_link and has_door:
+        new_ticketing = "Link,Door"
+    elif has_link:
+        new_ticketing = "Link"
+    elif has_door:
+        new_ticketing = "Door"
+    else:
+        new_ticketing = None
 
-    old_ticketing = booking["ticketing"]
-    old_price     = booking["ticket_price"]
-    old_link      = booking["ticket_link"]
+    old_ticketing  = booking["ticketing"]
+    old_price      = booking["ticket_price"]
+    old_link       = booking["ticket_link"]
+    old_door_price = booking["door_price"] if "door_price" in booking.keys() else None
 
     if (new_ticketing == old_ticketing
             and new_price == old_price
-            and new_link == old_link):
+            and new_link == old_link
+            and new_door_price == old_door_price):
         flash("No changes to save.", "info")
         return redirect(url_for("bookings.book_portal", token=token))
 
     if new_ticketing != old_ticketing:
-        db.update_booking_field(booking["id"], "ticketing",    new_ticketing, actor="band")
+        db.update_booking_field(booking["id"], "ticketing",    new_ticketing,  actor="band")
     if new_price != old_price:
-        db.update_booking_field(booking["id"], "ticket_price", new_price,     actor="band")
+        db.update_booking_field(booking["id"], "ticket_price", new_price,      actor="band")
     if new_link != old_link:
-        db.update_booking_field(booking["id"], "ticket_link",  new_link,      actor="band")
+        db.update_booking_field(booking["id"], "ticket_link",  new_link,       actor="band")
+    if new_door_price != old_door_price:
+        db.update_booking_field(booking["id"], "door_price",   new_door_price, actor="band")
 
     db.add_booking_audit(
         booking["id"], "band", "edited",
         f"Ticket info updated via portal "
         f"(ticketing: {old_ticketing or '—'!r} → {new_ticketing or '—'!r}; "
-        f"price: {old_price or '—'!r} → {new_price or '—'!r}; "
+        f"link price: {old_price or '—'!r} → {new_price or '—'!r}; "
+        f"door price: {old_door_price or '—'!r} → {new_door_price or '—'!r}; "
         f"link: {old_link or '—'!r} → {new_link or '—'!r})",
     )
     db.mark_ticket_info_changed(booking["id"])
@@ -1814,7 +1841,8 @@ def book_edit_ticket(token):
         import bookings_email
         bookings_email.send_ticket_changed_alert(
             booking, old_ticketing, new_ticketing, old_price, new_price,
-            old_link, new_link, request.host_url.rstrip("/")
+            old_link, new_link, request.host_url.rstrip("/"),
+            old_door_price=old_door_price, new_door_price=new_door_price,
         )
     except Exception as e:
         print(f"[bookings] Ticket-changed alert email failed: {e}")

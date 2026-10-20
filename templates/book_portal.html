@@ -310,34 +310,54 @@
                                value="{{ booking.end_time or '' }}">
                     </div>
 
-                    <div class="col-12 col-md-4">
+                    <div class="col-12">
                         <label class="form-label small fw-semibold">
                             Ticketing {% if urgent_phase2 %}<span class="text-danger">*</span>{% endif %}
                         </label>
-                        <select name="ticketing" class="form-select form-select-sm"
-                                {% if urgent_phase2 %}required{% endif %}>
-                            <option value="" {% if not booking.ticketing %}selected{% endif %}>— select —</option>
-                            <option value="Link" {% if booking.ticketing == 'Link' %}selected{% endif %}>Ticket link</option>
-                            <option value="Door" {% if booking.ticketing in ('Door', 'Ticketed', 'Eventbrite') %}selected{% endif %}>Pay at the door</option>
-                        </select>
-                    </div>
-                    <div class="col-6 col-md-4">
-                        <label class="form-label small fw-semibold">
-                            Ticket price <span class="text-muted fw-normal">(if applicable)</span>
-                        </label>
-                        <input type="text" name="ticket_price"
-                               class="form-control form-control-sm"
-                               placeholder="e.g. €15"
-                               value="{{ booking.ticket_price or '' }}">
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="form-label small fw-semibold">
-                            Ticket link <span class="text-muted fw-normal">(if applicable)</span>
-                        </label>
-                        <input type="url" name="ticket_link"
-                               class="form-control form-control-sm"
-                               placeholder="https://eventbrite.com/..."
-                               value="{{ booking.ticket_link or '' }}">
+                        <div class="border rounded p-3 bg-light">
+                            {% set _t = booking.ticketing or '' %}
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="has_link"
+                                       id="p2HasLink" value="1"
+                                       {% if 'Link' in _t %}checked{% endif %}>
+                                <label class="form-check-label small fw-semibold" for="p2HasLink">
+                                    Ticket link (online purchase)
+                                </label>
+                            </div>
+                            <div class="row g-2 ps-4 mb-3">
+                                <div class="col-md-5">
+                                    <input type="url" name="ticket_link"
+                                           class="form-control form-control-sm"
+                                           placeholder="https://eventbrite.com/..."
+                                           value="{{ booking.ticket_link or '' }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" name="ticket_price"
+                                           class="form-control form-control-sm"
+                                           placeholder="Price e.g. €15"
+                                           value="{{ booking.ticket_price or '' }}">
+                                </div>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="has_door"
+                                       id="p2HasDoor" value="1"
+                                       {% if 'Door' in _t or _t in ('Eventbrite','Ticketed') %}checked{% endif %}>
+                                <label class="form-check-label small fw-semibold" for="p2HasDoor">
+                                    Pay at the door
+                                </label>
+                            </div>
+                            <div class="row g-2 ps-4">
+                                <div class="col-md-3">
+                                    <input type="text" name="door_price"
+                                           class="form-control form-control-sm"
+                                           placeholder="Door price e.g. €10"
+                                           value="{{ booking.door_price or '' }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text" style="font-size:.78rem;">
+                            Tick whichever apply — you can select both if you offer online tickets and door entry.
+                        </div>
                     </div>
 
                     <div class="col-12">
@@ -459,28 +479,45 @@
             </p>
             <div id="editTicketCollapse" class="collapse mt-3">
                 <form method="POST" action="/book/{{ booking.public_token }}/edit-ticket">
-                    <div class="row g-2">
-                        <div class="col-12 col-md-4">
-                            <label class="form-label small fw-semibold">Ticketing</label>
-                            <select name="ticketing" class="form-select form-select-sm">
-                                <option value="" {% if not booking.ticketing %}selected{% endif %}>— select —</option>
-                                <option value="Link" {% if booking.ticketing == 'Link' %}selected{% endif %}>Ticket link</option>
-                                <option value="Door" {% if booking.ticketing in ('Door', 'Ticketed', 'Eventbrite') %}selected{% endif %}>Pay at the door</option>
-                            </select>
+                    {% set _t = booking.ticketing or '' %}
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="has_link"
+                                   id="etHasLink" value="1"
+                                   {% if 'Link' in _t %}checked{% endif %}>
+                            <label class="form-check-label small fw-semibold" for="etHasLink">
+                                Ticket link (online purchase)
+                            </label>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small fw-semibold">Price</label>
-                            <input type="text" name="ticket_price"
-                                   class="form-control form-control-sm"
-                                   value="{{ booking.ticket_price or '' }}"
-                                   placeholder="e.g. €15">
+                        <div class="row g-2 ps-4 mb-3">
+                            <div class="col-md-6">
+                                <input type="url" name="ticket_link"
+                                       class="form-control form-control-sm"
+                                       placeholder="https://eventbrite.com/..."
+                                       value="{{ booking.ticket_link or '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" name="ticket_price"
+                                       class="form-control form-control-sm"
+                                       placeholder="Price e.g. €15"
+                                       value="{{ booking.ticket_price or '' }}">
+                            </div>
                         </div>
-                        <div class="col-12 col-md-5">
-                            <label class="form-label small fw-semibold">Ticket link</label>
-                            <input type="url" name="ticket_link"
-                                   class="form-control form-control-sm"
-                                   value="{{ booking.ticket_link or '' }}"
-                                   placeholder="https://eventbrite.com/...">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="has_door"
+                                   id="etHasDoor" value="1"
+                                   {% if 'Door' in _t or _t in ('Eventbrite','Ticketed') %}checked{% endif %}>
+                            <label class="form-check-label small fw-semibold" for="etHasDoor">
+                                Pay at the door
+                            </label>
+                        </div>
+                        <div class="row g-2 ps-4">
+                            <div class="col-md-3">
+                                <input type="text" name="door_price"
+                                       class="form-control form-control-sm"
+                                       placeholder="Door price e.g. €10"
+                                       value="{{ booking.door_price or '' }}">
+                            </div>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-3">
