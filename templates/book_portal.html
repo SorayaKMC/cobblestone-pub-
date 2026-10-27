@@ -552,7 +552,7 @@
             </div>
             <p class="text-muted small mb-0">
                 {% if booking.description %}
-                    {{ booking.description | truncate(120) }}
+                    {{ booking.description }}
                 {% else %}
                     Add any internal notes or description for the Cobblestone team — this is not shown publicly on the website.
                 {% endif %}
@@ -594,7 +594,7 @@
             </div>
             <p class="text-muted small mb-3">
                 {% if booking.public_bio %}
-                    {{ booking.public_bio | truncate(160) }}
+                    {{ booking.public_bio }}
                 {% else %}
                     <span class="text-warning fw-semibold">Required —</span>
                     we need a short bio (2–4 sentences) to list your show on the website and promote it on social media.
