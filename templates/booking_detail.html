@@ -272,6 +272,21 @@
                             <textarea name="description" rows="4" class="form-control form-control-sm">{{ booking.description if booking else '' }}</textarea>
                         </div>
 
+                        <div class="col-md-12">
+                            <label class="form-label small">Public bio <span class="text-muted">(submitted by band)</span></label>
+                            <textarea name="public_bio" rows="4" class="form-control form-control-sm">{{ booking.public_bio if booking else '' }}</textarea>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label small">Sound / technical notes <span class="text-muted">(submitted by band)</span></label>
+                            <textarea name="sound_notes" rows="2" class="form-control form-control-sm">{{ booking.sound_notes if booking else '' }}</textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Genre <span class="text-muted">(submitted by band)</span></label>
+                            <input type="text" name="genre" class="form-control form-control-sm"
+                                   value="{{ booking.genre if booking else '' }}">
+                        </div>
+
                         <div class="col-md-6">
                             <label class="form-label small">Media / social links</label>
                             <textarea name="media_links" rows="2" class="form-control form-control-sm">{{ booking.media_links if booking else '' }}</textarea>
@@ -563,35 +578,6 @@
                    class="btn btn-sm btn-outline-primary w-100">
                     <i class="bi bi-box-arrow-up-right me-1"></i>Open in Drive
                 </a>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Band submissions (bio, sound notes, genre) -->
-        {% if booking.public_bio or booking.sound_notes or booking.genre %}
-        <div class="card mb-3">
-            <div class="card-body">
-                <h6 class="card-title mb-3">
-                    <i class="bi bi-person-lines-fill me-1"></i>Band submissions
-                </h6>
-                {% if booking.public_bio %}
-                <div class="mb-3">
-                    <div class="small fw-semibold text-muted mb-1">Public bio</div>
-                    <div class="small" style="white-space:pre-wrap;">{{ booking.public_bio }}</div>
-                </div>
-                {% endif %}
-                {% if booking.sound_notes %}
-                <div class="mb-3">
-                    <div class="small fw-semibold text-muted mb-1">Sound / technical notes</div>
-                    <div class="small" style="white-space:pre-wrap;">{{ booking.sound_notes }}</div>
-                </div>
-                {% endif %}
-                {% if booking.genre %}
-                <div class="mb-0">
-                    <div class="small fw-semibold text-muted mb-1">Genre</div>
-                    <div class="small">{{ booking.genre }}</div>
-                </div>
-                {% endif %}
             </div>
         </div>
         {% endif %}
