@@ -6,6 +6,7 @@ import os
 import re
 import secrets
 import tempfile
+import unicodedata
 import square_client
 import db
 import excel_export
@@ -852,7 +853,6 @@ def _normalise_name(s):
     lower, split on hyphens/apostrophes/spaces so ‘O’Maolagain’ and
     ‘O Maolagain’ tokenise identically, and ‘Méabh’ == ‘Meabh’ (PDF
     extraction often drops diacritics from accented Irish names)."""
-    import unicodedata
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[-’’]", " ", s).split()
 
