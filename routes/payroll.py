@@ -848,10 +848,13 @@ def _strip_titles(parts):
 
 
 def _normalise_name(s):
-    """Normalise a name string for matching: strip titles, lower, split on
-    hyphens/apostrophes/spaces so 'O'Maolagain' and 'O Maolagain' tokenise
-    identically."""
-    return re.sub(r"[-'’]", " ", s).split()
+    """Normalise a name string for matching: strip accents, strip titles,
+    lower, split on hyphens/apostrophes/spaces so ‘O’Maolagain’ and
+    ‘O Maolagain’ tokenise identically, and ‘Méabh’ == ‘Meabh’ (PDF
+    extraction often drops diacritics from accented Irish names)."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[-’’]", " ", s).split()
 
 
 def _fuzzy_name_match(raw_name, active_employees):
