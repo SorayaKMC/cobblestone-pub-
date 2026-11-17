@@ -410,14 +410,21 @@
                     <td class="text-end">
                         {% if is_finalized %}
                             &euro;{{ "%.2f"|format(emp.bonus|float) }}
+                            {% if emp.bonus_note %}<br><small class="text-muted">{{ emp.bonus_note }}</small>{% endif %}
                         {% else %}
-                            <div class="input-group input-group-sm">
+                            <div class="input-group input-group-sm mb-1">
                                 <span class="input-group-text px-1">&euro;</span>
                                 <input type="number" step="0.01" min="0"
                                        name="bonus_{{ emp.team_member_id }}"
                                        value="{{ '%.2f'|format(emp.bonus|float) }}"
                                        class="form-control form-control-sm text-end">
                             </div>
+                            <input type="text"
+                                   name="bonus_note_{{ emp.team_member_id }}"
+                                   value="{{ emp.bonus_note or '' }}"
+                                   placeholder="reason…"
+                                   class="form-control form-control-sm"
+                                   style="font-size:.75rem;">
                         {% endif %}
                     </td>
                     <td class="text-end text-muted" style="font-size:.85rem">

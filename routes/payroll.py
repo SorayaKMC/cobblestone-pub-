@@ -122,7 +122,8 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
 
         # Tips and bonus are manually entered (never from Square)
         tips = Decimal(str(manual_tips.get(tm_id, 0) or 0))
-        bonus = Decimal(str(weekly_bonus.get(tm_id, 0) or 0))
+        _bonus_data = weekly_bonus.get(tm_id, {})
+        bonus = Decimal(str(_bonus_data.get("amount", 0) if isinstance(_bonus_data, dict) else _bonus_data or 0))
         total = gross + tips + cleaning + bonus
         total_for_labor = gross + cleaning + bonus
 
@@ -137,6 +138,7 @@ def _build_payroll_data(timecards, team_members, categories, manual_tips=None, w
             "tips": tips.quantize(Decimal("0.01")),
             "cleaning": cleaning.quantize(Decimal("0.01")),
             "bonus": bonus.quantize(Decimal("0.01")),
+            "bonus_note": _bonus_data.get("note", "") if isinstance(_bonus_data, dict) else "",
             "total": total.quantize(Decimal("0.01")),
             "category": category,
             "total_for_labor": total_for_labor.quantize(Decimal("0.01")),
@@ -211,6 +213,7 @@ def _load_week_payroll(year, week, iso_week, start_date, end_date):
             "tips": Decimal("0.00"),
             "cleaning": Decimal("0.00"),
             "bonus": Decimal("0.00"),
+            "bonus_note": "",
             "total": Decimal("0.00"),
             "category": cat["category"],
             "total_for_labor": Decimal("0.00"),
@@ -754,12 +757,19 @@ def save_tips():
                 cleaning_by_employee[tm_id] = float(request.form[key] or 0)
             except (ValueError, TypeError):
                 cleaning_by_employee[tm_id] = 0
-        elif key.startswith("bonus_"):
+        elif key.startswith("bonus_") and not key.startswith("bonus_note_"):
             tm_id = key.replace("bonus_", "")
+            if tm_id not in bonus_by_employee:
+                bonus_by_employee[tm_id] = {"amount": 0, "note": ""}
             try:
-                bonus_by_employee[tm_id] = float(request.form[key] or 0)
+                bonus_by_employee[tm_id]["amount"] = float(request.form[key] or 0)
             except (ValueError, TypeError):
-                bonus_by_employee[tm_id] = 0
+                bonus_by_employee[tm_id]["amount"] = 0
+        elif key.startswith("bonus_note_"):
+            tm_id = key.replace("bonus_note_", "")
+            if tm_id not in bonus_by_employee:
+                bonus_by_employee[tm_id] = {"amount": 0, "note": ""}
+            bonus_by_employee[tm_id]["note"] = request.form[key].strip()
 
     if tips_by_employee:
         db.bulk_set_weekly_tips(iso_week, tips_by_employee)

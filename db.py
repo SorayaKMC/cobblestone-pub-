@@ -1103,28 +1103,34 @@ def bulk_set_weekly_cleaning(iso_week, cleaning_by_employee):
 # --- Weekly Bonus (manually entered per week, same rules as tips) ---
 
 def get_weekly_bonus(iso_week):
-    """Returns {team_member_id: bonus_amount} for the given week."""
+    """Returns {team_member_id: {"amount": float, "note": str}} for the given week."""
     conn = get_db()
     rows = conn.execute(
-        "SELECT team_member_id, bonus FROM weekly_bonus WHERE iso_week = ?",
+        "SELECT team_member_id, bonus, note FROM weekly_bonus WHERE iso_week = ?",
         (iso_week,),
     ).fetchall()
     conn.close()
-    return {r["team_member_id"]: r["bonus"] for r in rows}
+    return {r["team_member_id"]: {"amount": r["bonus"], "note": r["note"] or ""} for r in rows}
 
 
 def bulk_set_weekly_bonus(iso_week, bonus_by_employee):
-    """Save multiple bonus amounts at once."""
+    """Save multiple bonus amounts and optional notes at once.
+
+    bonus_by_employee: {tm_id: {"amount": float, "note": str}}
+    """
     conn = get_db()
     now = datetime.now().isoformat()
-    for tm_id, amount in bonus_by_employee.items():
+    for tm_id, data in bonus_by_employee.items():
+        amount = float(data.get("amount", 0) or 0)
+        note = (data.get("note") or "").strip()
         conn.execute(
-            """INSERT INTO weekly_bonus (team_member_id, iso_week, bonus, updated_at)
-               VALUES (?, ?, ?, ?)
+            """INSERT INTO weekly_bonus (team_member_id, iso_week, bonus, note, updated_at)
+               VALUES (?, ?, ?, ?, ?)
                ON CONFLICT(team_member_id, iso_week) DO UPDATE SET
                    bonus=excluded.bonus,
+                   note=excluded.note,
                    updated_at=excluded.updated_at""",
-            (tm_id, iso_week, float(amount or 0), now),
+            (tm_id, iso_week, amount, note or None, now),
         )
     conn.commit()
     conn.close()
