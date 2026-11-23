@@ -571,7 +571,7 @@ https://cobblestonepub.ie
 
     ics = _make_ics(booking)
     atts = [("cobblestone_event.ics", "text/calendar", ics)] if ics else None
-    return _send(booking["contact_email"], subject, html, text, attachments=atts, cc=[SHANE_EMAIL])
+    return _send(booking["contact_email"], subject, html, text, attachments=atts)
 
 
 def send_booking_reminder(booking, base_url=None):
@@ -2513,7 +2513,7 @@ The Cobblestone Pub team
 77 King St N, Smithfield, Dublin 7
 https://cobblestonepub.ie"""
 
-    return _send(booking["contact_email"], subject, html, text, cc=[SHANE_EMAIL])
+    return _send(booking["contact_email"], subject, html, text)
 
 
 def send_phase2_reminder(booking, base_url=None):
