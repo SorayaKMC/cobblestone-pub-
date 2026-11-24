@@ -496,8 +496,6 @@ def _compute_vat(year):
     confirmed_input_vat = _get_confirmed_input_vat(year)
 
     for m1, m2, due in period_months:
-        if len(vat_periods) >= 5:
-            break
         if m1 > current_month:
             break
 
